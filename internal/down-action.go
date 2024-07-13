@@ -16,7 +16,7 @@ type DownAction struct {
 
 // Only return an error if the command cannot be run.
 func (da *DownAction) Execute() error {
-	cmd := exec.Command(da.Exec) // #nosec G204
+	cmd := exec.Command("sh", "-c", da.Exec) // #nosec G204
 	logrus.WithField("exec", da.Exec).Debugf("[DownAction] Executing")
 	err := cmd.Start()
 	if err != nil {
@@ -29,9 +29,9 @@ func (da *DownAction) Execute() error {
 	go func() {
 		err := cmd.Wait()
 		logrus.WithFields(logrus.Fields{
-			"exec": da.Exec,
-			"err":  err,
-		}).Warn("[DownAction] Finished with error")
+			"command": da.Exec,
+			"err":     err,
+		}).Warn("[DownAction] Error")
 	}()
 	return nil
 }
