@@ -26,7 +26,6 @@ func (c *Check) Probe() up.Report {
 		Error:      err,
 		Extra:      extra,
 	}
-	logrus.WithField("report", report).Debug("[Check] Returning report")
 	return report
 }
 
@@ -38,7 +37,10 @@ func RunChecks(checks []*Check) (bool, error) {
 	for _, check := range checks {
 		report := check.Probe()
 		if report.Error == nil {
+			logrus.WithField("report", report).Debug("[Check] Check run")
 			return true, nil
+		} else {
+			logrus.WithField("report", report).Warn("[Check] Check failed")
 		}
 	}
 	return false, nil
