@@ -9,10 +9,13 @@ import (
 )
 
 type DownAction struct {
-	After    time.Duration
-	Every    time.Duration
-	Exec     string
-	ExecArgs []string
+	After      time.Duration
+	Every      time.Duration
+	Exec       string
+	ExecArgs   []string
+	running    bool
+	ctx        context.Context
+	cancelFunc context.CancelFunc
 }
 
 // Only return an error if the command cannot be run.
@@ -41,14 +44,19 @@ func logSleep(sleepTime time.Duration) {
 	logrus.WithField("sleep", sleepTime).Debug("[DownAction] Waiting")
 }
 
-func (da *DownAction) Run(ctx context.Context, cancelFunc context.CancelFunc) {
+func (da *DownAction) isRunning() bool {
+	return da.running
+}
+
+func (da *DownAction) run() {
+	da.running = true
 	sleepTime := da.After
 	logSleep(sleepTime)
 	for {
 		select {
-		case <-ctx.Done():
+		case <-da.ctx.Done():
 			logrus.Debug("[DownAction] canceled")
-			cancelFunc()
+			da.running = false
 			return
 		case <-time.After(sleepTime):
 		}
@@ -59,5 +67,19 @@ func (da *DownAction) Run(ctx context.Context, cancelFunc context.CancelFunc) {
 		} else {
 			break
 		}
+	}
+}
+
+func (da *DownAction) Start() {
+	logrus.SetLevel(logrus.DebugLevel)
+	da.ctx, da.cancelFunc = context.WithCancel(context.Background())
+	logrus.Debug("[DownAction] kicking off run loop")
+	go da.run()
+}
+
+func (da *DownAction) Stop() {
+	if da.ctx != nil {
+		logrus.Debug("[DownAction] sending shutdown signal")
+		da.cancelFunc()
 	}
 }

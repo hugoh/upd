@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"context"
 	"time"
 
 	"github.com/hugoh/upd/pkg/conncheck"
@@ -16,7 +15,6 @@ type Loop struct {
 
 var initialized bool
 var isUp bool
-var ctx context.Context
 
 // Returns true if it changed
 func reportUpness(result bool) bool {
@@ -35,15 +33,12 @@ func (l *Loop) Run() {
 			logrus.WithField("up", isUp).Info("[Loop] Connection status changed")
 			if changed {
 				if status {
-					if ctx != nil {
-						logrus.Debug("[Loop] Canceling down action")
-						<-ctx.Done()
-					}
+					logrus.Debug("[Loop] Stopping DownAction")
+					l.DownAction.Stop()
 				} else {
-					c, cancel := context.WithCancel(context.Background())
-					ctx = c
 					logrus.WithField("da", l.DownAction).Debug("[Loop] Starting DownAction")
-					go l.DownAction.Run(ctx, cancel)
+					l.DownAction.Start()
+					go l.DownAction.Start()
 				}
 			}
 		} else {
