@@ -31,9 +31,10 @@ func (suite *TestSuite) TestGetDownActionFromConf() {
 	da, err := GetDownActionFromConf()
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), &DownAction{
-		After: 120 * time.Second,
-		Every: 300 * time.Second,
-		Exec:  "cowsay",
+		After:    120 * time.Second,
+		Every:    300 * time.Second,
+		Exec:     "cowsay",
+		ExecArgs: []string{},
 	}, da)
 }
 
