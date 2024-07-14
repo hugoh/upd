@@ -8,6 +8,7 @@ import (
 	"github.com/hugoh/upd/pkg/conncheck"
 	"github.com/sirupsen/logrus"
 
+	"github.com/google/shlex"
 	"github.com/kr/pretty"
 	"github.com/spf13/viper"
 )
@@ -88,10 +89,15 @@ func GetChecksFromConf() ([]*conncheck.Check, error) {
 }
 
 func GetDownActionFromConf() (*DownAction, error) {
+	command, err := shlex.Split(viper.GetString("downAction.exec"))
+	if err != nil {
+		return nil, err
+	}
 	return &DownAction{
-		After: getTimeFromConf("downAction.afterSec", time.Second),
-		Every: getTimeFromConf("downAction.repeatEvery", time.Second),
-		Exec:  viper.GetString("downAction.exec"),
+		After:    getTimeFromConf("downAction.afterSec", time.Second),
+		Every:    getTimeFromConf("downAction.repeatEvery", time.Second),
+		Exec:     command[0],
+		ExecArgs: command[1:],
 	}, nil
 }
 

@@ -9,14 +9,15 @@ import (
 )
 
 type DownAction struct {
-	After time.Duration
-	Every time.Duration
-	Exec  string
+	After    time.Duration
+	Every    time.Duration
+	Exec     string
+	ExecArgs []string
 }
 
 // Only return an error if the command cannot be run.
 func (da *DownAction) Execute() error {
-	cmd := exec.Command("sh", "-c", da.Exec) // #nosec G204
+	cmd := exec.Command(da.Exec, da.ExecArgs...) // #nosec G204
 	logrus.WithField("exec", da.Exec).Debugf("[DownAction] Executing")
 	err := cmd.Start()
 	if err != nil {
