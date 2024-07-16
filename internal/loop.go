@@ -8,43 +8,45 @@ import (
 )
 
 type Loop struct {
-	Checks     []*conncheck.Check
-	Delays     map[bool]time.Duration
-	DownAction *DownAction
+	Checks      []*conncheck.Check
+	Delays      map[bool]time.Duration
+	DownAction  *DownAction
+	initialized bool
+	isUp        bool
 }
 
-var initialized bool
-var isUp bool
-
 // Returns true if it changed
-func reportUpness(result bool) bool {
-	if !initialized || result != isUp {
-		isUp = result
+func (l *Loop) reportUpness(result bool) bool {
+	if !l.initialized || result != l.isUp {
+		l.isUp = result
 		return true
 	}
 	return false
+}
+
+func (l *Loop) ProcessCheck(status bool) {
+	changed := l.reportUpness(status)
+	logrus.WithField("up", l.isUp).Info("[Loop] Connection status changed")
+	if changed {
+		if status {
+			logrus.Debug("[Loop] Stopping DownAction")
+			l.DownAction.Stop()
+		} else {
+			logrus.WithField("da", l.DownAction).Debug("[Loop] Starting DownAction")
+			l.DownAction.Start()
+		}
+	}
 }
 
 func (l *Loop) Run() {
 	for {
 		status, err := conncheck.RunChecks(l.Checks)
 		if err == nil {
-			changed := reportUpness(status)
-			logrus.WithField("up", isUp).Info("[Loop] Connection status changed")
-			if changed {
-				if status {
-					logrus.Debug("[Loop] Stopping DownAction")
-					l.DownAction.Stop()
-				} else {
-					logrus.WithField("da", l.DownAction).Debug("[Loop] Starting DownAction")
-					l.DownAction.Start()
-					go l.DownAction.Start()
-				}
-			}
+			l.ProcessCheck(status)
 		} else {
 			logrus.WithField("err", err).Error("[Loop] Error")
 		}
-		sleepTime := l.Delays[isUp]
+		sleepTime := l.Delays[l.isUp]
 		logrus.WithField("wait", sleepTime.Seconds()).Debugf("[Loop] Waiting for next loop iteration")
 		time.Sleep(sleepTime)
 	}
