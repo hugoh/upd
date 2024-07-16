@@ -49,7 +49,8 @@ var dumpConf bool
 // Execute adds all child commands to the root command and sets flags
 // appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
+func Execute(version string) {
+	rootCmd.Version = version
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
@@ -58,7 +59,7 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().
-		StringVar(&cfgFile, "config", "", "config file (default is $HOME/.up.yaml)")
+		StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.up.yaml)")
 	rootCmd.PersistentFlags().
 		BoolVarP(&debug, "debug", "d", false, "display debugging output in the console")
 	rootCmd.PersistentFlags().
