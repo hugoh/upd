@@ -1,5 +1,6 @@
-# upd: monitoring of Internet connection
+# upd: monitoring of network connection
 
-This tool is work in progress. It's built on top of [jesusprubio/up: 📶 Troubleshoot problems with your Internet connection](https://github.com/jesusprubio/up).
+Runs HTTP, TCP or DNS checks on a regular basis.
+If all checks fail, runs down action on a regular basis until the connection is back up.
 
-More documentation to come.
+This is work in progress. It's built on top of [jesusprubio/up: 📶 Troubleshoot problems with your internet connection](https://github.com/jesusprubio/up).

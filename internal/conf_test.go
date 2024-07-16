@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -12,15 +13,17 @@ type TestSuite struct {
 	suite.Suite
 }
 
+const testConfigDir = "../test/data"
+
 func readConf(cfgFile string) {
-	err := ReadConf(cfgFile)
+	err := ReadConf(fmt.Sprintf("%s/%s", testConfigDir, cfgFile))
 	if err != nil {
 		panic(err)
 	}
 }
 
 func (suite *TestSuite) SetupTest() {
-	readConf("../test/upd_test_good.yaml")
+	readConf("upd_test_good.yaml")
 }
 
 func TestSuiteRun(t *testing.T) {
@@ -48,7 +51,7 @@ func (suite *TestSuite) TestGetDelaysFromConf() {
 }
 
 func TestGetChecksFromConfFail(t *testing.T) {
-	readConf("../test/upd_test_bad.yaml")
+	readConf("upd_test_bad.yaml")
 	_, err := GetChecksFromConf()
 	assert.Error(t, err)
 }

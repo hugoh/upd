@@ -19,16 +19,19 @@ tasks:
   devdep:
     summary: "Install dev dependencies"
     cmds:
-      # Linters.
+      # Linters
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
       - go install honnef.co/go/tools/cmd/staticcheck@latest
       - go install github.com/securego/gosec/v2/cmd/gosec@latest
-      # Formatters.
-      - go install github.com/segmentio/golines@latest
+      # Formatters
+      - go install mvdan.cc/gofumpt@latest
+      - go install github.com/daixiang0/gci@latest
 
   fmt:
     summary: "Format the code"
-    # Already runs `go fmt` before finishing.
-    cmd: golines -m 80 --shorten-comments -w .
+    cmds:
+      - gci write .
+      - gofumpt -w .
 
   tidy:
     summary: "Tidy the module"
@@ -41,10 +44,11 @@ tasks:
       - go get -d -u -t ./...
       - task tidy
 
-  vet:
+  lint:
     summary: "Run linters"
     cmds:
       - go vet ./...
+      - golangci-lint run ./...
       - staticcheck ./...
       - gosec -fmt=golint -quiet ./...
 

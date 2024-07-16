@@ -5,10 +5,14 @@ on: # yamllint disable-line rule:truthy
   push:
   pull_request:
 
+permissions: {}
+
 jobs:
   test:
     name: Lint and Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -21,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: task devdep
       - name: Run linters
-        run: task vet
+        run: task lint
       - name: Run tests
         run: task test
   release:

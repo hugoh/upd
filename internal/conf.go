@@ -1,15 +1,15 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"time"
 
-	"github.com/hugoh/upd/pkg/conncheck"
-	"github.com/sirupsen/logrus"
-
 	"github.com/google/shlex"
+	"github.com/hugoh/upd/pkg/conncheck"
 	"github.com/kr/pretty"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -25,11 +25,11 @@ func ReadConf(cfgFile string) error {
 
 	logrus.WithField("file", viper.ConfigFileUsed()).Debug("[Config] File")
 	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		var notFoundError *viper.ConfigFileNotFoundError
+		if errors.As(err, &notFoundError) {
 			return fmt.Errorf("fatal error config file not found: %w", err)
-		} else {
-			return fmt.Errorf("fatal error config file: %w", err)
 		}
+		return fmt.Errorf("fatal error config file: %w", err)
 	}
 
 	return nil
@@ -52,7 +52,7 @@ func LogSetup(debugFlag bool) {
 }
 
 func DumpConf(loop *Loop) {
-	fmt.Printf("%# v\n", pretty.Formatter(loop))
+	fmt.Printf("%# v\n", pretty.Formatter(loop)) //nolint:forbidigo
 }
 
 func getTimeFromConf(key string, unit time.Duration) time.Duration {
@@ -60,16 +60,12 @@ func getTimeFromConf(key string, unit time.Duration) time.Duration {
 }
 
 func GetChecksFromConf() ([]*conncheck.Check, error) {
-	var checks []*conncheck.Check
+	var checks []*conncheck.Check //nolint:prealloc
 	timeout := getTimeFromConf("checks.timeoutMilli", time.Millisecond)
 	for _, target := range viper.GetStringSlice("checks.list") {
 		url, err := url.Parse(target)
 		if err != nil {
-			return nil, fmt.Errorf(
-				"could not parse check '%s': %v",
-				target,
-				err,
-			)
+			return nil, fmt.Errorf("could not parse check '%s': %w", target, err)
 		}
 		p := ProtocolByID(url.Scheme)
 		if p == nil {
@@ -91,9 +87,9 @@ func GetChecksFromConf() ([]*conncheck.Check, error) {
 func GetDownActionFromConf() (*DownAction, error) {
 	command, err := shlex.Split(viper.GetString("downAction.exec"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse DownAction definition: %w", err)
 	}
-	return &DownAction{
+	return &DownAction{ //nolint:exhaustruct
 		After:    getTimeFromConf("downAction.afterSec", time.Second),
 		Every:    getTimeFromConf("downAction.repeatEvery", time.Second),
 		Exec:     command[0],

@@ -36,12 +36,12 @@ Returns true as soon as one is successful indicating that the connection is up, 
 func RunChecks(checks []*Check) (bool, error) {
 	for _, check := range checks {
 		report := check.Probe()
-		if report.Error == nil {
-			logrus.WithField("report", report).Debug("[Check] Check run")
-			return true, nil
-		} else {
+		if report.Error != nil {
 			logrus.WithField("report", report).Warn("[Check] Check failed")
+			continue
 		}
+		logrus.WithField("report", report).Debug("[Check] Check run")
+		return true, nil
 	}
 	return false, nil
 }

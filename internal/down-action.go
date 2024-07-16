@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"time"
 
@@ -14,7 +15,6 @@ type DownAction struct {
 	Exec       string
 	ExecArgs   []string
 	running    bool
-	ctx        context.Context
 	cancelFunc context.CancelFunc
 }
 
@@ -28,7 +28,7 @@ func (da *DownAction) Execute() error {
 			"exec": da.Exec,
 			"err":  err,
 		}).Error("[DownAction] Failed to run")
-		return err
+		return fmt.Errorf("failed to execute DownAction: %w", err)
 	}
 	go func() {
 		err := cmd.Wait()
@@ -48,19 +48,19 @@ func (da *DownAction) isRunning() bool {
 	return da.running
 }
 
-func (da *DownAction) run() {
+func (da *DownAction) run(ctx context.Context) {
 	da.running = true
 	sleepTime := da.After
 	logSleep(sleepTime)
 	for {
 		select {
-		case <-da.ctx.Done():
+		case <-ctx.Done():
 			logrus.Debug("[DownAction] canceled")
 			da.running = false
 			return
 		case <-time.After(sleepTime):
 		}
-		_ = da.Execute()
+		_ = da.Execute() //nolint:errcheck
 		if da.Every > 0 {
 			sleepTime = da.Every
 			logSleep(sleepTime)
@@ -72,13 +72,14 @@ func (da *DownAction) run() {
 
 func (da *DownAction) Start() {
 	logrus.SetLevel(logrus.DebugLevel)
-	da.ctx, da.cancelFunc = context.WithCancel(context.Background())
+	var ctx context.Context
+	ctx, da.cancelFunc = context.WithCancel(context.Background())
 	logrus.Debug("[DownAction] kicking off run loop")
-	go da.run()
+	go da.run(ctx)
 }
 
 func (da *DownAction) Stop() {
-	if da.ctx != nil {
+	if da.cancelFunc != nil {
 		logrus.Debug("[DownAction] sending shutdown signal")
 		da.cancelFunc()
 	}
