@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: task devdep
       - name: Run linters
-        run: task vet
+        run: task lint
       - name: Run tests
         run: task test
   release:
