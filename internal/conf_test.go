@@ -46,7 +46,7 @@ func TestNoDownAction(t *testing.T) {
 	readConf("upd_test_noda.yaml")
 	da, err := GetDownActionFromConf()
 	assert.Nil(t, da, "DownAction not found")
-	assert.NoError(t, err, "No error while parsing DownAction")
+	assert.Equal(t, ErrNoDownActionInConf, err)
 }
 
 func (suite *TestSuite) TestGetDelaysFromConf() {

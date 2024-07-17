@@ -4,6 +4,7 @@ Copyright © 2024 Hugo Haas <hugoh@hugoh.net>
 package cmd
 
 import (
+	"errors"
 	"os"
 
 	"github.com/hugoh/upd/internal"
@@ -25,7 +26,9 @@ func run(_ *cobra.Command, _ []string) {
 	delays, errD := internal.GetDelaysFromConf()
 	internal.FatalIfError(errD)
 	da, errA := internal.GetDownActionFromConf()
-	internal.FatalIfError(errA)
+	if !errors.Is(errA, internal.ErrNoDownActionInConf) {
+		internal.FatalIfError(errA)
+	}
 
 	loop := &internal.Loop{
 		Checks:     checks,
