@@ -5,6 +5,12 @@ repos:
       - id: check-yaml
   - repo: local
     hooks:
+      - id: lint
+        name: Lint code
+        language: system
+        entry: task lint
+        pass_filenames: false
+        types: ["go"]
       - id: test
         name: Run tests
         language: system
