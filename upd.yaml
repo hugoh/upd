@@ -2,7 +2,6 @@ checks:
   everySec:
     normal: 120
     down: 20
-  order: follow
   list:
     # From https://en.wikipedia.org/wiki/Captive_portal
     - http://captive.apple.com/hotspot-detect.html
