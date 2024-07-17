@@ -32,7 +32,7 @@ func Test_ExecuteNonExistent(t *testing.T) {
 }
 
 func Test_StartAndStop(t *testing.T) {
-	every := time.Second
+	every := 100 * time.Millisecond
 	da := &DownAction{
 		After: 1 * time.Millisecond,
 		Every: every,
