@@ -85,6 +85,9 @@ func GetChecksFromConf() ([]*conncheck.Check, error) {
 }
 
 func GetDownActionFromConf() (*DownAction, error) {
+	if viper.Get("downAction") == nil {
+		return nil, nil //nolint:nilnil
+	}
 	command, err := shlex.Split(viper.GetString("downAction.exec"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse DownAction definition: %w", err)

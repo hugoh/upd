@@ -32,13 +32,21 @@ func TestSuiteRun(t *testing.T) {
 
 func (suite *TestSuite) TestGetDownActionFromConf() {
 	da, err := GetDownActionFromConf()
-	assert.NoError(suite.T(), err)
+	assert.NotNil(suite.T(), da, "DownAction parsed")
+	assert.NoError(suite.T(), err, "No error while parsing DownAction")
 	assert.Equal(suite.T(), &DownAction{
 		After:    120 * time.Second,
 		Every:    300 * time.Second,
 		Exec:     "cowsay",
 		ExecArgs: []string{},
 	}, da)
+}
+
+func TestNoDownAction(t *testing.T) {
+	readConf("upd_test_noda.yaml")
+	da, err := GetDownActionFromConf()
+	assert.Nil(t, da, "DownAction not found")
+	assert.NoError(t, err, "No error while parsing DownAction")
 }
 
 func (suite *TestSuite) TestGetDelaysFromConf() {
