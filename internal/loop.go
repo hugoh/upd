@@ -24,10 +24,14 @@ func (l *Loop) reportUpness(result bool) bool {
 	return false
 }
 
+func (l *Loop) hasDownAction() bool {
+	return l.DownAction != nil
+}
+
 func (l *Loop) ProcessCheck(status bool) {
 	changed := l.reportUpness(status)
 	logrus.WithField("up", l.isUp).Info("[Loop] Connection status changed")
-	if changed {
+	if changed && l.hasDownAction() {
 		if status {
 			logrus.Debug("[Loop] Stopping DownAction")
 			l.DownAction.Stop()
