@@ -18,14 +18,14 @@ var (
 )
 
 func run(_ *cobra.Command, _ []string) {
-	err := internal.ReadConf(cfgFile)
+	conf, err := internal.ReadConf(cfgFile)
 	internal.FatalIfError(err)
-	internal.LogSetup(debug)
-	checks, errC := internal.GetChecksFromConf()
+	conf.LogSetup(debug)
+	checks, errC := conf.GetChecks()
 	internal.FatalIfError(errC)
-	delays, errD := internal.GetDelaysFromConf()
+	delays, errD := conf.GetDelays()
 	internal.FatalIfError(errD)
-	da, errA := internal.GetDownActionFromConf()
+	da, errA := conf.GetDownAction()
 	if !errors.Is(errA, internal.ErrNoDownActionInConf) {
 		internal.FatalIfError(errA)
 	}
@@ -37,7 +37,7 @@ func run(_ *cobra.Command, _ []string) {
 	}
 
 	if dumpConf {
-		internal.DumpConf(loop)
+		conf.Dump()
 		return
 	}
 

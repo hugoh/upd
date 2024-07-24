@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"reflect"
 	"time"
 
+	"github.com/go-playground/validator"
 	"github.com/google/shlex"
 	"github.com/hugoh/upd/pkg/conncheck"
 	"github.com/kr/pretty"
@@ -13,7 +15,27 @@ import (
 	"github.com/spf13/viper"
 )
 
-func ReadConf(cfgFile string) error {
+type Configuration struct {
+	Checks struct {
+		Every struct {
+			Normal int `mapstructure:"normal" validate:"required,gt=0"`
+			Down   int `mapstructure:"down"   validate:"required,gt=0"`
+		} `mapstructure:"everySec"`
+		List    []string `mapstructure:"list"         validate:"required"`
+		TimeOut int      `mapstructure:"timeoutMilli" validate:"required"`
+	} `mapstructure:"checks" validate:"required"`
+	DownAction struct {
+		Exec  string `mapstructure:"exec" validate:"omitempty"`
+		Every struct {
+			After        int `mapstructure:"after"           validate:"omitempty,gte=0"`
+			Repeat       int `mapstructure:"repeat"          validate:"omitempty,gte=0"`
+			BackoffLimit int `mapstructure:"expBackoffLimit" validate:"omitempty,gte=0"`
+		} `mapstructure:"everySec"`
+	} `mapstructure:"downAction"`
+	LogLevel string `mapstructure:"normal" validate:"omitempty,oneof=debug info warn"`
+}
+
+func ReadConf(cfgFile string) (*Configuration, error) {
 	viper.SetConfigType("yaml")
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
@@ -27,42 +49,47 @@ func ReadConf(cfgFile string) error {
 	if err := viper.ReadInConfig(); err != nil {
 		var notFoundError *viper.ConfigFileNotFoundError
 		if errors.As(err, &notFoundError) {
-			return fmt.Errorf("fatal error config file not found: %w", err)
+			return nil, fmt.Errorf("fatal error config file not found: %w", err)
 		}
-		return fmt.Errorf("fatal error config file: %w", err)
+		return nil, fmt.Errorf("fatal error config file: %w", err)
 	}
 
-	return nil
+	var conf Configuration
+	if err := viper.Unmarshal(&conf); err != nil {
+		return nil, fmt.Errorf("unable to unmarshall the config %w", err)
+	}
+	validate := validator.New()
+	if err := validate.Struct(&conf); err != nil {
+		return nil, fmt.Errorf("missing required attributes %w", err)
+	}
+
+	return &conf, nil
 }
 
-func LogSetup(debugFlag bool) {
+func (c *Configuration) LogSetup(debugFlag bool) {
 	if debugFlag {
-		viper.Set("logLevel", "debug")
+		c.LogLevel = "debug"
 	}
-	switch l := viper.GetString("logLevel"); l {
+	switch c.LogLevel {
 	case "debug":
 		logrus.SetLevel(logrus.DebugLevel)
 	case "info":
 		logrus.SetLevel(logrus.InfoLevel)
-	case "warn":
+	case "warn", "":
 		logrus.SetLevel(logrus.WarnLevel)
 	default:
-		logrus.WithField("loglevel", l).Error("[Config] Unknown loglevel")
+		logrus.WithField("loglevel", c.LogLevel).Error("[Config] Unknown loglevel")
 	}
 }
 
-func DumpConf(loop *Loop) {
-	fmt.Printf("%# v\n", pretty.Formatter(loop)) //nolint:forbidigo
+func (c *Configuration) Dump() {
+	fmt.Printf("%# v\n", pretty.Formatter(c)) //nolint:forbidigo
 }
 
-func getTimeFromConf(key string, unit time.Duration) time.Duration {
-	return time.Duration(viper.GetInt(key)) * unit
-}
-
-func GetChecksFromConf() ([]*conncheck.Check, error) {
+func (c *Configuration) GetChecks() ([]*conncheck.Check, error) {
 	var checks []*conncheck.Check //nolint:prealloc
-	timeout := getTimeFromConf("checks.timeoutMilli", time.Millisecond)
-	for _, target := range viper.GetStringSlice("checks.list") {
+	timeout := time.Duration(c.Checks.TimeOut) * time.Millisecond
+	for _, target := range c.Checks.List {
 		url, err := url.Parse(target)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse check '%s': %w", target, err)
@@ -86,25 +113,26 @@ func GetChecksFromConf() ([]*conncheck.Check, error) {
 
 var ErrNoDownActionInConf = errors.New("no DownAction found in conf")
 
-func GetDownActionFromConf() (*DownAction, error) {
-	if viper.Get("downAction") == nil {
+func (c *Configuration) GetDownAction() (*DownAction, error) {
+	if reflect.ValueOf(c.DownAction).IsZero() {
 		return nil, ErrNoDownActionInConf
 	}
-	command, err := shlex.Split(viper.GetString("downAction.exec"))
+	command, err := shlex.Split(c.DownAction.Exec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse DownAction definition: %w", err)
 	}
 	return &DownAction{ //nolint:exhaustruct
-		After:    getTimeFromConf("downAction.afterSec", time.Second),
-		Every:    getTimeFromConf("downAction.repeatEvery", time.Second),
-		Exec:     command[0],
-		ExecArgs: command[1:],
+		After:        time.Duration(c.DownAction.Every.After) * time.Second,
+		Every:        time.Duration(c.DownAction.Every.Repeat) * time.Second,
+		BackoffLimit: time.Duration(c.DownAction.Every.BackoffLimit) * time.Second,
+		Exec:         command[0],
+		ExecArgs:     command[1:],
 	}, nil
 }
 
-func GetDelaysFromConf() (map[bool]time.Duration, error) {
+func (c *Configuration) GetDelays() (map[bool]time.Duration, error) {
 	delays := make(map[bool]time.Duration)
-	delays[true] = getTimeFromConf("checks.everySec.normal", time.Second)
-	delays[false] = getTimeFromConf("checks.everySec.down", time.Second)
+	delays[true] = time.Duration(c.Checks.Every.Normal) * time.Second
+	delays[false] = time.Duration(c.Checks.Every.Down) * time.Second
 	return delays, nil
 }

@@ -51,7 +51,7 @@ func (l *Loop) Run() {
 			logrus.WithField("err", err).Error("[Loop] Error")
 		}
 		sleepTime := l.Delays[l.isUp]
-		logrus.WithField("wait", sleepTime.Seconds()).Debugf("[Loop] Waiting for next loop iteration")
+		logrus.WithField("wait", sleepTime).Debugf("[Loop] Waiting for next loop iteration")
 		time.Sleep(sleepTime)
 	}
 }

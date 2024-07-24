@@ -5,12 +5,18 @@ checks:
   list:
     # From https://en.wikipedia.org/wiki/Captive_portal
     - http://captive.apple.com/hotspot-detect.html
-    - ftp://foo.bar/ # This one should be ignored
+    - http://connectivitycheck.gstatic.com/generate_204
+    - http://clients3.google.com/generate_204
+    - http://www.msftconnecttest.com/connecttest.txt
+    - dns://1.1.1.1/
+    - dns://1.0.0.1/
+    - dns://8.8.8.8/
     - dns://8.8.4.4/
   timeoutMilli: 2000
 downAction:
-  afterSec: 120
   exec: cowsay
-  repeatEvery: 300
+  everySec:
+    after: 120
+    repeat: 300
 # Options = debug, info, warn, error
 logLevel: debug

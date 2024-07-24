@@ -14,8 +14,9 @@ checks:
     - dns://8.8.4.4/
   timeoutMilli: 2000
 downAction:
-  afterSec: 120
   exec: cowsay
-  repeatEvery: 300
+  everySec:
+    after: 120
+    repeat: 300
 # Options = debug, info, warn, error
 logLevel: debug
