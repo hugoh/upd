@@ -46,7 +46,7 @@ func Test_StartAndStop(t *testing.T) {
 	assert.Equal(t, false, da.isRunning(), "DownAction loop is not running anymore")
 }
 
-func test_backoff(t *testing.T, hasLimit bool) {
+func testBackoff(t *testing.T, hasLimit bool) {
 	const after = 42 * time.Second
 	const every = 1 * time.Second
 	const backoffLimit = 2 * time.Second
@@ -82,9 +82,9 @@ func test_backoff(t *testing.T, hasLimit bool) {
 }
 
 func Test_BackoffNoLimit(t *testing.T) {
-	test_backoff(t, false)
+	testBackoff(t, false)
 }
 
 func Test_BackoffLimit(t *testing.T) {
-	test_backoff(t, true)
+	testBackoff(t, true)
 }
