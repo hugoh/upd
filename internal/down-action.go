@@ -10,13 +10,22 @@ import (
 )
 
 type DownAction struct {
-	After      time.Duration
-	Every      time.Duration
-	Exec       string
-	ExecArgs   []string
-	running    bool
-	cancelFunc context.CancelFunc
+	After        time.Duration
+	Every        time.Duration
+	BackoffLimit time.Duration
+	Exec         string
+	ExecArgs     []string
+	running      bool
+	cancelFunc   context.CancelFunc
 }
+
+type DaIteration struct {
+	Iteration    int
+	SleepTime    time.Duration
+	LimitReached bool
+}
+
+const BackoffFactor = 1.5
 
 // Only return an error if the command cannot be run.
 func (da *DownAction) Execute() error {
@@ -40,30 +49,48 @@ func (da *DownAction) Execute() error {
 	return nil
 }
 
-func logSleep(sleepTime time.Duration) {
-	logrus.WithField("sleep", sleepTime).Debug("[DownAction] Waiting")
-}
-
 func (da *DownAction) isRunning() bool {
 	return da.running
 }
 
+func (it *DaIteration) iterate(da *DownAction) {
+	switch it.Iteration {
+	case 0:
+		it.SleepTime = da.After
+	case 1:
+		it.SleepTime = da.Every
+	default:
+		if !it.LimitReached {
+			it.SleepTime = time.Duration(BackoffFactor * float64(it.SleepTime))
+			if da.BackoffLimit != 0 && it.SleepTime >= da.BackoffLimit {
+				it.SleepTime = da.BackoffLimit
+				it.LimitReached = true
+			}
+		}
+	}
+	it.Iteration++
+	logrus.WithFields(logrus.Fields{
+		"iteration":    it.Iteration,
+		"sleepTime":    it.SleepTime,
+		"limitReached": it.LimitReached,
+	}).Debug("[DownAction] Iteration details")
+}
+
 func (da *DownAction) run(ctx context.Context) {
 	da.running = true
-	sleepTime := da.After
-	logSleep(sleepTime)
+	it := &DaIteration{} //nolint:exhaustruct
+	it.iterate(da)
 	for {
 		select {
 		case <-ctx.Done():
 			logrus.Debug("[DownAction] canceled")
 			da.running = false
 			return
-		case <-time.After(sleepTime):
+		case <-time.After(it.SleepTime):
 		}
 		_ = da.Execute() //nolint:errcheck
 		if da.Every > 0 {
-			sleepTime = da.Every
-			logSleep(sleepTime)
+			it.iterate(da)
 		} else {
 			break
 		}

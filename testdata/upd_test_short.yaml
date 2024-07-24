@@ -16,7 +16,8 @@ checks:
 downAction:
   exec: cowsay
   everySec:
-    after: 120
-    repeat: 300
+    after: 1
+    repeat: 1
+    expBackoffLimit: 3
 # Options = debug, info, warn, error
 logLevel: debug

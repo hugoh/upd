@@ -122,10 +122,11 @@ func (c *Configuration) GetDownAction() (*DownAction, error) {
 		return nil, fmt.Errorf("failed to parse DownAction definition: %w", err)
 	}
 	return &DownAction{ //nolint:exhaustruct
-		After:    time.Duration(c.DownAction.Every.After) * time.Second,
-		Every:    time.Duration(c.DownAction.Every.Repeat) * time.Second,
-		Exec:     command[0],
-		ExecArgs: command[1:],
+		After:        time.Duration(c.DownAction.Every.After) * time.Second,
+		Every:        time.Duration(c.DownAction.Every.Repeat) * time.Second,
+		BackoffLimit: time.Duration(c.DownAction.Every.BackoffLimit) * time.Second,
+		Exec:         command[0],
+		ExecArgs:     command[1:],
 	}, nil
 }
 
