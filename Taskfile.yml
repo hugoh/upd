@@ -5,19 +5,19 @@ tasks:
     deps: [dev]
 
   dev:
-    summary: "Development mode"
+    summary: Development mode
     cmd: go run . {{.CLI_ARGS}}
 
   build:
-    summary: "Build application"
+    summary: Build application
     cmd: go build -o dist/up .
 
   clean:
-    summary: "Clean the project"
+    summary: Clean the project
     cmd: go clean
 
   devdep:
-    summary: "Install dev dependencies"
+    summary: Install dev dependencies
     cmds:
       # Linters
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
@@ -28,24 +28,24 @@ tasks:
       - go install github.com/daixiang0/gci@latest
 
   fmt:
-    summary: "Format the code"
+    summary: Format the code
     cmds:
       - gci write .
       - gofumpt -w .
 
   tidy:
-    summary: "Tidy the module"
+    summary: Tidy the module
     cmds:
       - go mod tidy -v
 
   depup:
-    summary: "Upgrades dependencies"
+    summary: Upgrades dependencies
     cmds:
       - go get -d -u -t ./...
       - task tidy
 
   lint:
-    summary: "Run linters"
+    summary: Run linters
     cmds:
       - go vet ./...
       - golangci-lint run ./...
@@ -53,5 +53,5 @@ tasks:
       - gosec -fmt=golint -quiet ./...
 
   test:
-    summary: "Run tests"
+    summary: Run tests
     cmd: go test -v ./... {{.CLI_ARGS}}
