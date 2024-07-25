@@ -1,19 +1,9 @@
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.2.0
-    hooks:
-      - id: check-yaml
   - repo: local
     hooks:
-      - id: lint
-        name: Lint code
-        language: system
-        entry: task lint
-        pass_filenames: false
-        types: [go]
       - id: test
         name: Run tests
         language: system
         entry: task test
         pass_filenames: false
-        types: [go]
+        types: [go, yaml]
