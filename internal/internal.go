@@ -22,6 +22,9 @@ const (
 // Lifted from https://github.com/jesusprubio/up - Copyright Jesús Rubio
 // <jesusprubio@gmail.com>
 func ProtocolByID(id string) *pkg.Protocol {
+	if id == "https" {
+		id = "http"
+	}
 	for _, p := range pkg.Protocols {
 		if p.ID == id {
 			return p
