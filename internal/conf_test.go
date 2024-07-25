@@ -65,3 +65,9 @@ func TestGetChecksFromConfFail(t *testing.T) {
 	_, err := conf.GetChecks()
 	assert.Error(t, err)
 }
+
+func (suite *TestSuite) TestGetChecks() {
+	ret, err := suite.conf.GetChecks()
+	assert.NoError(suite.T(), err)
+	assert.Equal(suite.T(), 6, len(ret))
+}
