@@ -16,6 +16,9 @@ func Test_ExecuteSucceed(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+//FIXME: Add test for iteration count as environment variable
+//FIXME: Add test for StopExec
+
 func Test_ExecuteFail(t *testing.T) {
 	da := &DownAction{
 		Exec: "false",
