@@ -40,13 +40,11 @@ func Test_ExecuteNonExistent(t *testing.T) {
 func getTestDA() *DownAction {
 	const after = 42 * time.Second
 	const every = 1 * time.Second
-	const backoffLimit = 2 * time.Second
 	return &DownAction{
 		After: after,
 		Every: every,
 		Exec:  "true",
 	}
-
 }
 
 func Test_Start(t *testing.T) {

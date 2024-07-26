@@ -117,7 +117,7 @@ func (c *Configuration) GetDownAction() (*DownAction, error) {
 	if reflect.ValueOf(c.DownAction).IsZero() {
 		return nil, ErrNoDownActionInConf
 	}
-	return &DownAction{ //nolint:exhaustruct
+	return &DownAction{
 		After:        time.Duration(c.DownAction.Every.After) * time.Second,
 		Every:        time.Duration(c.DownAction.Every.Repeat) * time.Second,
 		BackoffLimit: time.Duration(c.DownAction.Every.BackoffLimit) * time.Second,

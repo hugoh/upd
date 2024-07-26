@@ -12,7 +12,7 @@ type Loop struct {
 	Checks         []*conncheck.Check
 	Delays         map[bool]time.Duration
 	DownAction     *DownAction
-	DownActionLoop *DownActionLoop
+	downActionLoop *DownActionLoop
 	initialized    bool
 	isUp           bool
 }
@@ -31,22 +31,22 @@ func (l *Loop) hasDownAction() bool {
 }
 
 func (l *Loop) DownActionStart() error {
-	if l.DownActionLoop != nil {
+	if l.downActionLoop != nil {
 		return errors.New("cannot start new DownAction when one is already running")
 	}
 	logrus.WithField("da", l.DownAction).Debug("[Loop] Starting DownAction")
-	l.DownActionLoop = l.DownAction.Start()
+	l.downActionLoop = l.DownAction.Start()
 	return nil
 }
 
 func (l *Loop) DownActionStop() {
-	if l.DownActionLoop == nil {
+	if l.downActionLoop == nil {
 		// Nothing to stop
 		return
 	}
 	logrus.Debug("[Loop] Stopping DownAction")
-	l.DownActionLoop.Stop()
-	l.DownActionLoop = nil
+	l.downActionLoop.Stop()
+	l.downActionLoop = nil
 }
 
 func (l *Loop) ProcessCheck(upStatus bool) {
