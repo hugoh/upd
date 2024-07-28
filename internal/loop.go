@@ -17,15 +17,6 @@ type Loop struct {
 	isUp           bool
 }
 
-// Returns true if it changed
-func (l *Loop) reportUpness(result bool) bool {
-	if !l.initialized || result != l.isUp {
-		l.isUp = result
-		return true
-	}
-	return false
-}
-
 func (l *Loop) hasDownAction() bool {
 	return l.DownAction != nil
 }
@@ -44,9 +35,21 @@ func (l *Loop) DownActionStop() {
 		// Nothing to stop
 		return
 	}
-	logrus.Debug("[Loop] Stopping DownAction")
+	logrus.Debug("[Loop] stopping DownAction")
 	l.downActionLoop.Stop()
 	l.downActionLoop = nil
+}
+
+// Returns true if it changed
+func (l *Loop) reportUpness(result bool) bool {
+	if l.initialized && result == l.isUp {
+		return false
+	}
+	if !l.initialized {
+		l.initialized = true
+	}
+	l.isUp = result
+	return true
 }
 
 func (l *Loop) ProcessCheck(upStatus bool) {
