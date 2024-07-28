@@ -20,16 +20,16 @@ type DownAction struct {
 	StopExec     string
 }
 
-type DownActionLoop struct {
-	Da         *DownAction
-	It         *DaIteration
-	cancelFunc context.CancelFunc
+type DaIteration struct {
+	iteration    int
+	sleepTime    time.Duration
+	limitReached bool
 }
 
-type DaIteration struct {
-	Iteration    int
-	SleepTime    time.Duration
-	LimitReached bool
+type DownActionLoop struct {
+	da         *DownAction
+	it         *DaIteration
+	cancelFunc context.CancelFunc
 }
 
 const BackoffFactor = 1.5
@@ -45,12 +45,12 @@ func (dal *DownActionLoop) Execute(execString string) error {
 	}
 	cmd := exec.Command(command[0], command[1:]...) // #nosec G204
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, fmt.Sprintf("UPD_ITERATION=%d", dal.It.Iteration))
-	logrus.WithField("exec", execString).Debugf("[DownAction] Executing %s", execString)
+	cmd.Env = append(cmd.Env, fmt.Sprintf("UPD_ITERATION=%d", dal.it.iteration))
+	logrus.WithField("exec", cmd.String()).Debug("[DownAction] Executing command")
 	err := cmd.Start()
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
-			"exec": execString,
+			"exec": cmd.String(),
 			"err":  err,
 		}).Error("[DownAction] Failed to run")
 		return fmt.Errorf("failed to execute DownAction: %w", err)
@@ -58,39 +58,39 @@ func (dal *DownActionLoop) Execute(execString string) error {
 	go func() {
 		err := cmd.Wait()
 		logrus.WithFields(logrus.Fields{
-			"command": execString,
+			"command": cmd.String(),
 			"err":     err,
-		}).Warn("[DownAction] Error")
+		}).Warn("[DownAction] Error executing command")
 	}()
 	return nil
 }
 
 func NewDaIteration() *DaIteration {
 	return &DaIteration{ //nolint:exhaustruct
-		Iteration: -1,
+		iteration: -1,
 	}
 }
 
 func (dal *DownActionLoop) iterate() {
-	dal.It.Iteration++
-	switch dal.It.Iteration {
+	dal.it.iteration++
+	switch dal.it.iteration {
 	case 0:
-		dal.It.SleepTime = dal.Da.After
+		dal.it.sleepTime = dal.da.After
 	case 1:
-		dal.It.SleepTime = dal.Da.Every
+		dal.it.sleepTime = dal.da.Every
 	default:
-		if !dal.It.LimitReached {
-			dal.It.SleepTime = time.Duration(BackoffFactor * float64(dal.It.SleepTime))
-			if dal.Da.BackoffLimit != 0 && dal.It.SleepTime >= dal.Da.BackoffLimit {
-				dal.It.SleepTime = dal.Da.BackoffLimit
-				dal.It.LimitReached = true
+		if !dal.it.limitReached {
+			dal.it.sleepTime = time.Duration(BackoffFactor * float64(dal.it.sleepTime))
+			if dal.da.BackoffLimit != 0 && dal.it.sleepTime >= dal.da.BackoffLimit {
+				dal.it.sleepTime = dal.da.BackoffLimit
+				dal.it.limitReached = true
 			}
 		}
 	}
 	logrus.WithFields(logrus.Fields{
-		"iteration":    dal.It.Iteration,
-		"sleepTime":    dal.It.SleepTime,
-		"limitReached": dal.It.LimitReached,
+		"iteration":    dal.it.iteration,
+		"sleepTime":    dal.it.sleepTime,
+		"limitReached": dal.it.limitReached,
 	}).Debug("[DownAction] Iteration details")
 }
 
@@ -101,13 +101,13 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 		case <-ctx.Done():
 			logrus.Debug("[DownAction] canceled")
 			return
-		case <-time.After(dal.It.SleepTime):
+		case <-time.After(dal.it.sleepTime):
 		}
-		err := dal.Execute(dal.Da.Exec)
+		err := dal.Execute(dal.da.Exec)
 		if err != nil {
 			logrus.WithField("err", err).Error("[DownAction] failed to execute")
 		}
-		if dal.Da.Every > 0 {
+		if dal.da.Every > 0 {
 			dal.iterate()
 		} else {
 			break
@@ -118,8 +118,8 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 func (da *DownAction) NewDownActionLoop() (*DownActionLoop, context.Context) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	dal := &DownActionLoop{
-		Da:         da,
-		It:         NewDaIteration(),
+		da:         da,
+		it:         NewDaIteration(),
 		cancelFunc: cancelFunc,
 	}
 	return dal, ctx
@@ -134,7 +134,7 @@ func (da *DownAction) Start() *DownActionLoop {
 }
 
 func (dal *DownActionLoop) Stop() {
-	_ = dal.Execute(dal.Da.StopExec) //nolint:errcheck
+	_ = dal.Execute(dal.da.StopExec) //nolint:errcheck
 	logrus.Debug("[DownAction] sending shutdown signal")
 	dal.cancelFunc()
 }

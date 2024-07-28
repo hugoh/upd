@@ -50,7 +50,7 @@ func getTestDA() *DownAction {
 func Test_Start(t *testing.T) {
 	da := getTestDA()
 	dal := da.Start()
-	assert.Equal(t, da, dal.Da)
+	assert.Equal(t, da, dal.da)
 	assert.NotNil(t, dal.cancelFunc)
 }
 
@@ -64,7 +64,7 @@ func Test_StartAndStop(t *testing.T) {
 	dal := da.Start()
 	assert.NotNil(t, dal, "DownAction loop is running")
 	time.Sleep(every) // Give it time to start
-	assert.LessOrEqual(t, 0, dal.It.Iteration, "DownAction loop is running")
+	assert.LessOrEqual(t, 0, dal.it.iteration, "DownAction loop is running")
 	dal.Stop()
 }
 
@@ -76,21 +76,21 @@ func testBackoff(t *testing.T, hasLimit bool) {
 	}
 	assert.Equal(t, 1.5, BackoffFactor, "Ensuring we have the right values")
 	dal, _ := da.NewDownActionLoop()
-	assert.Equal(t, DaIteration{Iteration: -1, SleepTime: 0}, *dal.It)
+	assert.Equal(t, DaIteration{iteration: -1, sleepTime: 0}, *dal.it)
 	dal.iterate()
-	assert.Equal(t, DaIteration{Iteration: 0, SleepTime: da.After}, *dal.It)
+	assert.Equal(t, DaIteration{iteration: 0, sleepTime: da.After}, *dal.it)
 	dal.iterate()
-	assert.Equal(t, DaIteration{Iteration: 1, SleepTime: da.Every}, *dal.It)
+	assert.Equal(t, DaIteration{iteration: 1, sleepTime: da.Every}, *dal.it)
 	dal.iterate()
 	current := time.Duration(1.5 * float64(time.Second))
-	assert.Equal(t, DaIteration{Iteration: 2, SleepTime: current}, *dal.It)
+	assert.Equal(t, DaIteration{iteration: 2, sleepTime: current}, *dal.it)
 	dal.iterate()
 	if hasLimit {
 		current = da.BackoffLimit
 	} else {
 		current = time.Duration(2.25 * float64(time.Second))
 	}
-	assert.Equal(t, DaIteration{Iteration: 3, SleepTime: current, LimitReached: hasLimit}, *dal.It)
+	assert.Equal(t, DaIteration{iteration: 3, sleepTime: current, limitReached: hasLimit}, *dal.it)
 }
 
 func Test_BackoffNoLimit(t *testing.T) {
