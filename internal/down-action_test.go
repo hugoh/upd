@@ -4,28 +4,54 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 )
+
+// FIXME: waiting for commands with time.Sleep() to run is error-prone
+
+func getLogrusHook() *test.Hook {
+	logrus.SetLevel(logrus.DebugLevel)
+	return test.NewGlobal()
+}
+
+func ensureExec(t *testing.T, hook *test.Hook, expectedValue string, foundCount int) {
+	count := 0
+	for _, e := range hook.AllEntries() {
+		if val, ok := e.Data["exec"]; ok {
+			count++
+			assert.Equal(t, expectedValue, val, "exec doesn't match")
+			if count == foundCount {
+				return
+			}
+		}
+	}
+	assert.Equal(t, foundCount, count, "Could not find enough entries")
+}
 
 func Test_ExecuteSucceed(t *testing.T) {
 	da := &DownAction{
 		Exec: "true",
 	}
+	hook := getLogrusHook()
 	dal, _ := da.NewDownActionLoop()
 	err := dal.Execute(da.Exec)
 	assert.NoError(t, err)
+	ensureExec(t, hook, "/usr/bin/true", 1)
 }
-
-//FIXME: Add test for iteration count as environment variable
-//FIXME: Add test for StopExec
 
 func Test_ExecuteFail(t *testing.T) {
 	da := &DownAction{
 		Exec: "false",
 	}
+	hook := getLogrusHook()
 	dal, _ := da.NewDownActionLoop()
 	err := dal.Execute(da.Exec)
 	assert.NoError(t, err, "Success in starting a command that fails")
+	ensureExec(t, hook, "/usr/bin/false", 1)
+	time.Sleep(50 * time.Millisecond) // Give it time to fail
+	ensureExec(t, hook, "/usr/bin/false", 1)
 }
 
 func Test_ExecuteNonExistent(t *testing.T) {
@@ -55,17 +81,23 @@ func Test_Start(t *testing.T) {
 }
 
 func Test_StartAndStop(t *testing.T) {
+	waitTime := 50 * time.Millisecond
 	every := 100 * time.Millisecond
 	da := &DownAction{
-		After: 1 * time.Millisecond,
-		Every: every,
-		Exec:  "true",
+		After:    1 * time.Millisecond,
+		Every:    every,
+		Exec:     "true",
+		StopExec: "false",
 	}
+	hook := getLogrusHook()
 	dal := da.Start()
 	assert.NotNil(t, dal, "DownAction loop is running")
-	time.Sleep(every) // Give it time to start
-	assert.LessOrEqual(t, 0, dal.it.iteration, "DownAction loop is running")
+	time.Sleep(waitTime) // Give it time to startExec
+	ensureExec(t, hook, "/usr/bin/true", 1)
+	hook.Reset()
 	dal.Stop()
+	time.Sleep(every) // Give it time to stop
+	ensureExec(t, hook, "/usr/bin/false", 2)
 }
 
 func testBackoff(t *testing.T, hasLimit bool) {

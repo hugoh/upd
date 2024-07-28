@@ -46,21 +46,23 @@ func (dal *DownActionLoop) Execute(execString string) error {
 	cmd := exec.Command(command[0], command[1:]...) // #nosec G204
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("UPD_ITERATION=%d", dal.it.iteration))
-	logrus.WithField("exec", cmd.String()).Debug("[DownAction] Executing command")
+	logrus.WithField("exec", cmd.String()).Debug("[DownAction] executing command")
 	err := cmd.Start()
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"exec": cmd.String(),
 			"err":  err,
-		}).Error("[DownAction] Failed to run")
+		}).Error("[DownAction] failed to run")
 		return fmt.Errorf("failed to execute DownAction: %w", err)
 	}
 	go func() {
 		err := cmd.Wait()
-		logrus.WithFields(logrus.Fields{
-			"command": cmd.String(),
-			"err":     err,
-		}).Warn("[DownAction] Error executing command")
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"exec": cmd.String(),
+				"err":  err,
+			}).Warn("[DownAction] error executing command")
+		}
 	}()
 	return nil
 }
@@ -91,7 +93,7 @@ func (dal *DownActionLoop) iterate() {
 		"iteration":    dal.it.iteration,
 		"sleepTime":    dal.it.sleepTime,
 		"limitReached": dal.it.limitReached,
-	}).Debug("[DownAction] Iteration details")
+	}).Debug("[DownAction] iteration details")
 }
 
 func (dal *DownActionLoop) run(ctx context.Context) {
