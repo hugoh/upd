@@ -32,7 +32,7 @@ type Configuration struct {
 		} `mapstructure:"everySec"`
 		StopExec string `mapstructure:"stopExec" validate:"omitempty"`
 	} `mapstructure:"downAction"`
-	LogLevel string `mapstructure:"normal" validate:"omitempty,oneof=debug info warn"`
+	LogLevel string `mapstructure:"logLevel" validate:"omitempty,oneof=debug info warn"`
 }
 
 func ReadConf(cfgFile string) (*Configuration, error) {

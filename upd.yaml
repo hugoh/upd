@@ -20,4 +20,4 @@ downAction:
     repeat: 300
   stopExec: "true"
 # Options = debug, info, warn, error
-logLevel: debug
+logLevel: info
