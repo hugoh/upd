@@ -20,8 +20,9 @@ type Configuration struct {
 			Normal int `mapstructure:"normal" validate:"required,gt=0"`
 			Down   int `mapstructure:"down"   validate:"required,gt=0"`
 		} `mapstructure:"everySec"`
-		List    []string `mapstructure:"list"         validate:"required"`
-		TimeOut int      `mapstructure:"timeoutMilli" validate:"required"`
+		List     []string `mapstructure:"list"         validate:"required"`
+		TimeOut  int      `mapstructure:"timeoutMilli" validate:"required"`
+		Shuffled bool     `mapstructure:"shuffled"`
 	} `mapstructure:"checks" validate:"required"`
 	DownAction struct {
 		Exec  string `mapstructure:"exec" validate:"omitempty"`
@@ -89,18 +90,27 @@ func (c *Configuration) Dump() {
 func (c *Configuration) GetChecks() ([]*conncheck.Check, error) {
 	var checks []*conncheck.Check //nolint:prealloc
 	timeout := time.Duration(c.Checks.TimeOut) * time.Millisecond
-	for _, target := range c.Checks.List {
-		url, err := url.Parse(target)
+	for _, check := range c.Checks.List {
+		url, err := url.Parse(check)
 		if err != nil {
-			return nil, fmt.Errorf("could not parse check '%s': %w", target, err)
+			return nil, fmt.Errorf("could not parse check '%s': %w", check, err)
 		}
 		p := ProtocolByID(url.Scheme)
 		if p == nil {
 			return nil, fmt.Errorf(
 				"unknown protocol '%s' for '%s'",
 				url.Scheme,
-				target,
+				check,
 			)
+		}
+		var target string
+		switch p.ID {
+		case "dns":
+			target = url.Hostname()
+		case "http":
+			target = url.String()
+		case "tcp":
+			target = fmt.Sprintf("%s:%s", url.Hostname(), url.Port())
 		}
 		checks = append(checks, &conncheck.Check{
 			Proto:   p,

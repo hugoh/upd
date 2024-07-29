@@ -2,6 +2,7 @@ package internal
 
 import (
 	"errors"
+	"math/rand/v2"
 	"time"
 
 	"github.com/hugoh/upd/pkg/conncheck"
@@ -12,6 +13,7 @@ type Loop struct {
 	Checks         []*conncheck.Check
 	Delays         map[bool]time.Duration
 	DownAction     *DownAction
+	Shuffle        bool
 	downActionLoop *DownActionLoop
 	initialized    bool
 	isUp           bool
@@ -67,8 +69,17 @@ func (l *Loop) ProcessCheck(upStatus bool) {
 	}
 }
 
+func (l *Loop) shuffleChecks() {
+	rand.Shuffle(len(l.Checks), func(i, j int) {
+		l.Checks[i], l.Checks[j] = l.Checks[j], l.Checks[i]
+	})
+}
+
 func (l *Loop) Run() {
 	for {
+		if l.Shuffle {
+			l.shuffleChecks()
+		}
 		status, err := conncheck.RunChecks(l.Checks)
 		if err == nil {
 			l.ProcessCheck(status)

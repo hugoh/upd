@@ -68,5 +68,9 @@ func TestGetChecksFromConfFail(t *testing.T) {
 func (suite *TestSuite) TestGetChecks() {
 	ret, err := suite.conf.GetChecks()
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), 6, len(ret))
+	assert.Equal(suite.T(), 4, len(ret))
+	assert.Equal(suite.T(), "http://captive.apple.com/hotspot-detect.html", ret[0].Target)
+	assert.Equal(suite.T(), "https://example.com/", ret[1].Target)
+	assert.Equal(suite.T(), "1.1.1.1", ret[2].Target)
+	assert.Equal(suite.T(), "1.0.0.1:53", ret[3].Target)
 }
