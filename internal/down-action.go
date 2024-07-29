@@ -46,7 +46,7 @@ func (dal *DownActionLoop) Execute(execString string) error {
 	cmd := exec.Command(command[0], command[1:]...) // #nosec G204
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("UPD_ITERATION=%d", dal.it.iteration))
-	logrus.WithField("exec", cmd.String()).Debug("[DownAction] executing command")
+	logrus.WithField("exec", cmd.String()).Info("[DownAction] executing command")
 	err := cmd.Start()
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
