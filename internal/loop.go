@@ -56,15 +56,19 @@ func (l *Loop) reportUpness(result bool) bool {
 
 func (l *Loop) ProcessCheck(upStatus bool) {
 	changed := l.reportUpness(upStatus)
+	if !changed {
+		return
+	}
 	logrus.WithField("up", l.isUp).Info("[Loop] connection status changed")
-	if changed && l.hasDownAction() {
-		if upStatus {
-			l.DownActionStop()
-		} else {
-			err := l.DownActionStart()
-			if err != nil {
-				logrus.WithField("err", err).Error("[Loop] could not start DownAction")
-			}
+	if !l.hasDownAction() {
+		return
+	}
+	if upStatus {
+		l.DownActionStop()
+	} else {
+		err := l.DownActionStart()
+		if err != nil {
+			logrus.WithField("err", err).Error("[Loop] could not start DownAction")
 		}
 	}
 }
