@@ -1,7 +1,7 @@
 checks:
   everySec:
-    normal: 120
-    down: 20
+    normal: 5
+    down: 5
   list:
     # From https://en.wikipedia.org/wiki/Captive_portal
     - http://captive.apple.com/hotspot-detect.html
@@ -16,7 +16,8 @@ checks:
 downAction:
   exec: cowsay
   everySec:
-    after: 120
+    after: 1
     repeat: 300
+  stopExec: "true"
 # Options = debug, info, warn, error
 logLevel: debug

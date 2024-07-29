@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-playground/validator"
-	"github.com/google/shlex"
 	"github.com/hugoh/upd/pkg/conncheck"
 	"github.com/kr/pretty"
 	"github.com/sirupsen/logrus"
@@ -31,6 +30,7 @@ type Configuration struct {
 			Repeat       int `mapstructure:"repeat"          validate:"omitempty,gte=0"`
 			BackoffLimit int `mapstructure:"expBackoffLimit" validate:"omitempty,gte=0"`
 		} `mapstructure:"everySec"`
+		StopExec string `mapstructure:"stopExec" validate:"omitempty"`
 	} `mapstructure:"downAction"`
 	LogLevel string `mapstructure:"normal" validate:"omitempty,oneof=debug info warn"`
 }
@@ -117,16 +117,12 @@ func (c *Configuration) GetDownAction() (*DownAction, error) {
 	if reflect.ValueOf(c.DownAction).IsZero() {
 		return nil, ErrNoDownActionInConf
 	}
-	command, err := shlex.Split(c.DownAction.Exec)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse DownAction definition: %w", err)
-	}
-	return &DownAction{ //nolint:exhaustruct
+	return &DownAction{
 		After:        time.Duration(c.DownAction.Every.After) * time.Second,
 		Every:        time.Duration(c.DownAction.Every.Repeat) * time.Second,
 		BackoffLimit: time.Duration(c.DownAction.Every.BackoffLimit) * time.Second,
-		Exec:         command[0],
-		ExecArgs:     command[1:],
+		Exec:         c.DownAction.Exec,
+		StopExec:     c.DownAction.StopExec,
 	}, nil
 }
 
