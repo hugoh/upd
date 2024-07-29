@@ -20,8 +20,9 @@ type Configuration struct {
 			Normal int `mapstructure:"normal" validate:"required,gt=0"`
 			Down   int `mapstructure:"down"   validate:"required,gt=0"`
 		} `mapstructure:"everySec"`
-		List    []string `mapstructure:"list"         validate:"required"`
-		TimeOut int      `mapstructure:"timeoutMilli" validate:"required"`
+		List     []string `mapstructure:"list"         validate:"required"`
+		TimeOut  int      `mapstructure:"timeoutMilli" validate:"required"`
+		Shuffled bool     `mapstructure:"shuffled"`
 	} `mapstructure:"checks" validate:"required"`
 	DownAction struct {
 		Exec  string `mapstructure:"exec" validate:"omitempty"`

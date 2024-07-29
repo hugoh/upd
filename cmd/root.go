@@ -34,6 +34,7 @@ func run(_ *cobra.Command, _ []string) {
 		Checks:     checks,
 		Delays:     delays,
 		DownAction: da,
+		Shuffle:    conf.Checks.Shuffled,
 	}
 
 	if dumpConf {

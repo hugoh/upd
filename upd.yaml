@@ -13,6 +13,7 @@ checks:
     - dns://8.8.8.8/
     - dns://8.8.4.4/
   timeoutMilli: 2000
+  shuffled: true
 downAction:
   exec: cowsay
   everySec:
