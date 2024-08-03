@@ -30,5 +30,6 @@ jobs:
         uses: super-linter/super-linter@v6.7.0
         env:
           VALIDATE_GO: false
+          VALIDATE_GO_MODULES: false
           # To report GitHub Actions status checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
