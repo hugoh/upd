@@ -27,7 +27,6 @@ func (l *Loop) DownActionStart() error {
 	if l.downActionLoop != nil {
 		return errors.New("cannot start new DownAction when one is already running")
 	}
-	logrus.WithField("da", l.DownAction).Debug("[Loop] starting DownAction")
 	l.downActionLoop = l.DownAction.Start()
 	return nil
 }
@@ -37,7 +36,6 @@ func (l *Loop) DownActionStop() {
 		// Nothing to stop
 		return
 	}
-	logrus.Debug("[Loop] stopping DownAction")
 	l.downActionLoop.Stop()
 	l.downActionLoop = nil
 }
@@ -91,7 +89,7 @@ func (l *Loop) Run() {
 			logrus.WithField("err", err).Error("[Loop] error")
 		}
 		sleepTime := l.Delays[l.isUp]
-		logrus.WithField("wait", sleepTime).Debugf("[Loop] waiting for next loop iteration")
+		logrus.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")
 		time.Sleep(sleepTime)
 	}
 }

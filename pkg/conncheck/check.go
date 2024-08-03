@@ -16,7 +16,7 @@ type Check struct {
 
 // Run specific connection check and return report
 func (c *Check) Probe() up.Report {
-	logrus.WithField("check", *c).Debug("[Check] Running")
+	logrus.WithField("check", *c).Trace("[Check] running")
 	start := time.Now()
 	extra, err := c.Proto.Probe(c.Target, c.Timeout)
 	report := up.Report{
@@ -37,10 +37,10 @@ func RunChecks(checks []*Check) (bool, error) {
 	for _, check := range checks {
 		report := check.Probe()
 		if report.Error != nil {
-			logrus.WithField("report", report).Warn("[Check] Check failed")
+			logrus.WithField("report", report).Warn("[Check] check failed")
 			continue
 		}
-		logrus.WithField("report", report).Debug("[Check] Check run")
+		logrus.WithField("report", report).Debug("[Check] check run")
 		return true, nil
 	}
 	return false, nil
