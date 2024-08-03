@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -36,7 +35,14 @@ type Configuration struct {
 	LogLevel string `mapstructure:"logLevel" validate:"omitempty,oneof=debug info warn"`
 }
 
-func ReadConf(cfgFile string) (*Configuration, error) {
+func configFatal(msg string, err error) {
+	logrus.WithFields(logrus.Fields{
+		"file": viper.ConfigFileUsed(),
+		"err":  err,
+	}).Fatal(msg)
+}
+
+func ReadConf(cfgFile string) *Configuration {
 	viper.SetConfigType("yaml")
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
@@ -48,23 +54,18 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 
 	logrus.WithField("file", viper.ConfigFileUsed()).Debug("[Config] File")
 	if err := viper.ReadInConfig(); err != nil {
-		var notFoundError *viper.ConfigFileNotFoundError
-		if errors.As(err, &notFoundError) {
-			return nil, fmt.Errorf("fatal error config file not found: %w", err)
-		}
-		return nil, fmt.Errorf("fatal error config file: %w", err)
+		configFatal("Could not read config", err)
 	}
-
 	var conf Configuration
 	if err := viper.Unmarshal(&conf); err != nil {
-		return nil, fmt.Errorf("unable to unmarshall the config %w", err)
+		configFatal("Unable to parse the config", err)
 	}
 	validate := validator.New()
 	if err := validate.Struct(&conf); err != nil {
-		return nil, fmt.Errorf("missing required attributes %w", err)
+		configFatal("Missing required attributes", err)
 	}
 
-	return &conf, nil
+	return &conf
 }
 
 func (c *Configuration) LogSetup(debugFlag bool) {
@@ -87,21 +88,24 @@ func (c *Configuration) Dump() {
 	fmt.Printf("%# v\n", pretty.Formatter(c)) //nolint:forbidigo
 }
 
-func (c *Configuration) GetChecks() ([]*conncheck.Check, error) {
+func (c *Configuration) GetChecks() []*conncheck.Check {
 	var checks []*conncheck.Check //nolint:prealloc
 	timeout := time.Duration(c.Checks.TimeOut) * time.Millisecond
 	for _, check := range c.Checks.List {
 		url, err := url.Parse(check)
 		if err != nil {
-			return nil, fmt.Errorf("could not parse check '%s': %w", check, err)
+			logrus.WithFields(logrus.Fields{
+				"check": check,
+				"err":   err,
+			}).Fatal("Could not parse check")
 		}
 		p := ProtocolByID(url.Scheme)
 		if p == nil {
-			return nil, fmt.Errorf(
-				"unknown protocol '%s' for '%s'",
-				url.Scheme,
-				check,
-			)
+			logrus.WithFields(logrus.Fields{
+				"check":    check,
+				"protocal": url.Scheme,
+				"err":      err,
+			}).Fatal("Unknown protocol")
 		}
 		var target string
 		switch p.ID {
@@ -118,14 +122,12 @@ func (c *Configuration) GetChecks() ([]*conncheck.Check, error) {
 			Timeout: timeout,
 		})
 	}
-	return checks, nil
+	return checks
 }
 
-var ErrNoDownActionInConf = errors.New("no DownAction found in conf")
-
-func (c *Configuration) GetDownAction() (*DownAction, error) {
+func (c *Configuration) GetDownAction() *DownAction {
 	if reflect.ValueOf(c.DownAction).IsZero() {
-		return nil, ErrNoDownActionInConf
+		return nil
 	}
 	return &DownAction{
 		After:        time.Duration(c.DownAction.Every.After) * time.Second,
@@ -133,12 +135,12 @@ func (c *Configuration) GetDownAction() (*DownAction, error) {
 		BackoffLimit: time.Duration(c.DownAction.Every.BackoffLimit) * time.Second,
 		Exec:         c.DownAction.Exec,
 		StopExec:     c.DownAction.StopExec,
-	}, nil
+	}
 }
 
-func (c *Configuration) GetDelays() (map[bool]time.Duration, error) {
+func (c *Configuration) GetDelays() map[bool]time.Duration {
 	delays := make(map[bool]time.Duration)
 	delays[true] = time.Duration(c.Checks.Every.Normal) * time.Second
 	delays[false] = time.Duration(c.Checks.Every.Down) * time.Second
-	return delays, nil
+	return delays
 }
