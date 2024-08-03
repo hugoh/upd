@@ -103,7 +103,7 @@ func (c *Configuration) GetChecks() []*conncheck.Check {
 		if p == nil {
 			logrus.WithFields(logrus.Fields{
 				"check":    check,
-				"protocal": url.Scheme,
+				"protocol": url.Scheme,
 				"err":      err,
 			}).Fatal("Unknown protocol")
 		}
