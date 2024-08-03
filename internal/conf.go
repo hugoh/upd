@@ -33,7 +33,7 @@ type Configuration struct {
 		} `mapstructure:"everySec"`
 		StopExec string `mapstructure:"stopExec" validate:"omitempty"`
 	} `mapstructure:"downAction"`
-	LogLevel string `mapstructure:"logLevel" validate:"omitempty,oneof=debug info warn"`
+	LogLevel string `mapstructure:"logLevel" validate:"omitempty,oneof=trace debug info warn"`
 }
 
 func ReadConf(cfgFile string) (*Configuration, error) {
@@ -72,6 +72,8 @@ func (c *Configuration) LogSetup(debugFlag bool) {
 		c.LogLevel = "debug"
 	}
 	switch c.LogLevel {
+	case "trace":
+		logrus.SetLevel(logrus.TraceLevel)
 	case "debug":
 		logrus.SetLevel(logrus.DebugLevel)
 	case "info":

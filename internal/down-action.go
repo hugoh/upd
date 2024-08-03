@@ -93,7 +93,7 @@ func (dal *DownActionLoop) iterate() {
 		"iteration":    dal.it.iteration,
 		"sleepTime":    dal.it.sleepTime,
 		"limitReached": dal.it.limitReached,
-	}).Debug("[DownAction] iteration details")
+	}).Trace("[DownAction] iteration details")
 }
 
 func (dal *DownActionLoop) run(ctx context.Context) {
