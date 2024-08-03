@@ -128,7 +128,6 @@ func (da *DownAction) NewDownActionLoop() (*DownActionLoop, context.Context) {
 }
 
 func (da *DownAction) Start() *DownActionLoop {
-	logrus.SetLevel(logrus.DebugLevel)
 	dal, ctx := da.NewDownActionLoop()
 	logrus.Debug("[DownAction] kicking off run loop")
 	go dal.run(ctx)
