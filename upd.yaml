@@ -18,7 +18,7 @@ downAction:
   exec: cowsay
   everySec:
     after: 1
-    repeat: 300
-  stopExec: "true"
+    repeat: 3
+  stopExec: ./testdata/echo-reboot-count.sh
 # Options = debug, info, warn, error
 logLevel: info
