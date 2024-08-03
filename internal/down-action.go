@@ -46,10 +46,10 @@ func (dal *DownActionLoop) Execute(execString string) error {
 	cmd := exec.Command(command[0], command[1:]...) // #nosec G204
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("UPD_ITERATION=%d", dal.it.iteration))
-	logrus.WithField("exec", cmd.String()).Info("[DownAction] executing command")
+	logger.WithField("exec", cmd.String()).Info("[DownAction] executing command")
 	err := cmd.Start()
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
+		logger.WithFields(logrus.Fields{
 			"exec": cmd.String(),
 			"err":  err,
 		}).Error("[DownAction] failed to run")
@@ -58,7 +58,7 @@ func (dal *DownActionLoop) Execute(execString string) error {
 	go func() {
 		err := cmd.Wait()
 		if err != nil {
-			logrus.WithFields(logrus.Fields{
+			logger.WithFields(logrus.Fields{
 				"exec": cmd.String(),
 				"err":  err,
 			}).Warn("[DownAction] error executing command")
@@ -89,7 +89,7 @@ func (dal *DownActionLoop) iterate() {
 			}
 		}
 	}
-	logrus.WithFields(logrus.Fields{
+	logger.WithFields(logrus.Fields{
 		"iteration":    dal.it.iteration,
 		"sleepTime":    dal.it.sleepTime,
 		"limitReached": dal.it.limitReached,
@@ -101,13 +101,13 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			logrus.Debug("[DownAction] canceled")
+			logger.Debug("[DownAction] canceled")
 			return
 		case <-time.After(dal.it.sleepTime):
 		}
 		err := dal.Execute(dal.da.Exec)
 		if err != nil {
-			logrus.WithField("err", err).Error("[DownAction] failed to execute")
+			logger.WithField("err", err).Error("[DownAction] failed to execute")
 		}
 		if dal.da.Every > 0 {
 			dal.iterate()
@@ -129,13 +129,13 @@ func (da *DownAction) NewDownActionLoop() (*DownActionLoop, context.Context) {
 
 func (da *DownAction) Start() *DownActionLoop {
 	dal, ctx := da.NewDownActionLoop()
-	logrus.Debug("[DownAction] kicking off run loop")
+	logger.Debug("[DownAction] kicking off run loop")
 	go dal.run(ctx)
 	return dal
 }
 
 func (dal *DownActionLoop) Stop() {
 	_ = dal.Execute(dal.da.StopExec) //nolint:errcheck
-	logrus.Debug("[DownAction] sending shutdown signal")
+	logger.Debug("[DownAction] sending shutdown signal")
 	dal.cancelFunc()
 }

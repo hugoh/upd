@@ -17,8 +17,8 @@ var (
 )
 
 func run(_ *cobra.Command, _ []string) {
+	internal.LogSetup(debug)
 	conf := internal.ReadConf(cfgFile)
-	conf.LogSetup(debug)
 	checks := conf.GetChecks()
 	delays := conf.GetDelays()
 	da := conf.GetDownAction()
