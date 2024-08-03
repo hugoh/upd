@@ -81,7 +81,7 @@ func (l *Loop) Run() {
 		if l.Shuffle {
 			l.shuffleChecks()
 		}
-		status, err := conncheck.RunChecks(l.Checks)
+		status, err := conncheck.RunChecksWithLogger(l.Checks, logger)
 		if err == nil {
 			l.ProcessCheck(status)
 		} else {

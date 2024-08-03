@@ -76,13 +76,13 @@ func (c Configuration) logSetup() {
 	}
 	switch c.LogLevel {
 	case "trace":
-		SetLogLevels(logrus.TraceLevel)
+		logger.SetLevel(logrus.TraceLevel)
 	case "debug":
-		SetLogLevels(logrus.DebugLevel)
+		logger.SetLevel(logrus.DebugLevel)
 	case "info":
-		SetLogLevels(logrus.InfoLevel)
+		logger.SetLevel(logrus.InfoLevel)
 	case "warn", "":
-		SetLogLevels(logrus.WarnLevel)
+		logger.SetLevel(logrus.WarnLevel)
 	default:
 		logger.WithField("loglevel", c.LogLevel).Error("[Config] Unknown loglevel")
 	}
