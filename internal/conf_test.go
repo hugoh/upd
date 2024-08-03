@@ -63,12 +63,17 @@ func (suite *TestSuite) TestGetDelaysFromConf() {
 	assert.Equal(suite.T(), delays, conf)
 }
 
-func TestGetChecksFromConfFail(t *testing.T) {
-	hook := NewNullLoggerHook()
-	logger.ExitFunc = func(code int) {}
+func TestGetChecksIgnored(t *testing.T) {
 	conf := readConf("upd_test_bad.yaml")
-	conf.GetChecks()
-	assert.Equal(t, logrus.FatalLevel, hook.LastEntry().Level)
+	checks := conf.GetChecks()
+	assert.Equal(t, 2, len(checks), "1 check is invalid")
+}
+
+func TestGetChecksFromConfFail(t *testing.T) {
+	NewNullLoggerHook()
+	logger.ExitFunc = func(code int) { panic(code) }
+	conf := readConf("upd_test_allbad.yaml")
+	assert.Panics(t, func() { conf.GetChecks() })
 }
 
 func (suite *TestSuite) TestGetChecks() {

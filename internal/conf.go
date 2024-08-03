@@ -101,7 +101,8 @@ func (c *Configuration) GetChecks() []*conncheck.Check {
 			logger.WithFields(logrus.Fields{
 				"check": check,
 				"err":   err,
-			}).Fatal("Could not parse check")
+			}).Error("could not parse check in config")
+			continue
 		}
 		p := ProtocolByID(url.Scheme)
 		if p == nil {
@@ -109,8 +110,8 @@ func (c *Configuration) GetChecks() []*conncheck.Check {
 				"check":    check,
 				"protocol": url.Scheme,
 				"err":      err,
-			}).Fatal("Unknown protocol")
-			return nil // For testing purposes
+			}).Error("unknown protocol in config")
+			continue
 		}
 		var target string
 		switch p.ID {
@@ -126,6 +127,9 @@ func (c *Configuration) GetChecks() []*conncheck.Check {
 			Target:  target,
 			Timeout: timeout,
 		})
+	}
+	if len(checks) == 0 {
+		logger.Fatal("No valid check found")
 	}
 	return checks
 }
