@@ -17,10 +17,7 @@ type TestSuite struct {
 const testConfigDir = "../testdata"
 
 func readConf(cfgFile string) *Configuration {
-	conf, err := ReadConf(fmt.Sprintf("%s/%s", testConfigDir, cfgFile))
-	if err != nil {
-		panic(err)
-	}
+	conf := ReadConf(fmt.Sprintf("%s/%s", testConfigDir, cfgFile))
 	return conf
 }
 
@@ -33,9 +30,8 @@ func TestSuiteRun(t *testing.T) {
 }
 
 func (suite *TestSuite) TestGetDownActionFromConf() {
-	da, err := suite.conf.GetDownAction()
+	da := suite.conf.GetDownAction()
 	assert.NotNil(suite.T(), da, "DownAction parsed")
-	assert.NoError(suite.T(), err, "No error while parsing DownAction")
 	assert.Equal(suite.T(), &DownAction{
 		After: 120 * time.Second,
 		Every: 300 * time.Second,
@@ -45,29 +41,27 @@ func (suite *TestSuite) TestGetDownActionFromConf() {
 
 func TestNoDownAction(t *testing.T) {
 	conf := readConf("upd_test_noda.yaml")
-	da, err := conf.GetDownAction()
+	da := conf.GetDownAction()
 	assert.Nil(t, da, "DownAction not found")
-	assert.Equal(t, ErrNoDownActionInConf, err)
 }
 
 func (suite *TestSuite) TestGetDelaysFromConf() {
 	delays := make(map[bool]time.Duration)
 	delays[true] = 120 * time.Second
 	delays[false] = 20 * time.Second
-	conf, err := suite.conf.GetDelays()
-	assert.NoError(suite.T(), err)
+	conf := suite.conf.GetDelays()
 	assert.Equal(suite.T(), delays, conf)
 }
 
-func TestGetChecksFromConfFail(t *testing.T) {
-	conf := readConf("upd_test_bad.yaml")
-	_, err := conf.GetChecks()
-	assert.Error(t, err)
-}
+// FIXME: need testing of bad config
+// func TestGetChecksFromConfFail(t *testing.T) {
+// 	conf := readConf("upd_test_bad.yaml")
+// 	_, err := conf.GetChecks()
+// 	assert.Error(t, err)
+// }
 
 func (suite *TestSuite) TestGetChecks() {
-	ret, err := suite.conf.GetChecks()
-	assert.NoError(suite.T(), err)
+	ret := suite.conf.GetChecks()
 	assert.Equal(suite.T(), 4, len(ret))
 	assert.Equal(suite.T(), "http://captive.apple.com/hotspot-detect.html", ret[0].Target)
 	assert.Equal(suite.T(), "https://example.com/", ret[1].Target)

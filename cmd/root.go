@@ -4,7 +4,6 @@ Copyright © 2024 Hugo Haas <hugoh@hugoh.net>
 package cmd
 
 import (
-	"errors"
 	"os"
 
 	"github.com/hugoh/upd/internal"
@@ -18,17 +17,11 @@ var (
 )
 
 func run(_ *cobra.Command, _ []string) {
-	conf, err := internal.ReadConf(cfgFile)
-	internal.FatalIfError(err)
+	conf := internal.ReadConf(cfgFile)
 	conf.LogSetup(debug)
-	checks, errC := conf.GetChecks()
-	internal.FatalIfError(errC)
-	delays, errD := conf.GetDelays()
-	internal.FatalIfError(errD)
-	da, errA := conf.GetDownAction()
-	if !errors.Is(errA, internal.ErrNoDownActionInConf) {
-		internal.FatalIfError(errA)
-	}
+	checks := conf.GetChecks()
+	delays := conf.GetDelays()
+	da := conf.GetDownAction()
 
 	loop := &internal.Loop{
 		Checks:     checks,
