@@ -1,0 +1,15 @@
+checks:
+  everySec:
+    normal: 120
+    down: 20
+  list:
+    - ftp://foo.bar/
+    - foo://bar/
+  timeoutMilli: 2000
+downAction:
+  exec: cowsay
+  everySec:
+    after: 120
+    repeat: 300
+# Options = debug, info, warn, error
+logLevel: debug

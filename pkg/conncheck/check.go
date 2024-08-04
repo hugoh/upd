@@ -34,13 +34,26 @@ Runs a series of checks.
 Returns true as soon as one is successful indicating that the connection is up, false otherwise.
 */
 func RunChecks(checks []*Check) (bool, error) {
+	return RunChecksWithLogger(checks, nil)
+}
+
+/*
+Runs a series of checks.
+Returns true as soon as one is successful indicating that the connection is up, false otherwise.
+Logs output using logrus.Logger instance
+*/
+func RunChecksWithLogger(checks []*Check, logger *logrus.Logger) (bool, error) {
 	for _, check := range checks {
 		report := check.Probe()
 		if report.Error != nil {
-			logrus.WithField("report", report).Warn("[Check] check failed")
+			if logger != nil {
+				logger.WithField("report", report).Warn("[Check] check failed")
+			}
 			continue
 		}
-		logrus.WithField("report", report).Debug("[Check] check run")
+		if logger != nil {
+			logger.WithField("report", report).Debug("[Check] check run")
+		}
 		return true, nil
 	}
 	return false, nil

@@ -2,9 +2,12 @@ package internal
 
 import (
 	"fmt"
+	"io"
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -21,7 +24,14 @@ func readConf(cfgFile string) *Configuration {
 	return conf
 }
 
+func NewNullLoggerHook() *test.Hook {
+	logger = logrus.New()
+	logger.Out = io.Discard
+	return test.NewLocal(logger)
+}
+
 func (suite *TestSuite) SetupTest() {
+	NewNullLoggerHook()
 	suite.conf = readConf("upd_test_good.yaml")
 }
 
@@ -53,12 +63,18 @@ func (suite *TestSuite) TestGetDelaysFromConf() {
 	assert.Equal(suite.T(), delays, conf)
 }
 
-// FIXME: need testing of bad config
-// func TestGetChecksFromConfFail(t *testing.T) {
-// 	conf := readConf("upd_test_bad.yaml")
-// 	_, err := conf.GetChecks()
-// 	assert.Error(t, err)
-// }
+func TestGetChecksIgnored(t *testing.T) {
+	conf := readConf("upd_test_bad.yaml")
+	checks := conf.GetChecks()
+	assert.Equal(t, 2, len(checks), "1 check is invalid")
+}
+
+func TestGetChecksFromConfFail(t *testing.T) {
+	NewNullLoggerHook()
+	logger.ExitFunc = func(code int) { panic(code) }
+	conf := readConf("upd_test_allbad.yaml")
+	assert.Panics(t, func() { conf.GetChecks() })
+}
 
 func (suite *TestSuite) TestGetChecks() {
 	ret := suite.conf.GetChecks()

@@ -36,7 +36,7 @@ type Configuration struct {
 }
 
 func configFatal(msg string, err error) {
-	logrus.WithFields(logrus.Fields{
+	logger.WithFields(logrus.Fields{
 		"file": viper.ConfigFileUsed(),
 		"err":  err,
 	}).Fatal(msg)
@@ -52,7 +52,7 @@ func ReadConf(cfgFile string) *Configuration {
 		viper.AddConfigPath(".")
 	}
 
-	logrus.WithField("file", viper.ConfigFileUsed()).Debug("[Config] File")
+	logger.WithField("file", viper.ConfigFileUsed()).Debug("[Config] config file used")
 	if err := viper.ReadInConfig(); err != nil {
 		configFatal("Could not read config", err)
 	}
@@ -65,24 +65,26 @@ func ReadConf(cfgFile string) *Configuration {
 		configFatal("Missing required attributes", err)
 	}
 
+	conf.logSetup()
 	return &conf
 }
 
-func (c *Configuration) LogSetup(debugFlag bool) {
-	if debugFlag {
-		c.LogLevel = "debug"
+func (c Configuration) logSetup() {
+	if logger.GetLevel() == logrus.DebugLevel {
+		// Already set
+		return
 	}
 	switch c.LogLevel {
 	case "trace":
-		logrus.SetLevel(logrus.TraceLevel)
+		logger.SetLevel(logrus.TraceLevel)
 	case "debug":
-		logrus.SetLevel(logrus.DebugLevel)
+		logger.SetLevel(logrus.DebugLevel)
 	case "info":
-		logrus.SetLevel(logrus.InfoLevel)
+		logger.SetLevel(logrus.InfoLevel)
 	case "warn", "":
-		logrus.SetLevel(logrus.WarnLevel)
+		logger.SetLevel(logrus.WarnLevel)
 	default:
-		logrus.WithField("loglevel", c.LogLevel).Error("[Config] Unknown loglevel")
+		logger.WithField("loglevel", c.LogLevel).Error("[Config] Unknown loglevel")
 	}
 }
 
@@ -96,18 +98,20 @@ func (c *Configuration) GetChecks() []*conncheck.Check {
 	for _, check := range c.Checks.List {
 		url, err := url.Parse(check)
 		if err != nil {
-			logrus.WithFields(logrus.Fields{
+			logger.WithFields(logrus.Fields{
 				"check": check,
 				"err":   err,
-			}).Fatal("Could not parse check")
+			}).Error("could not parse check in config")
+			continue
 		}
 		p := ProtocolByID(url.Scheme)
 		if p == nil {
-			logrus.WithFields(logrus.Fields{
+			logger.WithFields(logrus.Fields{
 				"check":    check,
 				"protocol": url.Scheme,
 				"err":      err,
-			}).Fatal("Unknown protocol")
+			}).Error("unknown protocol in config")
+			continue
 		}
 		var target string
 		switch p.ID {
@@ -123,6 +127,9 @@ func (c *Configuration) GetChecks() []*conncheck.Check {
 			Target:  target,
 			Timeout: timeout,
 		})
+	}
+	if len(checks) == 0 {
+		logger.Fatal("No valid check found")
 	}
 	return checks
 }

@@ -4,17 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 )
 
 // FIXME: waiting for commands with time.Sleep() to run is error-prone
-
-func getLogrusHook() *test.Hook {
-	logrus.SetLevel(logrus.DebugLevel)
-	return test.NewGlobal()
-}
 
 func ensureExec(t *testing.T, hook *test.Hook, expectedValue string, foundCount int) {
 	count := 0
@@ -34,7 +28,7 @@ func Test_ExecuteSucceed(t *testing.T) {
 	da := &DownAction{
 		Exec: "true",
 	}
-	hook := getLogrusHook()
+	hook := NewNullLoggerHook()
 	dal, _ := da.NewDownActionLoop()
 	err := dal.Execute(da.Exec)
 	assert.NoError(t, err)
@@ -45,7 +39,7 @@ func Test_ExecuteFail(t *testing.T) {
 	da := &DownAction{
 		Exec: "false",
 	}
-	hook := getLogrusHook()
+	hook := NewNullLoggerHook()
 	dal, _ := da.NewDownActionLoop()
 	err := dal.Execute(da.Exec)
 	assert.NoError(t, err, "Success in starting a command that fails")
@@ -89,7 +83,7 @@ func Test_StartAndStop(t *testing.T) {
 		Exec:     "true",
 		StopExec: "false",
 	}
-	hook := getLogrusHook()
+	hook := NewNullLoggerHook()
 	dal := da.Start()
 	assert.NotNil(t, dal, "DownAction loop is running")
 	time.Sleep(waitTime) // Give it time to startExec

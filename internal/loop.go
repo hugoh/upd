@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/hugoh/upd/pkg/conncheck"
-	"github.com/sirupsen/logrus"
 )
 
 type Loop struct {
@@ -57,7 +56,7 @@ func (l *Loop) ProcessCheck(upStatus bool) {
 	if !changed {
 		return
 	}
-	logrus.WithField("up", l.isUp).Info("[Loop] connection status changed")
+	logger.WithField("up", l.isUp).Info("[Loop] connection status changed")
 	if !l.hasDownAction() {
 		return
 	}
@@ -66,7 +65,7 @@ func (l *Loop) ProcessCheck(upStatus bool) {
 	} else {
 		err := l.DownActionStart()
 		if err != nil {
-			logrus.WithField("err", err).Error("[Loop] could not start DownAction")
+			logger.WithField("err", err).Error("[Loop] could not start DownAction")
 		}
 	}
 }
@@ -82,14 +81,14 @@ func (l *Loop) Run() {
 		if l.Shuffle {
 			l.shuffleChecks()
 		}
-		status, err := conncheck.RunChecks(l.Checks)
+		status, err := conncheck.RunChecksWithLogger(l.Checks, logger)
 		if err == nil {
 			l.ProcessCheck(status)
 		} else {
-			logrus.WithField("err", err).Error("[Loop] error")
+			logger.WithField("err", err).Error("[Loop] error")
 		}
 		sleepTime := l.Delays[l.isUp]
-		logrus.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")
+		logger.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")
 		time.Sleep(sleepTime)
 	}
 }
