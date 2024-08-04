@@ -4,7 +4,6 @@ import (
 	"time"
 
 	up "github.com/jesusprubio/up/pkg"
-	"github.com/sirupsen/logrus"
 )
 
 // Connection check definition with protocol, target, timeout
@@ -14,9 +13,16 @@ type Check struct {
 	Timeout time.Duration
 }
 
+// Interface to act on probe success or failure when running checks
+type Checker interface {
+	CheckRun(c Check)
+	ProbeSuccess(report up.Report)
+	ProbeFailure(report up.Report)
+}
+
 // Run specific connection check and return report
-func (c *Check) Probe() up.Report {
-	logrus.WithField("check", *c).Trace("[Check] running")
+func (c *Check) Probe(checker Checker) up.Report {
+	checker.CheckRun(*c)
 	start := time.Now()
 	extra, err := c.Proto.Probe(c.Target, c.Timeout)
 	report := up.Report{
@@ -29,31 +35,34 @@ func (c *Check) Probe() up.Report {
 	return report
 }
 
+type NullChecker struct{}
+
+func (c NullChecker) CheckRun(_ up.Report)     {}
+func (c NullChecker) ProbeSuccess(_ up.Report) {}
+func (c NullChecker) ProbeFailure(_ up.Report) {}
+
 /*
 Runs a series of checks.
 Returns true as soon as one is successful indicating that the connection is up, false otherwise.
 */
 func RunChecks(checks []*Check) (bool, error) {
-	return RunChecksWithLogger(checks, nil)
+	var nc NullChecker
+	return CheckerRun(nc, checks)
 }
 
 /*
-Runs a series of checks.
+Runs a series of checks utilizing a Checker interface for handling probe return.
 Returns true as soon as one is successful indicating that the connection is up, false otherwise.
 Logs output using logrus.Logger instance
 */
-func RunChecksWithLogger(checks []*Check, logger *logrus.Logger) (bool, error) {
+func CheckerRun(checker Checker, checks []*Check) (bool, error) {
 	for _, check := range checks {
 		report := check.Probe()
 		if report.Error != nil {
-			if logger != nil {
-				logger.WithField("report", report).Warn("[Check] check failed")
-			}
+			checker.ProbeFailure(report)
 			continue
 		}
-		if logger != nil {
-			logger.WithField("report", report).Debug("[Check] check run")
-		}
+		checker.ProbeSuccess(report)
 		return true, nil
 	}
 	return false, nil

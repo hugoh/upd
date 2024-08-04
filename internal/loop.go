@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hugoh/upd/pkg/conncheck"
+	up "github.com/jesusprubio/up/pkg"
 )
 
 type Loop struct {
@@ -76,12 +77,27 @@ func (l *Loop) shuffleChecks() {
 	})
 }
 
+type Checker struct{}
+
+func (c Checker) CheckRun(report up.Report) {
+	logger.WithField("check", c).Trace("[Check] running")
+}
+
+func (c Checker) ProbeSuccess(report up.Report) {
+	logger.WithField("report", report).Debug("[Check] check run")
+}
+
+func (c Checker) ProbeFailure(report up.Report) {
+	logger.WithField("report", report).Warn("[Check] check failed")
+}
+
 func (l *Loop) Run() {
+	var checker Checker
 	for {
 		if l.Shuffle {
 			l.shuffleChecks()
 		}
-		status, err := conncheck.RunChecksWithLogger(l.Checks, logger)
+		status, err := conncheck.CheckerRun(checker, l.Checks)
 		if err == nil {
 			l.ProcessCheck(status)
 		} else {
