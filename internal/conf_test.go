@@ -25,9 +25,9 @@ func readConf(cfgFile string) *Configuration {
 }
 
 func NewNullLoggerHook() *test.Hook {
-	logger = logrus.New()
-	logger.Out = io.Discard
-	return test.NewLocal(logger)
+	Logger = logrus.New()
+	Logger.Out = io.Discard
+	return test.NewLocal(Logger)
 }
 
 func (suite *TestSuite) SetupTest() {
@@ -71,7 +71,7 @@ func TestGetChecksIgnored(t *testing.T) {
 
 func TestGetChecksFromConfFail(t *testing.T) {
 	NewNullLoggerHook()
-	logger.ExitFunc = func(code int) { panic(code) }
+	Logger.ExitFunc = func(code int) { panic(code) }
 	conf := readConf("upd_test_allbad.yaml")
 	assert.Panics(t, func() { conf.GetChecks() })
 }

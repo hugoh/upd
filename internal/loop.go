@@ -57,7 +57,7 @@ func (l *Loop) ProcessCheck(upStatus bool) {
 	if !changed {
 		return
 	}
-	logger.WithField("up", l.isUp).Info("[Loop] connection status changed")
+	Logger.WithField("up", l.isUp).Info("[Loop] connection status changed")
 	if !l.hasDownAction() {
 		return
 	}
@@ -66,7 +66,7 @@ func (l *Loop) ProcessCheck(upStatus bool) {
 	} else {
 		err := l.DownActionStart()
 		if err != nil {
-			logger.WithField("err", err).Error("[Loop] could not start DownAction")
+			Logger.WithField("err", err).Error("[Loop] could not start DownAction")
 		}
 	}
 }
@@ -80,15 +80,15 @@ func (l *Loop) shuffleChecks() {
 type Checker struct{}
 
 func (checker Checker) CheckRun(c conncheck.Check) {
-	logger.WithField("check", c).Trace("[Check] running")
+	Logger.WithField("check", c).Trace("[Check] running")
 }
 
 func (checker Checker) ProbeSuccess(report up.Report) {
-	logger.WithField("report", report).Debug("[Check] check run")
+	Logger.WithField("report", report).Debug("[Check] check run")
 }
 
 func (checker Checker) ProbeFailure(report up.Report) {
-	logger.WithField("report", report).Warn("[Check] check failed")
+	Logger.WithField("report", report).Warn("[Check] check failed")
 }
 
 func (l *Loop) Run() {
@@ -101,10 +101,10 @@ func (l *Loop) Run() {
 		if err == nil {
 			l.ProcessCheck(status)
 		} else {
-			logger.WithField("err", err).Error("[Loop] error")
+			Logger.WithField("err", err).Error("[Loop] error")
 		}
 		sleepTime := l.Delays[l.isUp]
-		logger.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")
+		Logger.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")
 		time.Sleep(sleepTime)
 	}
 }

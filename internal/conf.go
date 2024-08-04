@@ -32,11 +32,12 @@ type Configuration struct {
 		} `mapstructure:"everySec"`
 		StopExec string `mapstructure:"stopExec" validate:"omitempty"`
 	} `mapstructure:"downAction"`
-	LogLevel string `mapstructure:"logLevel" validate:"omitempty,oneof=trace debug info warn"`
+	LogLevel string `mapstructure:"logLevel"  validate:"omitempty,oneof=trace debug info warn"`
+	Syslog   bool   `mapstructure:"useSyslog" validate:"omitempty"`
 }
 
 func configFatal(msg string, err error) {
-	logger.WithFields(logrus.Fields{
+	Logger.WithFields(logrus.Fields{
 		"file": viper.ConfigFileUsed(),
 		"err":  err,
 	}).Fatal(msg)
@@ -52,7 +53,7 @@ func ReadConf(cfgFile string) *Configuration {
 		viper.AddConfigPath(".")
 	}
 
-	logger.WithField("file", viper.ConfigFileUsed()).Debug("[Config] config file used")
+	Logger.WithField("file", viper.ConfigFileUsed()).Debug("[Config] config file used")
 	if err := viper.ReadInConfig(); err != nil {
 		configFatal("Could not read config", err)
 	}
@@ -70,21 +71,24 @@ func ReadConf(cfgFile string) *Configuration {
 }
 
 func (c Configuration) logSetup() {
-	if logger.GetLevel() == logrus.DebugLevel {
+	if c.Syslog {
+		LogSyslogSetup()
+	}
+	if Logger.GetLevel() == logrus.DebugLevel {
 		// Already set
 		return
 	}
 	switch c.LogLevel {
 	case "trace":
-		logger.SetLevel(logrus.TraceLevel)
+		Logger.SetLevel(logrus.TraceLevel)
 	case "debug":
-		logger.SetLevel(logrus.DebugLevel)
+		Logger.SetLevel(logrus.DebugLevel)
 	case "info":
-		logger.SetLevel(logrus.InfoLevel)
+		Logger.SetLevel(logrus.InfoLevel)
 	case "warn", "":
-		logger.SetLevel(logrus.WarnLevel)
+		Logger.SetLevel(logrus.WarnLevel)
 	default:
-		logger.WithField("loglevel", c.LogLevel).Error("[Config] Unknown loglevel")
+		Logger.WithField("loglevel", c.LogLevel).Error("[Config] Unknown loglevel")
 	}
 }
 
@@ -98,7 +102,7 @@ func (c *Configuration) GetChecks() []*conncheck.Check {
 	for _, check := range c.Checks.List {
 		url, err := url.Parse(check)
 		if err != nil {
-			logger.WithFields(logrus.Fields{
+			Logger.WithFields(logrus.Fields{
 				"check": check,
 				"err":   err,
 			}).Error("could not parse check in config")
@@ -106,7 +110,7 @@ func (c *Configuration) GetChecks() []*conncheck.Check {
 		}
 		p := ProtocolByID(url.Scheme)
 		if p == nil {
-			logger.WithFields(logrus.Fields{
+			Logger.WithFields(logrus.Fields{
 				"check":    check,
 				"protocol": url.Scheme,
 				"err":      err,
@@ -129,7 +133,7 @@ func (c *Configuration) GetChecks() []*conncheck.Check {
 		})
 	}
 	if len(checks) == 0 {
-		logger.Fatal("No valid check found")
+		Logger.Fatal("No valid check found")
 	}
 	return checks
 }

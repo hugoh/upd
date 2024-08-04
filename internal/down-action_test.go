@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -57,9 +58,10 @@ func Test_ExecuteNonExistent(t *testing.T) {
 	assert.Error(t, err)
 }
 
+const after = 42 * time.Second
+const every = 1 * time.Second
+
 func getTestDA() *DownAction {
-	const after = 42 * time.Second
-	const every = 1 * time.Second
 	return &DownAction{
 		After: after,
 		Every: every,
@@ -102,21 +104,21 @@ func testBackoff(t *testing.T, hasLimit bool) {
 	}
 	assert.Equal(t, 1.5, BackoffFactor, "Ensuring we have the right values")
 	dal, _ := da.NewDownActionLoop()
-	assert.Equal(t, DaIteration{iteration: -1, sleepTime: 0}, *dal.it)
+	assert.Equal(t, DaIteration{iteration: -1, sleepTime: 0}, *dal.it, "Initial values")
 	dal.iterate()
-	assert.Equal(t, DaIteration{iteration: 0, sleepTime: da.After}, *dal.it)
+	assert.Equal(t, DaIteration{iteration: 0, sleepTime: after}, *dal.it, "Before first iteration")
 	dal.iterate()
-	assert.Equal(t, DaIteration{iteration: 1, sleepTime: da.Every}, *dal.it)
+	assert.Equal(t, DaIteration{iteration: 1, sleepTime: every}, *dal.it, "First iteration")
 	dal.iterate()
-	current := time.Duration(1.5 * float64(time.Second))
-	assert.Equal(t, DaIteration{iteration: 2, sleepTime: current}, *dal.it)
+	current := time.Duration(1.5 * float64(every))
+	assert.Equal(t, DaIteration{iteration: 2, sleepTime: current}, *dal.it, "Second iteration")
 	dal.iterate()
 	if hasLimit {
 		current = da.BackoffLimit
 	} else {
-		current = time.Duration(2.25 * float64(time.Second))
+		current = time.Duration(1.5 * float64(current))
 	}
-	assert.Equal(t, DaIteration{iteration: 3, sleepTime: current, limitReached: hasLimit}, *dal.it)
+	assert.Equal(t, DaIteration{iteration: 3, sleepTime: current, limitReached: hasLimit}, *dal.it, fmt.Sprintf("Third iteration; limit reached: %t", hasLimit))
 }
 
 func Test_BackoffNoLimit(t *testing.T) {
