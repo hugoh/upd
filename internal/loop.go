@@ -79,15 +79,15 @@ func (l *Loop) shuffleChecks() {
 
 type Checker struct{}
 
-func (c Checker) CheckRun(report up.Report) {
+func (checker Checker) CheckRun(c conncheck.Check) {
 	logger.WithField("check", c).Trace("[Check] running")
 }
 
-func (c Checker) ProbeSuccess(report up.Report) {
+func (checker Checker) ProbeSuccess(report up.Report) {
 	logger.WithField("report", report).Debug("[Check] check run")
 }
 
-func (c Checker) ProbeFailure(report up.Report) {
+func (checker Checker) ProbeFailure(report up.Report) {
 	logger.WithField("report", report).Warn("[Check] check failed")
 }
 

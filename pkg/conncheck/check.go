@@ -37,7 +37,7 @@ func (c *Check) Probe(checker Checker) up.Report {
 
 type NullChecker struct{}
 
-func (c NullChecker) CheckRun(_ up.Report)     {}
+func (c NullChecker) CheckRun(_ Check)         {}
 func (c NullChecker) ProbeSuccess(_ up.Report) {}
 func (c NullChecker) ProbeFailure(_ up.Report) {}
 
@@ -57,7 +57,7 @@ Logs output using logrus.Logger instance
 */
 func CheckerRun(checker Checker, checks []*Check) (bool, error) {
 	for _, check := range checks {
-		report := check.Probe()
+		report := check.Probe(checker)
 		if report.Error != nil {
 			checker.ProbeFailure(report)
 			continue
