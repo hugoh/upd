@@ -13,10 +13,10 @@ import (
 )
 
 // Protocols included in the library.
-var Protocols []*Protocol
+var Protocols []*Protocol //nolint:gochecknoglobals
 
-func init() {
-	httpProtocol := &Protocol{
+func init() { //nolint:gochecknoinits
+	httpProtocol := &Protocol{ //nolint:exhaustruct
 		ID:    "http",
 		RHost: RandomCaptivePortal,
 	}
@@ -24,7 +24,7 @@ func init() {
 		return httpProtocol.httpProbe(domain, timeout)
 	}
 
-	tcpProtocol := &Protocol{
+	tcpProtocol := &Protocol{ //nolint:exhaustruct
 		ID:    "tcp",
 		RHost: RandomTCPServer,
 	}
@@ -32,7 +32,7 @@ func init() {
 		return tcpProtocol.tcpProbe(domain, timeout)
 	}
 
-	dnsProtocol := &Protocol{
+	dnsProtocol := &Protocol{ //nolint:exhaustruct
 		ID:    "dns",
 		RHost: RandomDomain,
 	}
@@ -79,8 +79,8 @@ func (p *Protocol) validate() error {
 //
 // The extra information is the status code.
 func (p *Protocol) httpProbe(u string, timeout time.Duration) (string, error) {
-	cli := &http.Client{Timeout: timeout}
-	resp, err := cli.Get(u)
+	cli := &http.Client{Timeout: timeout} //nolint:exhaustruct
+	resp, err := cli.Get(u)               //nolint:noctx
 	if err != nil {
 		return "", fmt.Errorf("making request to %s: %w", u, err)
 	}
@@ -110,12 +110,14 @@ func (p *Protocol) tcpProbe(hostPort string, timeout time.Duration) (string, err
 //
 // The extra information is the first resolved IP address.
 // TODO(#31)
+//
+//nolint:godox
 func (p *Protocol) dnsProbe(domain string, timeout time.Duration) (string, error) {
 	if p != nil && p.dnsResolver != "" {
-		r := &net.Resolver{
+		r := &net.Resolver{ //nolint:exhaustruct
 			PreferGo: true,
-			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
-				d := net.Dialer{
+			Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+				d := net.Dialer{ //nolint:exhaustruct
 					Timeout: timeout,
 				}
 				return d.DialContext(ctx, network, p.dnsResolver)
@@ -125,11 +127,11 @@ func (p *Protocol) dnsProbe(domain string, timeout time.Duration) (string, error
 		if err != nil {
 			return "", fmt.Errorf("resolving %s: %w", domain, err)
 		}
-		return fmt.Sprintf(addr[0]), nil
+		return addr[0], nil
 	}
 	addrs, err := net.LookupHost(domain)
 	if err != nil {
 		return "", fmt.Errorf("resolving %s: %w", domain, err)
 	}
-	return fmt.Sprint(addrs[0]), nil
+	return addrs[0], nil
 }

@@ -29,7 +29,7 @@ func RandomCaptivePortal() (string, error) {
 
 // CaptivePortals are URLs that well-known companies use inspect the network
 // connections of their users.
-var CaptivePortals []*url.URL = []*url.URL{
+var CaptivePortals []*url.URL = []*url.URL{ //nolint:revive,gochecknoglobals
 	// Google Chrome.
 	{
 		Scheme: "http",
@@ -85,7 +85,7 @@ func RandomDNSServer() (string, error) {
 }
 
 // Resolvers is a list of public DNS server IP addresses.
-var Resolvers = []*net.IP{
+var Resolvers = []*net.IP{ //nolint:gochecknoglobals
 	// Cloudflare
 	{1, 1, 1, 1},
 	{1, 0, 0, 1},
