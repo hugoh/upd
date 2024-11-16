@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"github.com/jesusprubio/up/pkg"
+	pkg "github.com/hugoh/upd/pkg/up"
 )
 
 const (

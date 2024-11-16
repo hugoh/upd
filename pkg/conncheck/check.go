@@ -3,7 +3,7 @@ package conncheck
 import (
 	"time"
 
-	up "github.com/jesusprubio/up/pkg"
+	"github.com/hugoh/upd/pkg/up"
 )
 
 // Connection check definition with protocol, target, timeout

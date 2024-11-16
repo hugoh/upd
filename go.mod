@@ -3,7 +3,6 @@ module github.com/hugoh/upd
 go 1.22.5
 
 require (
-	github.com/jesusprubio/up v1.0.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0
