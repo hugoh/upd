@@ -88,11 +88,11 @@ func (c Configuration) logSetup() {
 	}
 }
 
-func (c *Configuration) Dump() {
+func (c Configuration) Dump() {
 	fmt.Printf("%# v\n", pretty.Formatter(c)) //nolint:forbidigo
 }
 
-func (c *Configuration) GetChecks() []*conncheck.Check {
+func (c Configuration) GetChecks() []*conncheck.Check {
 	var checks []*conncheck.Check //nolint:prealloc
 	timeout := time.Duration(c.Checks.TimeOut) * time.Millisecond
 	for _, check := range c.Checks.List {
@@ -134,7 +134,7 @@ func (c *Configuration) GetChecks() []*conncheck.Check {
 	return checks
 }
 
-func (c *Configuration) GetDownAction() *DownAction {
+func (c Configuration) GetDownAction() *DownAction {
 	if reflect.ValueOf(c.DownAction).IsZero() {
 		return nil
 	}
@@ -147,7 +147,7 @@ func (c *Configuration) GetDownAction() *DownAction {
 	}
 }
 
-func (c *Configuration) GetDelays() map[bool]time.Duration {
+func (c Configuration) GetDelays() map[bool]time.Duration {
 	delays := make(map[bool]time.Duration)
 	delays[true] = time.Duration(c.Checks.Every.Normal) * time.Second
 	delays[false] = time.Duration(c.Checks.Every.Down) * time.Second
