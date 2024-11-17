@@ -11,20 +11,21 @@ import (
 	"time"
 )
 
+var testProto = &Protocol{
+	ID:    "test-proto",
+	Probe: func(_ *Protocol, _ string, _ time.Duration) (string, error) { return "", nil },
+	RHost: func() (string, error) { return "", nil },
+}
+
 func TestProtocolValidate(t *testing.T) {
-	proto := &Protocol{
-		ID:    "test-proto",
-		Probe: func(_ *Protocol, _ string, _ time.Duration) (string, error) { return "", nil },
-		RHost: func() (string, error) { return "", nil },
-	}
 	t.Run("returns nil with valid setup", func(t *testing.T) {
-		err := proto.validate()
+		err := testProto.validate()
 		if err != nil {
 			t.Fatalf("got %q, want nil", err)
 		}
 	})
 	t.Run("returns an error if 'Probe' property is nil", func(t *testing.T) {
-		p := &Protocol{ID: proto.ID, RHost: proto.RHost}
+		p := &Protocol{ID: testProto.ID, RHost: testProto.RHost}
 		err := p.validate()
 		want := "required property: Probe"
 		if err.Error() != want {
@@ -32,7 +33,7 @@ func TestProtocolValidate(t *testing.T) {
 		}
 	})
 	t.Run("returns an error if 'RHost' property is nil", func(t *testing.T) {
-		p := &Protocol{ID: proto.ID, Probe: proto.Probe}
+		p := &Protocol{ID: testProto.ID, Probe: testProto.Probe}
 		err := p.validate()
 		want := "required property: RHost"
 		if err.Error() != want {
@@ -42,15 +43,7 @@ func TestProtocolValidate(t *testing.T) {
 }
 
 func TestProbeValidate(t *testing.T) {
-	protocols := []*Protocol{{
-		ID: "test-proto",
-		Probe: func(_ *Protocol, _ string, _ time.Duration) (string, error) {
-			return "", nil
-		},
-		RHost: func() (string, error) {
-			return "", nil
-		},
-	}}
+	protocols := []*Protocol{testProto}
 	t.Run("returns nil with valid setup", func(t *testing.T) {
 		reportCh := make(chan *Report)
 		defer close(reportCh)
