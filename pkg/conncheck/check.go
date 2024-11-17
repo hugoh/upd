@@ -1,7 +1,6 @@
 package conncheck
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/hugoh/upd/pkg/up"
@@ -25,7 +24,6 @@ type Checker interface {
 func (c *Check) Probe(checker Checker) up.Report {
 	checker.CheckRun(*c)
 	start := time.Now()
-	fmt.Print(c.Proto)
 	extra, err := c.Proto.Probe(&c.Proto, c.Target, c.Timeout)
 	report := up.Report{
 		ProtocolID: c.Proto.ID,

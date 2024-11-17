@@ -80,7 +80,7 @@ func (p *Protocol) validate() error {
 // Makes an HTTP request.
 //
 // The extra information is the status code.
-func httpProbe(p *Protocol, u string, timeout time.Duration) (string, error) {
+func httpProbe(_ *Protocol, u string, timeout time.Duration) (string, error) {
 	cli := &http.Client{Timeout: timeout} //nolint:exhaustruct
 	resp, err := cli.Get(u)               //nolint:noctx
 	if err != nil {
@@ -96,7 +96,7 @@ func httpProbe(p *Protocol, u string, timeout time.Duration) (string, error) {
 // Makes a TCP request.
 //
 // The extra information is the local host/port.
-func tcpProbe(p *Protocol, hostPort string, timeout time.Duration) (string, error) {
+func tcpProbe(_ *Protocol, hostPort string, timeout time.Duration) (string, error) {
 	conn, err := net.DialTimeout("tcp", hostPort, timeout)
 	if err != nil {
 		return "", fmt.Errorf("making request to %s: %w", hostPort, err)
