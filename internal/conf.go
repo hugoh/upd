@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-playground/validator"
 	"github.com/hugoh/upd/pkg/conncheck"
+	"github.com/hugoh/upd/pkg/up"
 	"github.com/kr/pretty"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -104,19 +105,24 @@ func (c Configuration) GetChecks() []*conncheck.Check {
 			}).Error("could not parse check in config")
 			continue
 		}
-		p := ProtocolByID(url.Scheme)
-		if p == nil {
+		p, errP := up.ProtocolByID(url.Scheme)
+		if errP != nil {
 			logger.WithFields(logrus.Fields{
 				"check":    check,
 				"protocol": url.Scheme,
-				"err":      err,
+				"err":      errP,
 			}).Error("unknown protocol in config")
 			continue
 		}
 		var target string
 		switch p.ID {
 		case "dns":
-			target = url.Hostname()
+			port := url.Port()
+			if port == "" {
+				port = "53"
+			}
+			p.DNSResolver = url.Hostname() + ":" + port
+			target = url.Path[1:]
 		case "http":
 			target = url.String()
 		case "tcp":

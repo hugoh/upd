@@ -3,12 +3,12 @@ package conncheck
 import (
 	"time"
 
-	up "github.com/jesusprubio/up/pkg"
+	"github.com/hugoh/upd/pkg/up"
 )
 
 // Connection check definition with protocol, target, timeout
 type Check struct {
-	Proto   *up.Protocol
+	Proto   up.Protocol
 	Target  string
 	Timeout time.Duration
 }
@@ -24,7 +24,7 @@ type Checker interface {
 func (c *Check) Probe(checker Checker) up.Report {
 	checker.CheckRun(*c)
 	start := time.Now()
-	extra, err := c.Proto.Probe(c.Target, c.Timeout)
+	extra, err := c.Proto.Probe(&c.Proto, c.Target, c.Timeout)
 	report := up.Report{
 		ProtocolID: c.Proto.ID,
 		RHost:      c.Target,

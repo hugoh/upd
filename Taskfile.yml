@@ -54,4 +54,4 @@ tasks:
 
   test:
     summary: Run tests
-    cmd: go test -v ./... {{.CLI_ARGS}}
+    cmd: go test ./... {{.CLI_ARGS}}

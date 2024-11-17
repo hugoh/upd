@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/hugoh/upd/pkg/conncheck"
-	up "github.com/jesusprubio/up/pkg"
+	"github.com/hugoh/upd/pkg/up"
 )
 
 type Loop struct {
