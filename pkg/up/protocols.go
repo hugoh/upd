@@ -12,35 +12,26 @@ import (
 	"time"
 )
 
-// Protocols included in the library.
-var Protocols []*Protocol //nolint:gochecknoglobals
-
-func init() { //nolint:gochecknoinits
-	httpProtocol := &Protocol{ //nolint:exhaustruct
-		ID:    "http",
-		RHost: RandomCaptivePortal,
+func ProtocolByID(id string) (Protocol, error) {
+	if id == "https" || id == "http" {
+		return Protocol{ //nolint:exhaustruct
+			ID:    "http",
+			Probe: httpProbe,
+		}, nil
 	}
-	httpProtocol.Probe = func(domain string, timeout time.Duration) (string, error) {
-		return httpProtocol.httpProbe(domain, timeout)
+	if id == "tcp" {
+		return Protocol{ //nolint:exhaustruct
+			ID:    "tcp",
+			Probe: tcpProbe,
+		}, nil
 	}
-
-	tcpProtocol := &Protocol{ //nolint:exhaustruct
-		ID:    "tcp",
-		RHost: RandomTCPServer,
+	if id == "dns" {
+		return Protocol{ //nolint:exhaustruct
+			ID:    "dns",
+			Probe: dnsProbe,
+		}, nil
 	}
-	tcpProtocol.Probe = func(domain string, timeout time.Duration) (string, error) {
-		return tcpProtocol.tcpProbe(domain, timeout)
-	}
-
-	dnsProtocol := &Protocol{ //nolint:exhaustruct
-		ID:    "dns",
-		RHost: RandomDomain,
-	}
-	dnsProtocol.Probe = func(domain string, timeout time.Duration) (string, error) {
-		return dnsProtocol.dnsProbe(domain, timeout)
-	}
-
-	Protocols = []*Protocol{httpProtocol, tcpProtocol, dnsProtocol}
+	return Protocol{}, fmt.Errorf("unknown protocol id %s", id)
 }
 
 // Protocol defines a probe attempt.
@@ -48,16 +39,27 @@ type Protocol struct {
 	ID string
 	// Probe implementation for this protocol.
 	// Returns extra information about the attempt or an error if it failed.
-	Probe func(rhost string, timeout time.Duration) (string, error)
+	Probe func(p *Protocol, rhost string, timeout time.Duration) (string, error)
 	// Function to create a random remote
 	RHost func() (string, error)
 	// customDNSResolver
-	dnsResolver string
+	DNSResolver string
 }
 
-func (p *Protocol) WithDNSResolver(dnsResolver string) {
-	p.dnsResolver = dnsResolver
-}
+// Probe implementation for this protocol.
+// Returns extra information about the attempt or an error if it failed.
+// func (p *Protocol) ProbeImpl(rhost string, timeout time.Duration) (string, error) {
+// 	switch p.ID {
+// 	case "http":
+// 		return p.httpProbe(rhost, timeout)
+// 	case "tcp":
+// 		return p.tcpProbe(rhost, timeout)
+// 	case "dns":
+// 		return p.dnsProbe(rhost, timeout)
+// 	default:
+// 		return "", errors.New("unhandled protocol - internal error")
+// 	}
+// }
 
 // String returns an human-readable representation of the protocol.
 func (p *Protocol) String() string {
@@ -78,7 +80,7 @@ func (p *Protocol) validate() error {
 // Makes an HTTP request.
 //
 // The extra information is the status code.
-func (p *Protocol) httpProbe(u string, timeout time.Duration) (string, error) {
+func httpProbe(p *Protocol, u string, timeout time.Duration) (string, error) {
 	cli := &http.Client{Timeout: timeout} //nolint:exhaustruct
 	resp, err := cli.Get(u)               //nolint:noctx
 	if err != nil {
@@ -94,7 +96,7 @@ func (p *Protocol) httpProbe(u string, timeout time.Duration) (string, error) {
 // Makes a TCP request.
 //
 // The extra information is the local host/port.
-func (p *Protocol) tcpProbe(hostPort string, timeout time.Duration) (string, error) {
+func tcpProbe(p *Protocol, hostPort string, timeout time.Duration) (string, error) {
 	conn, err := net.DialTimeout("tcp", hostPort, timeout)
 	if err != nil {
 		return "", fmt.Errorf("making request to %s: %w", hostPort, err)
@@ -109,29 +111,26 @@ func (p *Protocol) tcpProbe(hostPort string, timeout time.Duration) (string, err
 // Resolves a domain name.
 //
 // The extra information is the first resolved IP address.
-// TODO(#31)
-//
-//nolint:godox
-func (p *Protocol) dnsProbe(domain string, timeout time.Duration) (string, error) {
-	if p != nil && p.dnsResolver != "" {
+func dnsProbe(p *Protocol, domain string, timeout time.Duration) (string, error) {
+	if p.DNSResolver != "" {
 		r := &net.Resolver{ //nolint:exhaustruct
 			PreferGo: true,
 			Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
 				d := net.Dialer{ //nolint:exhaustruct
 					Timeout: timeout,
 				}
-				return d.DialContext(ctx, network, p.dnsResolver)
+				return d.DialContext(ctx, network, p.DNSResolver)
 			},
 		}
 		addr, err := r.LookupHost(context.Background(), domain)
 		if err != nil {
-			return "", fmt.Errorf("resolving %s: %w", domain, err)
+			return "", fmt.Errorf("error resolving %s: %w", domain, err)
 		}
-		return addr[0], nil
+		return fmt.Sprintf("%s @ %s", addr[0], p.DNSResolver), nil
 	}
 	addrs, err := net.LookupHost(domain)
 	if err != nil {
-		return "", fmt.Errorf("resolving %s: %w", domain, err)
+		return "", fmt.Errorf("error resolving %s: %w", domain, err)
 	}
-	return addrs[0], nil
+	return addrs[0] + " @ default", nil
 }

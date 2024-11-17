@@ -12,6 +12,7 @@ checks:
     - tcp://1.0.0.1:53/
     - tcp://8.8.8.8:53/
     - tcp://8.8.4.4:53/
+    - dns://1.1.1.1/www.google.com
   timeoutMilli: 2000
   shuffled: true
 downAction:
@@ -21,4 +22,4 @@ downAction:
     repeat: 3
   stopExec: ./testdata/echo-reboot-count.sh
 # Options = debug, info, warn, error
-logLevel: info
+logLevel: trace
