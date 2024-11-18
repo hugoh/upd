@@ -26,7 +26,7 @@ func (c *Check) Probe(checker Checker) up.Report {
 	start := time.Now()
 	extra, err := c.Proto.Probe(c.Target, c.Timeout)
 	report := up.Report{
-		ProtocolID: c.Proto.ID,
+		ProtocolID: c.Proto.String(),
 		RHost:      c.Target,
 		Time:       time.Since(start),
 		Error:      err,

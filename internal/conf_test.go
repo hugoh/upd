@@ -79,13 +79,13 @@ func TestGetChecksFromConfFail(t *testing.T) {
 func (suite *TestSuite) TestGetChecks() {
 	ret := suite.conf.GetChecks()
 	assert.Equal(suite.T(), 4, len(ret))
-	assert.Equal(suite.T(), "http", ret[0].Proto.ID)
+	assert.Equal(suite.T(), "http", ret[0].Proto.String())
 	assert.Equal(suite.T(), "http://captive.apple.com/hotspot-detect.html", ret[0].Target)
-	assert.Equal(suite.T(), "http", ret[1].Proto.ID)
+	assert.Equal(suite.T(), "http", ret[1].Proto.String())
 	assert.Equal(suite.T(), "https://example.com/", ret[1].Target)
-	assert.Equal(suite.T(), "dns", ret[2].Proto.ID)
+	assert.Equal(suite.T(), "dns", ret[2].Proto.String())
 	assert.Equal(suite.T(), "1.1.1.1:53", ret[2].Proto.DNSResolver)
 	assert.Equal(suite.T(), "www.google.com", ret[2].Target)
-	assert.Equal(suite.T(), "tcp", ret[3].Proto.ID)
+	assert.Equal(suite.T(), "tcp", ret[3].Proto.String())
 	assert.Equal(suite.T(), "1.0.0.1:53", ret[3].Target)
 }

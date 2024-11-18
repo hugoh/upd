@@ -12,42 +12,57 @@ import (
 	"time"
 )
 
+type ProtoType int
+
+const (
+	DNS ProtoType = iota
+	HTTP
+	TCP
+)
+
+// Protocol defines a probe attempt.
+type Protocol struct {
+	ID ProtoType
+	// customDNSResolver
+	DNSResolver string
+}
+
 //nolint:gochecknoglobals
-var probes = map[string]func(p *Protocol, rhost string, timeout time.Duration) (string, error){
-	"dns":  dnsProbe,
-	"http": httpProbe,
-	"tcp":  tcpProbe,
+var protocols = map[ProtoType]string{
+	DNS:  "dns",
+	HTTP: "http",
+	TCP:  "tcp",
+}
+
+//nolint:gochecknoglobals
+var probes = map[ProtoType]func(p *Protocol, rhost string, timeout time.Duration) (string, error){
+	DNS:  dnsProbe,
+	HTTP: httpProbe,
+	TCP:  tcpProbe,
 }
 
 func ProtocolByID(id string) (Protocol, error) {
 	if id == "https" || id == "http" {
 		return Protocol{ //nolint:exhaustruct
-			ID: "http",
+			ID: HTTP,
 		}, nil
 	}
 	if id == "tcp" {
 		return Protocol{ //nolint:exhaustruct
-			ID: "tcp",
+			ID: TCP,
 		}, nil
 	}
 	if id == "dns" {
 		return Protocol{ //nolint:exhaustruct
-			ID: "dns",
+			ID: DNS,
 		}, nil
 	}
 	return Protocol{}, fmt.Errorf("unknown protocol id %s", id)
 }
 
-// Protocol defines a probe attempt.
-type Protocol struct {
-	ID string
-	// customDNSResolver
-	DNSResolver string
-}
-
 // String returns an human-readable representation of the protocol.
 func (p *Protocol) String() string {
-	return p.ID
+	return protocols[p.ID]
 }
 
 // Probe implementation for this protocol.
@@ -55,7 +70,7 @@ func (p *Protocol) String() string {
 func (p *Protocol) Probe(rhost string, timeout time.Duration) (string, error) {
 	probe, ok := probes[p.ID]
 	if !ok {
-		return "", fmt.Errorf("internal error: no probe for protocol %s", p.ID)
+		return "", fmt.Errorf("internal error: no probe for protocol %s", p.String())
 	}
 	return probe(p, rhost, timeout)
 }

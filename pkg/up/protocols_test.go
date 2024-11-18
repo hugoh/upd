@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getProtocol(t *testing.T, input, match string) {
+func getProtocol(t *testing.T, input string, match ProtoType) {
 	p, err := ProtocolByID(input)
 	assert.NotNil(t, p)
 	assert.NoError(t, err)
@@ -25,22 +25,12 @@ func getProtocol(t *testing.T, input, match string) {
 }
 
 func TestProtocolById(t *testing.T) {
-	getProtocol(t, "http", "http")
-	getProtocol(t, "https", "http")
-	getProtocol(t, "tcp", "tcp")
-	getProtocol(t, "dns", "dns")
+	getProtocol(t, "http", HTTP)
+	getProtocol(t, "https", HTTP)
+	getProtocol(t, "tcp", TCP)
+	getProtocol(t, "dns", DNS)
 	_, err := ProtocolByID("DOES_NOT_EXIST")
 	assert.Error(t, err)
-}
-
-func TestProtocolString(t *testing.T) {
-	t.Run("returns the ID of the protocol", func(t *testing.T) {
-		protocol := &Protocol{ID: "test"}
-		got := protocol.String()
-		if got != "test" {
-			t.Fatalf("got %q, want %q", got, "test")
-		}
-	})
 }
 
 func TestHttpProbe(t *testing.T) {

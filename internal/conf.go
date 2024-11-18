@@ -116,16 +116,16 @@ func (c Configuration) GetChecks() []*conncheck.Check {
 		}
 		var target string
 		switch p.ID {
-		case "dns":
+		case up.DNS:
 			port := url.Port()
 			if port == "" {
 				port = "53"
 			}
 			p.DNSResolver = url.Hostname() + ":" + port
 			target = url.Path[1:]
-		case "http":
+		case up.HTTP:
 			target = url.String()
-		case "tcp":
+		case up.TCP:
 			target = fmt.Sprintf("%s:%s", url.Hostname(), url.Port())
 		}
 		checks = append(checks, &conncheck.Check{
