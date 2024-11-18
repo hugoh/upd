@@ -6,6 +6,7 @@ package up
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"testing"
 	"time"
@@ -13,11 +14,15 @@ import (
 
 var testProto = &Protocol{
 	ID:    "test-proto",
-	Probe: func(_ *Protocol, _ string, _ time.Duration) (string, error) { return "", nil },
 	RHost: func() (string, error) { return "", nil },
 }
 
+var testProtoID2 = "test-proto-2"
+
+var testProtoProbe = func(_ *Protocol, _ string, _ time.Duration) (string, error) { return "", nil }
+
 func TestProtocolValidate(t *testing.T) {
+	probes[testProto.ID] = testProtoProbe
 	t.Run("returns nil with valid setup", func(t *testing.T) {
 		err := testProto.validate()
 		if err != nil {
@@ -25,15 +30,15 @@ func TestProtocolValidate(t *testing.T) {
 		}
 	})
 	t.Run("returns an error if 'Probe' property is nil", func(t *testing.T) {
-		p := &Protocol{ID: testProto.ID, RHost: testProto.RHost}
+		p := &Protocol{ID: testProtoID2, RHost: testProto.RHost}
 		err := p.validate()
-		want := "required property: Probe"
+		want := fmt.Sprintf("unknown probe for protocol %s", testProtoID2)
 		if err.Error() != want {
 			t.Fatalf("got %q, want %q", err, want)
 		}
 	})
 	t.Run("returns an error if 'RHost' property is nil", func(t *testing.T) {
-		p := &Protocol{ID: testProto.ID, Probe: testProto.Probe}
+		p := &Protocol{ID: testProto.ID}
 		err := p.validate()
 		want := "required property: RHost"
 		if err.Error() != want {
@@ -44,6 +49,7 @@ func TestProtocolValidate(t *testing.T) {
 
 func TestProbeValidate(t *testing.T) {
 	protocols := []*Protocol{testProto}
+	probes[testProto.ID] = testProtoProbe
 	t.Run("returns nil with valid setup", func(t *testing.T) {
 		reportCh := make(chan *Report)
 		defer close(reportCh)
@@ -69,7 +75,7 @@ func TestProbeValidate(t *testing.T) {
 	t.Run("returns an error if a protocol is invalid", func(t *testing.T) {
 		p := Probe{Protocols: []*Protocol{{}}}
 		err := p.validate()
-		want := "invalid protocol: required property: Probe"
+		want := "invalid protocol: unknown probe for protocol "
 		if err.Error() != want {
 			t.Fatalf("got %q, want %q", err, want)
 		}
@@ -108,6 +114,7 @@ func TestProbeValidate(t *testing.T) {
 }
 
 func TestProbeRun(t *testing.T) {
+	probes[testProto.ID] = testProtoProbe
 	t.Run("returns an error if the setup is invalid", func(t *testing.T) {
 		p := Probe{}
 		err := p.Run(context.Background())
@@ -119,12 +126,10 @@ func TestProbeRun(t *testing.T) {
 	hostPort := "192.168.1.1:22"
 	localHostPort := "127.0.0.1:3355"
 	proto := &Protocol{
-		ID: "test-proto",
-		Probe: func(_ *Protocol, _ string, _ time.Duration) (string, error) {
-			return localHostPort, nil
-		},
+		ID:    "test-proto-2",
 		RHost: func() (string, error) { return hostPort, nil },
 	}
+	probes[proto.ID] = func(_ *Protocol, _ string, _ time.Duration) (string, error) { return localHostPort, nil }
 	t.Run("returns nil if 'Count' property is defined", func(t *testing.T) {
 		reportCh := make(chan *Report)
 		defer close(reportCh)

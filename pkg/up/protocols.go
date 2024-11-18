@@ -12,23 +12,27 @@ import (
 	"time"
 )
 
+//nolint:gochecknoglobals
+var probes = map[string]func(p *Protocol, rhost string, timeout time.Duration) (string, error){
+	"dns":  dnsProbe,
+	"http": httpProbe,
+	"tcp":  tcpProbe,
+}
+
 func ProtocolByID(id string) (Protocol, error) {
 	if id == "https" || id == "http" {
 		return Protocol{ //nolint:exhaustruct
-			ID:    "http",
-			Probe: httpProbe,
+			ID: "http",
 		}, nil
 	}
 	if id == "tcp" {
 		return Protocol{ //nolint:exhaustruct
-			ID:    "tcp",
-			Probe: tcpProbe,
+			ID: "tcp",
 		}, nil
 	}
 	if id == "dns" {
 		return Protocol{ //nolint:exhaustruct
-			ID:    "dns",
-			Probe: dnsProbe,
+			ID: "dns",
 		}, nil
 	}
 	return Protocol{}, fmt.Errorf("unknown protocol id %s", id)
@@ -37,39 +41,32 @@ func ProtocolByID(id string) (Protocol, error) {
 // Protocol defines a probe attempt.
 type Protocol struct {
 	ID string
-	// Probe implementation for this protocol.
-	// Returns extra information about the attempt or an error if it failed.
-	Probe func(p *Protocol, rhost string, timeout time.Duration) (string, error)
 	// Function to create a random remote
 	RHost func() (string, error)
 	// customDNSResolver
 	DNSResolver string
 }
 
-// Probe implementation for this protocol.
-// Returns extra information about the attempt or an error if it failed.
-// func (p *Protocol) ProbeImpl(rhost string, timeout time.Duration) (string, error) {
-// 	switch p.ID {
-// 	case "http":
-// 		return p.httpProbe(rhost, timeout)
-// 	case "tcp":
-// 		return p.tcpProbe(rhost, timeout)
-// 	case "dns":
-// 		return p.dnsProbe(rhost, timeout)
-// 	default:
-// 		return "", errors.New("unhandled protocol - internal error")
-// 	}
-// }
-
 // String returns an human-readable representation of the protocol.
 func (p *Protocol) String() string {
 	return p.ID
 }
 
+// Probe implementation for this protocol.
+// Returns extra information about the attempt or an error if it failed.
+func (p *Protocol) Probe(rhost string, timeout time.Duration) (string, error) {
+	probe, ok := probes[p.ID]
+	if !ok {
+		return "", fmt.Errorf("internal error: no probe for protocol %s", p.ID)
+	}
+	return probe(p, rhost, timeout)
+}
+
 // Ensures the required properties are set.
 func (p *Protocol) validate() error {
-	if p.Probe == nil {
-		return fmt.Errorf(tmplRequiredProp, "Probe")
+	_, ok := probes[p.ID]
+	if !ok {
+		return fmt.Errorf("unknown probe for protocol %s", p.ID)
 	}
 	if p.RHost == nil {
 		return fmt.Errorf(tmplRequiredProp, "RHost")
