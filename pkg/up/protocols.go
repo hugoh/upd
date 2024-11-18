@@ -41,8 +41,6 @@ func ProtocolByID(id string) (Protocol, error) {
 // Protocol defines a probe attempt.
 type Protocol struct {
 	ID string
-	// Function to create a random remote
-	RHost func() (string, error)
 	// customDNSResolver
 	DNSResolver string
 }
@@ -60,18 +58,6 @@ func (p *Protocol) Probe(rhost string, timeout time.Duration) (string, error) {
 		return "", fmt.Errorf("internal error: no probe for protocol %s", p.ID)
 	}
 	return probe(p, rhost, timeout)
-}
-
-// Ensures the required properties are set.
-func (p *Protocol) validate() error {
-	_, ok := probes[p.ID]
-	if !ok {
-		return fmt.Errorf("unknown probe for protocol %s", p.ID)
-	}
-	if p.RHost == nil {
-		return fmt.Errorf(tmplRequiredProp, "RHost")
-	}
-	return nil
 }
 
 // Makes an HTTP request.
