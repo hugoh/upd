@@ -17,11 +17,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getProtocol(t *testing.T, input string, match ProtoType) {
-	p, err := ProtocolByID(input)
+func getProtocol(t *testing.T, input string, match string) {
+	p, ok := ProtocolByScheme(input)
 	assert.NotNil(t, p)
-	assert.NoError(t, err)
-	assert.Equal(t, match, p.ID, fmt.Sprintf("protocol for %s", input))
+	assert.True(t, ok)
+	assert.Equal(t, match, (*p).Type(), fmt.Sprintf("protocol for %s", input))
 }
 
 func TestProtocolById(t *testing.T) {
@@ -29,8 +29,8 @@ func TestProtocolById(t *testing.T) {
 	getProtocol(t, "https", HTTP)
 	getProtocol(t, "tcp", TCP)
 	getProtocol(t, "dns", DNS)
-	_, err := ProtocolByID("DOES_NOT_EXIST")
-	assert.Error(t, err)
+	_, ok := ProtocolByScheme("DOES_NOT_EXIST")
+	assert.False(t, ok)
 }
 
 func TestHttpProbe(t *testing.T) {
@@ -41,7 +41,8 @@ func TestHttpProbe(t *testing.T) {
 		"returns the status code if the request is successful",
 		func(t *testing.T) {
 			u := url.URL{Scheme: "http", Host: server.Addr}
-			got, err := httpProbe(&Protocol{}, u.String(), tout)
+			httpProtocol := HTTPProtocol{}
+			got, err := httpProtocol.Probe(u.String(), nil, tout)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -53,7 +54,8 @@ func TestHttpProbe(t *testing.T) {
 	)
 	t.Run("returns an error if the request fails", func(t *testing.T) {
 		u := url.URL{Scheme: "http", Host: "localhost"}
-		got, err := httpProbe(&Protocol{}, u.String(), 1)
+		httpProtocol := HTTPProtocol{}
+		got, err := httpProtocol.Probe(u.String(), nil, 1)
 		if err == nil {
 			t.Fatal("got nil, want an error")
 		}
@@ -107,7 +109,8 @@ func TestTcpProbe(t *testing.T) {
 	t.Run(
 		"returns the local host/port if the request is successful",
 		func(t *testing.T) {
-			got, err := tcpProbe(&Protocol{}, hostPort, tout)
+			tcpProtocol := &TCPProtocol{}
+			got, err := tcpProtocol.Probe(hostPort, nil, tout)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -125,7 +128,8 @@ func TestTcpProbe(t *testing.T) {
 		},
 	)
 	t.Run("returns an error if the request fails", func(t *testing.T) {
-		got, err := tcpProbe(&Protocol{}, "localhost:80", 1)
+		tcpProtocol := &TCPProtocol{}
+		got, err := tcpProtocol.Probe("localhost:80", nil, 1)
 		if err == nil {
 			t.Fatal("got nil, want an error")
 		}
@@ -156,7 +160,8 @@ func TestDnsProbe(t *testing.T) {
 	t.Run(
 		"returns the first resolved IP address if the request is successful",
 		func(t *testing.T) {
-			got, err := dnsProbe(&Protocol{}, "google.com", tout)
+			dnsProtocol := &DNSProtocol{}
+			got, err := dnsProtocol.Probe("google.com", nil, tout)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -173,7 +178,8 @@ func TestDnsProbe(t *testing.T) {
 		},
 	)
 	t.Run("returns an error if the request fails", func(t *testing.T) {
-		got, err := dnsProbe(&Protocol{}, "invalid.aa", 1)
+		dnsProtocol := &DNSProtocol{}
+		got, err := dnsProtocol.Probe("invalid.aa", nil, 1)
 		if err == nil {
 			t.Fatal("got nil, want an error")
 		}

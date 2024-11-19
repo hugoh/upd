@@ -105,23 +105,24 @@ func (c Configuration) GetChecks() []*conncheck.Check {
 			}).Error("could not parse check in config")
 			continue
 		}
-		p, errP := up.ProtocolByID(url.Scheme)
-		if errP != nil {
+		p, ok := up.ProtocolByScheme(url.Scheme)
+		if !ok {
 			logger.WithFields(logrus.Fields{
 				"check":    check,
 				"protocol": url.Scheme,
-				"err":      errP,
 			}).Error("unknown protocol in config")
 			continue
 		}
 		var target string
-		switch p.ID {
+		var extra map[string]string
+		switch (*p).Type() {
 		case up.DNS:
 			port := url.Port()
 			if port == "" {
 				port = "53"
 			}
-			p.DNSResolver = url.Hostname() + ":" + port
+			extra = make(map[string]string)
+			extra[up.DNSResolver] = url.Hostname() + ":" + port
 			target = url.Path[1:]
 		case up.HTTP:
 			target = url.String()
@@ -131,6 +132,7 @@ func (c Configuration) GetChecks() []*conncheck.Check {
 		checks = append(checks, &conncheck.Check{
 			Proto:   p,
 			Target:  target,
+			Extra:   extra,
 			Timeout: timeout,
 		})
 	}

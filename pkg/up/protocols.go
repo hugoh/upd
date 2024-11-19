@@ -2,8 +2,6 @@
 // Copyright Jesús Rubio <jesusprubio@gmail.com>
 // MIT License
 
-// TODO: reimplement with interface
-
 package up
 
 import (
@@ -14,73 +12,56 @@ import (
 	"time"
 )
 
-type ProtoType int
-
 const (
-	DNS ProtoType = iota
-	HTTP
-	TCP
+	DNS         string = "dns"
+	HTTP        string = "http"
+	HTTPS       string = "https"
+	TCP         string = "tcp"
+	DNSResolver string = "dnsResolver"
 )
 
-// Protocol defines a probe attempt.
-type Protocol struct {
-	ID ProtoType
-	// customDNSResolver
-	DNSResolver string
-}
-
 //nolint:gochecknoglobals
-var protocols = map[ProtoType]string{
-	DNS:  "dns",
-	HTTP: "http",
-	TCP:  "tcp",
+var protocols = map[string]Protocol{
+	DNS:  DNSProtocol{},
+	HTTP: HTTPProtocol{},
+	TCP:  TCPProtocol{},
 }
 
-//nolint:gochecknoglobals
-var probes = map[ProtoType]func(p *Protocol, rhost string, timeout time.Duration) (string, error){
-	DNS:  dnsProbe,
-	HTTP: httpProbe,
-	TCP:  tcpProbe,
+type Protocol interface {
+	Type() string
+	Probe(target string, extra map[string]string, timeout time.Duration) (string, error)
 }
 
-func ProtocolByID(id string) (Protocol, error) {
-	if id == "https" || id == "http" {
-		return Protocol{ //nolint:exhaustruct
-			ID: HTTP,
-		}, nil
+type DNSProtocol struct{}
+
+type HTTPProtocol struct{}
+
+type TCPProtocol struct{}
+
+func ProtocolByScheme(scheme string) (*Protocol, bool) {
+	if scheme == HTTPS {
+		scheme = HTTP
 	}
-	if id == "tcp" {
-		return Protocol{ //nolint:exhaustruct
-			ID: TCP,
-		}, nil
-	}
-	if id == "dns" {
-		return Protocol{ //nolint:exhaustruct
-			ID: DNS,
-		}, nil
-	}
-	return Protocol{}, fmt.Errorf("unknown protocol id %s", id)
-}
-
-// String returns an human-readable representation of the protocol.
-func (p *Protocol) String() string {
-	return protocols[p.ID]
-}
-
-// Probe implementation for this protocol.
-// Returns extra information about the attempt or an error if it failed.
-func (p *Protocol) Probe(rhost string, timeout time.Duration) (string, error) {
-	probe, ok := probes[p.ID]
+	p, ok := protocols[scheme]
 	if !ok {
-		return "", fmt.Errorf("internal error: no probe for protocol %s", p.String())
+		return nil, ok
 	}
-	return probe(p, rhost, timeout)
+	return &p, ok
 }
 
-// Makes an HTTP request.
-//
-// The extra information is the status code.
-func httpProbe(_ *Protocol, u string, timeout time.Duration) (string, error) {
+func (p DNSProtocol) Type() string {
+	return DNS
+}
+
+func (p HTTPProtocol) Type() string {
+	return HTTP
+}
+
+func (p TCPProtocol) Type() string {
+	return TCP
+}
+
+func (p HTTPProtocol) Probe(u string, _ map[string]string, timeout time.Duration) (string, error) {
 	cli := &http.Client{Timeout: timeout} //nolint:exhaustruct
 	resp, err := cli.Get(u)               //nolint:noctx
 	if err != nil {
@@ -93,10 +74,7 @@ func httpProbe(_ *Protocol, u string, timeout time.Duration) (string, error) {
 	return resp.Status, nil
 }
 
-// Makes a TCP request.
-//
-// The extra information is the local host/port.
-func tcpProbe(_ *Protocol, hostPort string, timeout time.Duration) (string, error) {
+func (p TCPProtocol) Probe(hostPort string, _ map[string]string, timeout time.Duration) (string, error) {
 	conn, err := net.DialTimeout("tcp", hostPort, timeout)
 	if err != nil {
 		return "", fmt.Errorf("making request to %s: %w", hostPort, err)
@@ -108,25 +86,23 @@ func tcpProbe(_ *Protocol, hostPort string, timeout time.Duration) (string, erro
 	return conn.LocalAddr().String(), nil
 }
 
-// Resolves a domain name.
-//
-// The extra information is the first resolved IP address.
-func dnsProbe(p *Protocol, domain string, timeout time.Duration) (string, error) {
-	if p.DNSResolver != "" {
+func (p DNSProtocol) Probe(domain string, extra map[string]string, timeout time.Duration) (string, error) {
+	dnsResolver, ok := extra[DNSResolver]
+	if ok {
 		r := &net.Resolver{ //nolint:exhaustruct
 			PreferGo: true,
 			Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
 				d := net.Dialer{ //nolint:exhaustruct
 					Timeout: timeout,
 				}
-				return d.DialContext(ctx, network, p.DNSResolver)
+				return d.DialContext(ctx, network, dnsResolver)
 			},
 		}
 		addr, err := r.LookupHost(context.Background(), domain)
 		if err != nil {
 			return "", fmt.Errorf("error resolving %s: %w", domain, err)
 		}
-		return fmt.Sprintf("%s @ %s", addr[0], p.DNSResolver), nil
+		return fmt.Sprintf("%s @ %s", addr[0], dnsResolver), nil
 	}
 	addrs, err := net.LookupHost(domain)
 	if err != nil {

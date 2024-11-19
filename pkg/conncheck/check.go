@@ -8,8 +8,9 @@ import (
 
 // Connection check definition with protocol, target, timeout
 type Check struct {
-	Proto   up.Protocol
+	Proto   *up.Protocol
 	Target  string
+	Extra   map[string]string
 	Timeout time.Duration
 }
 
@@ -24,9 +25,10 @@ type Checker interface {
 func (c *Check) Probe(checker Checker) up.Report {
 	checker.CheckRun(*c)
 	start := time.Now()
-	extra, err := c.Proto.Probe(c.Target, c.Timeout)
+	p := *c.Proto
+	extra, err := p.Probe(c.Target, c.Extra, c.Timeout)
 	report := up.Report{
-		ProtocolID: c.Proto.String(),
+		ProtocolID: p.Type(),
 		RHost:      c.Target,
 		Time:       time.Since(start),
 		Error:      err,
