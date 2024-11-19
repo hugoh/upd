@@ -2,6 +2,8 @@
 // Copyright Jesús Rubio <jesusprubio@gmail.com>
 // MIT License
 
+// TODO: reimplement with interface
+
 package up
 
 import (
