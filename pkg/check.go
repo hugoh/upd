@@ -1,33 +1,31 @@
-package conncheck
+package pkg
 
 import (
 	"time"
-
-	"github.com/hugoh/upd/pkg/up"
 )
 
 // Connection check definition with protocol, target, timeout
 type Check struct {
-	Proto   *up.Protocol
+	Proto   *Protocol
 	Target  string
-	Extra   *up.ExtraArgs
+	Extra   *ExtraArgs
 	Timeout time.Duration
 }
 
 // Interface to act on probe success or failure when running checks
 type Checker interface {
 	CheckRun(c Check)
-	ProbeSuccess(report up.Report)
-	ProbeFailure(report up.Report)
+	ProbeSuccess(report Report)
+	ProbeFailure(report Report)
 }
 
 // Run specific connection check and return report
-func (c *Check) Probe(checker Checker) up.Report {
+func (c *Check) Probe(checker Checker) Report {
 	checker.CheckRun(*c)
 	start := time.Now()
 	p := *c.Proto
 	extra, err := p.Probe(c.Target, c.Extra, c.Timeout)
-	report := up.Report{
+	report := Report{
 		ProtocolID: p.Type(),
 		RHost:      c.Target,
 		Time:       time.Since(start),
@@ -39,9 +37,9 @@ func (c *Check) Probe(checker Checker) up.Report {
 
 type NullChecker struct{}
 
-func (c NullChecker) CheckRun(_ Check)         {}
-func (c NullChecker) ProbeSuccess(_ up.Report) {}
-func (c NullChecker) ProbeFailure(_ up.Report) {}
+func (c NullChecker) CheckRun(_ Check)      {}
+func (c NullChecker) ProbeSuccess(_ Report) {}
+func (c NullChecker) ProbeFailure(_ Report) {}
 
 /*
 Runs a series of checks.

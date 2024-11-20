@@ -2,7 +2,7 @@
 // Copyright Jesús Rubio <jesusprubio@gmail.com>
 // MIT License
 
-package up
+package pkg
 
 import (
 	"fmt"

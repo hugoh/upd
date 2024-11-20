@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator"
-	"github.com/hugoh/upd/pkg/conncheck"
-	"github.com/hugoh/upd/pkg/up"
+	"github.com/hugoh/upd/pkg"
 	"github.com/kr/pretty"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -93,8 +92,8 @@ func (c Configuration) Dump() {
 	fmt.Printf("%# v\n", pretty.Formatter(c)) //nolint:forbidigo
 }
 
-func (c Configuration) GetChecks() []*conncheck.Check {
-	var checks []*conncheck.Check //nolint:prealloc
+func (c Configuration) GetChecks() []*pkg.Check {
+	var checks []*pkg.Check //nolint:prealloc
 	timeout := time.Duration(c.Checks.TimeOut) * time.Millisecond
 	for _, check := range c.Checks.List {
 		url, err := url.Parse(check)
@@ -105,7 +104,7 @@ func (c Configuration) GetChecks() []*conncheck.Check {
 			}).Error("could not parse check in config")
 			continue
 		}
-		p, ok := up.ProtocolByScheme(url.Scheme)
+		p, ok := pkg.ProtocolByScheme(url.Scheme)
 		if !ok {
 			logger.WithFields(logrus.Fields{
 				"check":    check,
@@ -114,22 +113,22 @@ func (c Configuration) GetChecks() []*conncheck.Check {
 			continue
 		}
 		var target string
-		var extra *up.ExtraArgs
+		var extra *pkg.ExtraArgs
 		switch (*p).Type() {
-		case up.DNS:
+		case pkg.DNS:
 			port := url.Port()
 			if port == "" {
 				port = "53"
 			}
-			d, _ := (*p).(*up.DNSProtocol)
+			d, _ := (*p).(*pkg.DNSProtocol)
 			extra = d.ExtraArgs(port)
 			target = url.Path[1:]
-		case up.HTTP:
+		case pkg.HTTP:
 			target = url.String()
-		case up.TCP:
+		case pkg.TCP:
 			target = fmt.Sprintf("%s:%s", url.Hostname(), url.Port())
 		}
-		checks = append(checks, &conncheck.Check{
+		checks = append(checks, &pkg.Check{
 			Proto:   p,
 			Target:  target,
 			Extra:   extra,

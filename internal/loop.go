@@ -5,12 +5,11 @@ import (
 	"math/rand/v2"
 	"time"
 
-	"github.com/hugoh/upd/pkg/conncheck"
-	"github.com/hugoh/upd/pkg/up"
+	"github.com/hugoh/upd/pkg"
 )
 
 type Loop struct {
-	Checks         []*conncheck.Check
+	Checks         []*pkg.Check
 	Delays         map[bool]time.Duration
 	DownAction     *DownAction
 	Shuffle        bool
@@ -79,15 +78,15 @@ func (l *Loop) shuffleChecks() {
 
 type Checker struct{}
 
-func (checker Checker) CheckRun(c conncheck.Check) {
+func (checker Checker) CheckRun(c pkg.Check) {
 	logger.WithField("check", c).Trace("[Check] running")
 }
 
-func (checker Checker) ProbeSuccess(report up.Report) {
+func (checker Checker) ProbeSuccess(report pkg.Report) {
 	logger.WithField("report", report).Debug("[Check] check run")
 }
 
-func (checker Checker) ProbeFailure(report up.Report) {
+func (checker Checker) ProbeFailure(report pkg.Report) {
 	logger.WithField("report", report).Warn("[Check] check failed")
 }
 
@@ -97,7 +96,7 @@ func (l *Loop) Run() {
 		if l.Shuffle {
 			l.shuffleChecks()
 		}
-		status, err := conncheck.CheckerRun(checker, l.Checks)
+		status, err := pkg.CheckerRun(checker, l.Checks)
 		if err == nil {
 			l.ProcessCheck(status)
 		} else {
