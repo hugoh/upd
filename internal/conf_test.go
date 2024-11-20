@@ -84,7 +84,7 @@ func (suite *TestSuite) TestGetChecks() {
 	assert.Equal(suite.T(), "http", (*ret[1].Proto).Type())
 	assert.Equal(suite.T(), "https://example.com/", ret[1].Target)
 	assert.Equal(suite.T(), "dns", (*ret[2].Proto).Type())
-	assert.Equal(suite.T(), "1.1.1.1:53", ret[2].Extra["dnsResolver"])
+	assert.Equal(suite.T(), "1.1.1.1:53", (*ret[2].Extra)["dnsResolver"])
 	assert.Equal(suite.T(), "www.google.com", ret[2].Target)
 	assert.Equal(suite.T(), "tcp", (*ret[3].Proto).Type())
 	assert.Equal(suite.T(), "1.0.0.1:53", ret[3].Target)

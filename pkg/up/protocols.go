@@ -22,15 +22,17 @@ const (
 
 //nolint:gochecknoglobals
 var protocols = map[string]Protocol{
-	DNS:  DNSProtocol{},
-	HTTP: HTTPProtocol{},
-	TCP:  TCPProtocol{},
+	DNS:  &DNSProtocol{},
+	HTTP: &HTTPProtocol{},
+	TCP:  &TCPProtocol{},
 }
 
 type Protocol interface {
 	Type() string
-	Probe(target string, extra map[string]string, timeout time.Duration) (string, error)
+	Probe(target string, extra *ExtraArgs, timeout time.Duration) (string, error)
 }
+
+type ExtraArgs map[string]string
 
 type DNSProtocol struct{}
 
@@ -49,19 +51,19 @@ func ProtocolByScheme(scheme string) (*Protocol, bool) {
 	return &p, ok
 }
 
-func (p DNSProtocol) Type() string {
+func (p *DNSProtocol) Type() string {
 	return DNS
 }
 
-func (p HTTPProtocol) Type() string {
+func (p *HTTPProtocol) Type() string {
 	return HTTP
 }
 
-func (p TCPProtocol) Type() string {
+func (p *TCPProtocol) Type() string {
 	return TCP
 }
 
-func (p HTTPProtocol) Probe(u string, _ map[string]string, timeout time.Duration) (string, error) {
+func (p *HTTPProtocol) Probe(u string, _ *ExtraArgs, timeout time.Duration) (string, error) {
 	cli := &http.Client{Timeout: timeout} //nolint:exhaustruct
 	resp, err := cli.Get(u)               //nolint:noctx
 	if err != nil {
@@ -74,7 +76,7 @@ func (p HTTPProtocol) Probe(u string, _ map[string]string, timeout time.Duration
 	return resp.Status, nil
 }
 
-func (p TCPProtocol) Probe(hostPort string, _ map[string]string, timeout time.Duration) (string, error) {
+func (p *TCPProtocol) Probe(hostPort string, _ *ExtraArgs, timeout time.Duration) (string, error) {
 	conn, err := net.DialTimeout("tcp", hostPort, timeout)
 	if err != nil {
 		return "", fmt.Errorf("making request to %s: %w", hostPort, err)
@@ -86,8 +88,8 @@ func (p TCPProtocol) Probe(hostPort string, _ map[string]string, timeout time.Du
 	return conn.LocalAddr().String(), nil
 }
 
-func (p DNSProtocol) Probe(domain string, extra map[string]string, timeout time.Duration) (string, error) {
-	dnsResolver, ok := extra[DNSResolver]
+func (p *DNSProtocol) Probe(domain string, extra *ExtraArgs, timeout time.Duration) (string, error) {
+	dnsResolver, ok := (*extra)[DNSResolver]
 	if ok {
 		r := &net.Resolver{ //nolint:exhaustruct
 			PreferGo: true,
@@ -109,4 +111,10 @@ func (p DNSProtocol) Probe(domain string, extra map[string]string, timeout time.
 		return "", fmt.Errorf("error resolving %s: %w", domain, err)
 	}
 	return addrs[0] + " @ default", nil
+}
+
+func (*DNSProtocol) ExtraArgs(dnsResolver string) *ExtraArgs {
+	var e ExtraArgs = make(map[string]string)
+	e[DNSResolver] = dnsResolver
+	return &e
 }

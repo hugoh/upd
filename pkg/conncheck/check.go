@@ -10,7 +10,7 @@ import (
 type Check struct {
 	Proto   *up.Protocol
 	Target  string
-	Extra   map[string]string
+	Extra   *up.ExtraArgs
 	Timeout time.Duration
 }
 

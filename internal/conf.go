@@ -114,15 +114,15 @@ func (c Configuration) GetChecks() []*conncheck.Check {
 			continue
 		}
 		var target string
-		var extra map[string]string
+		var extra *up.ExtraArgs
 		switch (*p).Type() {
 		case up.DNS:
 			port := url.Port()
 			if port == "" {
 				port = "53"
 			}
-			extra = make(map[string]string)
-			extra[up.DNSResolver] = url.Hostname() + ":" + port
+			d, _ := (*p).(*up.DNSProtocol)
+			extra = d.ExtraArgs(port)
 			target = url.Path[1:]
 		case up.HTTP:
 			target = url.String()
