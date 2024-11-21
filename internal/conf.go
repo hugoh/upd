@@ -104,34 +104,30 @@ func (c Configuration) GetChecks() []*pkg.Check {
 			}).Error("could not parse check in config")
 			continue
 		}
-		p, ok := pkg.ProtocolByScheme(url.Scheme)
-		if !ok {
+		var probe pkg.Probe
+		switch url.Scheme {
+		case pkg.DNS:
+			domain := url.Path[1:]
+			port := url.Port()
+			if port == "" {
+				port = "53"
+			}
+			dnsResolver := url.Host + ":" + port
+			probe = pkg.GetDNSProbe(dnsResolver, domain)
+		case pkg.HTTP, pkg.HTTPS:
+			probe = pkg.GetHTTPProbe(url.String())
+		case pkg.TCP:
+			hostPort := fmt.Sprintf("%s:%s", url.Hostname(), url.Port())
+			probe = pkg.GetTCPProbe(hostPort)
+		default:
 			logger.WithFields(logrus.Fields{
 				"check":    check,
 				"protocol": url.Scheme,
 			}).Error("unknown protocol in config")
 			continue
 		}
-		var target string
-		var extra *pkg.ExtraArgs
-		switch (*p).Type() {
-		case pkg.DNS:
-			port := url.Port()
-			if port == "" {
-				port = "53"
-			}
-			d, _ := (*p).(*pkg.DNSProtocol)
-			extra = d.ExtraArgs(port)
-			target = url.Path[1:]
-		case pkg.HTTP:
-			target = url.String()
-		case pkg.TCP:
-			target = fmt.Sprintf("%s:%s", url.Hostname(), url.Port())
-		}
 		checks = append(checks, &pkg.Check{
-			Proto:   p,
-			Target:  target,
-			Extra:   extra,
+			Probe:   &probe,
 			Timeout: timeout,
 		})
 	}

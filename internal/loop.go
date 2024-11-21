@@ -82,11 +82,11 @@ func (checker Checker) CheckRun(c pkg.Check) {
 	logger.WithField("check", c).Trace("[Check] running")
 }
 
-func (checker Checker) ProbeSuccess(report pkg.Report) {
+func (checker Checker) ProbeSuccess(report *pkg.Report) {
 	logger.WithField("report", report).Debug("[Check] check run")
 }
 
-func (checker Checker) ProbeFailure(report pkg.Report) {
+func (checker Checker) ProbeFailure(report *pkg.Report) {
 	logger.WithField("report", report).Warn("[Check] check failed")
 }
 

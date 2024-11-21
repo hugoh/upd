@@ -6,40 +6,29 @@ import (
 
 // Connection check definition with protocol, target, timeout
 type Check struct {
-	Proto   *Protocol
-	Target  string
-	Extra   *ExtraArgs
+	Probe   *Probe
 	Timeout time.Duration
 }
 
 // Interface to act on probe success or failure when running checks
 type Checker interface {
 	CheckRun(c Check)
-	ProbeSuccess(report Report)
-	ProbeFailure(report Report)
+	ProbeSuccess(report *Report)
+	ProbeFailure(report *Report)
 }
 
 // Run specific connection check and return report
-func (c *Check) Probe(checker Checker) Report {
+func (c *Check) RunProbe(checker Checker) *Report {
 	checker.CheckRun(*c)
-	start := time.Now()
-	p := *c.Proto
-	extra, err := p.Probe(c.Target, c.Extra, c.Timeout)
-	report := Report{
-		ProtocolID: p.Type(),
-		RHost:      c.Target,
-		Time:       time.Since(start),
-		Error:      err,
-		Extra:      extra,
-	}
-	return report
+	p := *c.Probe
+	return p.Probe(c.Timeout)
 }
 
 type NullChecker struct{}
 
-func (c NullChecker) CheckRun(_ Check)      {}
-func (c NullChecker) ProbeSuccess(_ Report) {}
-func (c NullChecker) ProbeFailure(_ Report) {}
+func (c NullChecker) CheckRun(_ Check)       {}
+func (c NullChecker) ProbeSuccess(_ *Report) {}
+func (c NullChecker) ProbeFailure(_ *Report) {}
 
 /*
 Runs a series of checks.
@@ -57,7 +46,7 @@ Logs output using logrus.Logger instance
 */
 func CheckerRun(checker Checker, checks []*Check) (bool, error) {
 	for _, check := range checks {
-		report := check.Probe(checker)
+		report := check.RunProbe(checker)
 		if report.Error != nil {
 			checker.ProbeFailure(report)
 			continue

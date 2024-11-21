@@ -4,117 +4,109 @@
 
 package pkg
 
-import (
-	"context"
-	"fmt"
-	"net"
-	"net/http"
-	"time"
-)
-
 const (
-	DNS         string = "dns"
-	HTTP        string = "http"
-	HTTPS       string = "https"
-	TCP         string = "tcp"
-	DNSResolver string = "dnsResolver"
+	DNS   string = "dns"
+	HTTP  string = "http"
+	HTTPS string = "https"
+	TCP   string = "tcp"
 )
 
-//nolint:gochecknoglobals
-var protocols = map[string]Protocol{
-	DNS:  &DNSProtocol{},
-	HTTP: &HTTPProtocol{},
-	TCP:  &TCPProtocol{},
-}
+// //nolint:gochecknoglobals
+// var protocols = map[string]Protocol{
+// 	DNS:  &DNSProtocol{},
+// 	HTTP: &HTTPProtocol{},
+// 	TCP:  &TCPProtocol{},
+// }
 
-type Protocol interface {
-	Type() string
-	Probe(target string, extra *ExtraArgs, timeout time.Duration) (string, error)
-}
+// type Protocol interface {
+// 	Type() string
+// 	// Probe(args *ProtocolArgs, timeout time.Duration) *Report
+// }
 
-type ExtraArgs map[string]string
+// type DNSProtocol struct{}
 
-type DNSProtocol struct{}
+// type HTTPProtocol struct{}
 
-type HTTPProtocol struct{}
+// type TCPProtocol struct{}
 
-type TCPProtocol struct{}
+// func ProtocolByScheme(scheme string) (*Protocol, bool) {
+// 	if scheme == HTTPS {
+// 		scheme = HTTP
+// 	}
+// 	p, ok := protocols[scheme]
+// 	if !ok {
+// 		return nil, ok
+// 	}
+// 	return &p, ok
+// }
 
-func ProtocolByScheme(scheme string) (*Protocol, bool) {
-	if scheme == HTTPS {
-		scheme = HTTP
-	}
-	p, ok := protocols[scheme]
-	if !ok {
-		return nil, ok
-	}
-	return &p, ok
-}
+// func (p *DNSProtocol) Type() string {
+// 	return DNS
+// }
 
-func (p *DNSProtocol) Type() string {
-	return DNS
-}
+// func (p *HTTPProtocol) Type() string {
+// 	return HTTP
+// }
 
-func (p *HTTPProtocol) Type() string {
-	return HTTP
-}
+// func (p *TCPProtocol) Type() string {
+// 	return TCP
+// }
 
-func (p *TCPProtocol) Type() string {
-	return TCP
-}
+// // func (p *HTTPProtocol) Probe(args *ProtocolArgs, timeout time.Duration) *Report {
+// func HTTPProtoProbe(url string, timeout time.Duration) *Report {
+// 	cli := &http.Client{Timeout: timeout} //nolint:exhaustruct
+// 	start := time.Now()
+// 	resp, err := cli.Get(url) //nolint:noctx
+// 	report := BuildReport(HTTP, start)
+// 	if err != nil {
+// 		report.Error = fmt.Errorf("making request to %s: %w", url, err)
+// 		return report
+// 	}
+// 	err = resp.Body.Close()
+// 	if err != nil {
+// 		report.Error = fmt.Errorf("closing response body: %w", err)
+// 		return report
+// 	}
+// 	report.Response = resp.Status
+// 	return report
+// }
 
-func (p *HTTPProtocol) Probe(u string, _ *ExtraArgs, timeout time.Duration) (string, error) {
-	cli := &http.Client{Timeout: timeout} //nolint:exhaustruct
-	resp, err := cli.Get(u)               //nolint:noctx
-	if err != nil {
-		return "", fmt.Errorf("making request to %s: %w", u, err)
-	}
-	err = resp.Body.Close()
-	if err != nil {
-		return "", fmt.Errorf("closing response body: %w", err)
-	}
-	return resp.Status, nil
-}
+// // func (p *TCPProtocol) Probe(args *ProtocolArgs, timeout time.Duration) *Report {
+// func TCPProtoProbe(hostPort string, timeout time.Duration) *Report {
+// 	start := time.Now()
+// 	conn, err := net.DialTimeout("tcp", hostPort, timeout)
+// 	report := BuildReport(TCP, start)
+// 	if err != nil {
+// 		report.Error = fmt.Errorf("making request to %s: %w", hostPort, err)
+// 		return report
+// 	}
+// 	err = conn.Close()
+// 	if err != nil {
+// 		report.Error = fmt.Errorf("closing connection: %w", err)
+// 		return report
+// 	}
+// 	report.Response = conn.LocalAddr().String()
+// 	return report
+// }
 
-func (p *TCPProtocol) Probe(hostPort string, _ *ExtraArgs, timeout time.Duration) (string, error) {
-	conn, err := net.DialTimeout("tcp", hostPort, timeout)
-	if err != nil {
-		return "", fmt.Errorf("making request to %s: %w", hostPort, err)
-	}
-	err = conn.Close()
-	if err != nil {
-		return "", fmt.Errorf("closing connection: %w", err)
-	}
-	return conn.LocalAddr().String(), nil
-}
-
-func (p *DNSProtocol) Probe(domain string, extra *ExtraArgs, timeout time.Duration) (string, error) {
-	dnsResolver, ok := (*extra)[DNSResolver]
-	if ok {
-		r := &net.Resolver{ //nolint:exhaustruct
-			PreferGo: true,
-			Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-				d := net.Dialer{ //nolint:exhaustruct
-					Timeout: timeout,
-				}
-				return d.DialContext(ctx, network, dnsResolver)
-			},
-		}
-		addr, err := r.LookupHost(context.Background(), domain)
-		if err != nil {
-			return "", fmt.Errorf("error resolving %s: %w", domain, err)
-		}
-		return fmt.Sprintf("%s @ %s", addr[0], dnsResolver), nil
-	}
-	addrs, err := net.LookupHost(domain)
-	if err != nil {
-		return "", fmt.Errorf("error resolving %s: %w", domain, err)
-	}
-	return addrs[0] + " @ default", nil
-}
-
-func (*DNSProtocol) ExtraArgs(dnsResolver string) *ExtraArgs {
-	var e ExtraArgs = make(map[string]string)
-	e[DNSResolver] = dnsResolver
-	return &e
-}
+// // func (p *DNSProtocol) Probe(args *ProtocolArgs, timeout time.Duration) *Report {
+// func DNSProtoProbe(dnsResolver string, domain string, timeout time.Duration) *Report {
+// 	r := &net.Resolver{ //nolint:exhaustruct
+// 		PreferGo: true,
+// 		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+// 			d := net.Dialer{ //nolint:exhaustruct
+// 				Timeout: timeout,
+// 			}
+// 			return d.DialContext(ctx, network, dnsResolver)
+// 		},
+// 	}
+// 	start := time.Now()
+// 	addr, err := r.LookupHost(context.Background(), domain)
+// 	report := BuildReport(DNS, start)
+// 	if err != nil {
+// 		report.Error = fmt.Errorf("error resolving %s: %w", domain, err)
+// 		return report
+// 	}
+// 	report.Response = fmt.Sprintf("%s @ %s", addr[0], dnsResolver)
+// 	return report
+// }

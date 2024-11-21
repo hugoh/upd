@@ -13,16 +13,18 @@ import (
 // Only one of the properties 'Response' or 'Error' is set.
 type Report struct {
 	// Protocol used to connect to.
-	ProtocolID string `json:"protocol"`
+	Protocol string
 	// Target used to connect to.
-	RHost string `json:"rhost"`
+	Response string
 	// Response time.
-	Time time.Duration `json:"time"`
-	// Extra information. Depending on the protocol, it could be:
-	// - HTTP: Response code.
-	// - TCP: Local address.
-	// - DNS: Resolved IP addresses.
-	Extra string `json:"extra,omitempty"`
+	Elapsed time.Duration
 	// Network error.
-	Error error `json:"error,omitempty"`
+	Error error
+}
+
+func BuildReport(p string, startTime time.Time) *Report {
+	return &Report{ //nolint:exhaustruct
+		Protocol: p,
+		Elapsed:  time.Since(startTime),
+	}
 }
