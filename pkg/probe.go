@@ -75,17 +75,24 @@ func (p HTTPProbe) Scheme() string {
 }
 
 func (p HTTPProbe) Probe(timeout time.Duration) *Report {
-	cli := &http.Client{Timeout: timeout} //nolint:exhaustruct
+	client := &http.Client{Timeout: timeout} //nolint:exhaustruct
+	ctx := context.Background()
+	req, bErr := http.NewRequestWithContext(ctx, http.MethodGet, p.URL, nil)
+	if bErr != nil {
+		report := &Report{Protocol: p.Scheme()} //nolint:exhaustruct
+		report.Error = fmt.Errorf("error building request to %s: %w", p.URL, bErr)
+		return report
+	}
 	start := time.Now()
-	resp, err := cli.Get(p.URL) //nolint:noctx
+	resp, err := client.Do(req)
 	report := BuildReport(p, start)
 	if err != nil {
-		report.Error = fmt.Errorf("making request to %s: %w", p.URL, err)
+		report.Error = fmt.Errorf("error making request to %s: %w", p.URL, err)
 		return report
 	}
 	err = resp.Body.Close()
 	if err != nil {
-		report.Error = fmt.Errorf("closing response body: %w", err)
+		report.Error = fmt.Errorf("error closing response body: %w", err)
 		return report
 	}
 	report.Response = resp.Status
