@@ -26,7 +26,7 @@ type TCPProbe struct {
 	HostPort string
 }
 
-func GetDNSProbe(dnsResolver string, domain string) Probe { //nolint:ireturn
+func GetDNSProbe(dnsResolver string, domain string) *DNSProbe {
 	dnsProbe := DNSProbe{
 		DNSResolver: dnsResolver,
 		Domain:      domain,
@@ -59,7 +59,7 @@ func (p DNSProbe) Probe(timeout time.Duration) *Report {
 	return report
 }
 
-func GetHTTPProbe(url string) Probe { //nolint:ireturn
+func GetHTTPProbe(url string) *HTTPProbe {
 	httpProbe := HTTPProbe{
 		URL: url,
 	}
@@ -88,7 +88,7 @@ func (p HTTPProbe) Probe(timeout time.Duration) *Report {
 	return report
 }
 
-func GetTCPProbe(hostPort string) Probe { //nolint:ireturn
+func GetTCPProbe(hostPort string) *TCPProbe {
 	tcpProbe := TCPProbe{
 		HostPort: hostPort,
 	}
