@@ -4,21 +4,25 @@ Copyright © 2024 Hugo Haas <hugoh@hugoh.net>
 package cmd
 
 import (
+	"log"
 	"os"
 
 	"github.com/hugoh/upd/internal"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-var (
-	cfgFile  string //nolint:gochecknoglobals
-	debug    bool   //nolint:gochecknoglobals
-	dumpConf bool   //nolint:gochecknoglobals
-)
-
-func run(_ *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, _ []string) {
+	debug, errD := cmd.Flags().GetBool("debug")
+	if errD != nil {
+		log.Fatal(errD)
+	}
 	internal.LogSetup(debug)
-	conf := internal.ReadConf(cfgFile)
+	configPath, errC := cmd.Flags().GetString("config")
+	if errC != nil {
+		log.Fatal(errC)
+	}
+	conf := internal.ReadConf(configPath)
 	checks := conf.GetChecks()
 	delays := conf.GetDelays()
 	da := conf.GetDownAction()
@@ -30,6 +34,10 @@ func run(_ *cobra.Command, _ []string) {
 		Shuffle:    conf.Checks.Shuffled,
 	}
 
+	dumpConf, errU := cmd.Flags().GetBool("dump")
+	if errU != nil {
+		log.Fatal(errU)
+	}
 	if dumpConf {
 		conf.Dump()
 		return
@@ -42,6 +50,8 @@ func run(_ *cobra.Command, _ []string) {
 // appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(version string) {
+	v := viper.New()
+
 	rootCmd := &cobra.Command{ //nolint:exhaustruct
 		Use:   internal.AppName,
 		Short: internal.AppShort,
@@ -52,13 +62,27 @@ func Execute(version string) {
 	rootCmd.Version = version
 
 	rootCmd.PersistentFlags().
-		StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.up.yaml)")
+		StringP("config", "c", "", "config file (default is $HOME/.up.yaml)")
 	rootCmd.PersistentFlags().
-		BoolVarP(&debug, "debug", "d", false, "display debugging output in the console")
+		BoolP("debug", "d", false, "display debugging output in the console")
 	rootCmd.PersistentFlags().
-		BoolVarP(&dumpConf, "dump", "D", false, "dump parsed configuration and quit")
+		BoolP("dump", "D", false, "dump parsed configuration and quit")
 
-	err := rootCmd.Execute()
+	var err error
+	err = v.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = v.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = v.BindPFlag("dump", rootCmd.PersistentFlags().Lookup("dump"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
 	}

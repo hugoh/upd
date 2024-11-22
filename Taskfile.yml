@@ -41,7 +41,7 @@ tasks:
   depup:
     summary: Upgrades dependencies
     cmds:
-      - go get -d -u -t ./...
+      - go get -u -t ./...
       - task tidy
 
   lint:
