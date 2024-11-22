@@ -34,11 +34,11 @@ func GetDNSProbe(dnsResolver string, domain string) Probe { //nolint:ireturn
 	return &dnsProbe
 }
 
-func (p *DNSProbe) Scheme() string {
+func (p DNSProbe) Scheme() string {
 	return DNS
 }
 
-func (p *DNSProbe) Probe(timeout time.Duration) *Report {
+func (p DNSProbe) Probe(timeout time.Duration) *Report {
 	r := &net.Resolver{ //nolint:exhaustruct
 		PreferGo: true,
 		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
@@ -66,11 +66,11 @@ func GetHTTPProbe(url string) Probe { //nolint:ireturn
 	return &httpProbe
 }
 
-func (p *HTTPProbe) Scheme() string {
+func (p HTTPProbe) Scheme() string {
 	return HTTP
 }
 
-func (p *HTTPProbe) Probe(timeout time.Duration) *Report {
+func (p HTTPProbe) Probe(timeout time.Duration) *Report {
 	cli := &http.Client{Timeout: timeout} //nolint:exhaustruct
 	start := time.Now()
 	resp, err := cli.Get(p.URL) //nolint:noctx
@@ -95,11 +95,11 @@ func GetTCPProbe(hostPort string) Probe { //nolint:ireturn
 	return &tcpProbe
 }
 
-func (p *TCPProbe) Scheme() string {
+func (p TCPProbe) Scheme() string {
 	return TCP
 }
 
-func (p *TCPProbe) Probe(timeout time.Duration) *Report {
+func (p TCPProbe) Probe(timeout time.Duration) *Report {
 	start := time.Now()
 	conn, err := net.DialTimeout("tcp", p.HostPort, timeout)
 	report := BuildReport(p, start)

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hugoh/upd/pkg"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
@@ -76,16 +77,33 @@ func TestGetChecksFromConfFail(t *testing.T) {
 	assert.Panics(t, func() { conf.GetChecks() })
 }
 
-// func (suite *TestSuite) TestGetChecks() {
-// 	ret := suite.conf.GetChecks()
-// 	assert.Equal(suite.T(), 4, len(ret))
-// 	assert.Equal(suite.T(), "http", (*ret[0].Probe).Scheme())
-// 	assert.Equal(suite.T(), "http://captive.apple.com/hotspot-detect.html", ret[0].Target)
-// 	assert.Equal(suite.T(), "http", (*ret[1].Probe).Scheme())
-// 	assert.Equal(suite.T(), "https://example.com/", ret[1].Target)
-// 	assert.Equal(suite.T(), "dns", (*ret[2].Probe).Scheme())
-// 	assert.Equal(suite.T(), "1.1.1.1:53", (*ret[2].Args)["dnsResolver"])
-// 	assert.Equal(suite.T(), "www.google.com", ret[2].Scheme)
-// 	assert.Equal(suite.T(), "tcp", (*ret[3].Probe).Type())
-// 	assert.Equal(suite.T(), "1.0.0.1:53", ret[3].Scheme)
-// }
+func (suite *TestSuite) TestGetChecks() {
+	ret := suite.conf.GetChecks()
+	var probe pkg.Probe
+	var http *pkg.HTTPProbe
+	var dns *pkg.DNSProbe
+	var tcp *pkg.TCPProbe
+	var ok bool
+	assert.Equal(suite.T(), 4, len(ret))
+	probe = *ret[0].Probe
+	http, ok = probe.(*pkg.HTTPProbe)
+	assert.True(suite.T(), ok)
+	assert.Equal(suite.T(), "http", http.Scheme())
+	assert.Equal(suite.T(), "http://captive.apple.com/hotspot-detect.html", http.URL)
+	probe = *ret[1].Probe
+	http, ok = probe.(*pkg.HTTPProbe)
+	assert.True(suite.T(), ok)
+	assert.Equal(suite.T(), "http", http.Scheme())
+	assert.Equal(suite.T(), "https://example.com/", http.URL)
+	probe = *ret[2].Probe
+	dns, ok = probe.(*pkg.DNSProbe)
+	assert.True(suite.T(), ok)
+	assert.Equal(suite.T(), "dns", dns.Scheme())
+	assert.Equal(suite.T(), "1.1.1.1:53", dns.DNSResolver)
+	assert.Equal(suite.T(), "www.google.com", dns.Domain)
+	probe = *ret[3].Probe
+	tcp, ok = probe.(*pkg.TCPProbe)
+	assert.True(suite.T(), ok)
+	assert.Equal(suite.T(), "tcp", tcp.Scheme())
+	assert.Equal(suite.T(), "1.0.0.1:53", tcp.HostPort)
+}
