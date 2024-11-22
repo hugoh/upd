@@ -22,9 +22,9 @@ type Report struct {
 	Error error
 }
 
-func BuildReport(p string, startTime time.Time) *Report {
+func BuildReport(p Probe, startTime time.Time) *Report {
 	return &Report{ //nolint:exhaustruct
-		Protocol: p,
+		Protocol: p.Scheme(),
 		Elapsed:  time.Since(startTime),
 	}
 }

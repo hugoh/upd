@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hugoh/upd/pkg"
+	"github.com/sirupsen/logrus"
 )
 
 type Loop struct {
@@ -79,7 +80,12 @@ func (l *Loop) shuffleChecks() {
 type Checker struct{}
 
 func (checker Checker) CheckRun(c pkg.Check) {
-	logger.WithField("check", c).Trace("[Check] running")
+	probe := *c.Probe
+	logger.WithFields(logrus.Fields{
+		"probe":    probe,
+		"protocol": probe.Scheme(),
+		"timeout":  c.Timeout,
+	}).Trace("[Check] running")
 }
 
 func (checker Checker) ProbeSuccess(report *pkg.Report) {

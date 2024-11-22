@@ -10,6 +10,7 @@ import (
 
 type Probe interface {
 	Probe(timeout time.Duration) *Report
+	Scheme() string
 }
 
 type DNSProbe struct {
@@ -33,6 +34,10 @@ func GetDNSProbe(dnsResolver string, domain string) Probe { //nolint:ireturn
 	return &dnsProbe
 }
 
+func (p *DNSProbe) Scheme() string {
+	return DNS
+}
+
 func (p *DNSProbe) Probe(timeout time.Duration) *Report {
 	r := &net.Resolver{ //nolint:exhaustruct
 		PreferGo: true,
@@ -45,7 +50,7 @@ func (p *DNSProbe) Probe(timeout time.Duration) *Report {
 	}
 	start := time.Now()
 	addr, err := r.LookupHost(context.Background(), p.Domain)
-	report := BuildReport(DNS, start)
+	report := BuildReport(p, start)
 	if err != nil {
 		report.Error = fmt.Errorf("error resolving %s: %w", p.Domain, err)
 		return report
@@ -61,11 +66,15 @@ func GetHTTPProbe(url string) Probe { //nolint:ireturn
 	return &httpProbe
 }
 
+func (p *HTTPProbe) Scheme() string {
+	return HTTP
+}
+
 func (p *HTTPProbe) Probe(timeout time.Duration) *Report {
 	cli := &http.Client{Timeout: timeout} //nolint:exhaustruct
 	start := time.Now()
 	resp, err := cli.Get(p.URL) //nolint:noctx
-	report := BuildReport(HTTP, start)
+	report := BuildReport(p, start)
 	if err != nil {
 		report.Error = fmt.Errorf("making request to %s: %w", p.URL, err)
 		return report
@@ -86,10 +95,14 @@ func GetTCPProbe(hostPort string) Probe { //nolint:ireturn
 	return &tcpProbe
 }
 
+func (p *TCPProbe) Scheme() string {
+	return TCP
+}
+
 func (p *TCPProbe) Probe(timeout time.Duration) *Report {
 	start := time.Now()
 	conn, err := net.DialTimeout("tcp", p.HostPort, timeout)
-	report := BuildReport(TCP, start)
+	report := BuildReport(p, start)
 	if err != nil {
 		report.Error = fmt.Errorf("making request to %s: %w", p.HostPort, err)
 		return report
