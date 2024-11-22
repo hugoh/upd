@@ -50,7 +50,7 @@ func TestHttpProbe(t *testing.T) {
 			t.Fatalf("got %q should be zero", got)
 		}
 		got = err.Error()
-		prefix := "making request to http://localhost: Get \"http://localhost\""
+		prefix := "error making request to http://localhost: Get \"http://localhost\""
 		if !strings.HasPrefix(got, prefix) {
 			t.Fatalf("got %q, want prefix %q", got, prefix)
 		}
@@ -126,7 +126,7 @@ func TestTcpProbe(t *testing.T) {
 			t.Fatalf("got %q should be zero", got)
 		}
 		got = report.Error.Error()
-		want := "making request to localhost:80: dial tcp: lookup localhost: i/o timeout"
+		want := "error making request to localhost:80: dial tcp: lookup localhost: i/o timeout"
 		if got != want {
 			t.Fatalf("got %q, want %q", got, want)
 		}

@@ -115,12 +115,12 @@ func (p TCPProbe) Probe(timeout time.Duration) *Report {
 	conn, err := net.DialTimeout("tcp", p.HostPort, timeout)
 	report := BuildReport(p, start)
 	if err != nil {
-		report.Error = fmt.Errorf("making request to %s: %w", p.HostPort, err)
+		report.Error = fmt.Errorf("error making request to %s: %w", p.HostPort, err)
 		return report
 	}
 	err = conn.Close()
 	if err != nil {
-		report.Error = fmt.Errorf("closing connection: %w", err)
+		report.Error = fmt.Errorf("error closing connection: %w", err)
 		return report
 	}
 	report.Response = conn.LocalAddr().String()
