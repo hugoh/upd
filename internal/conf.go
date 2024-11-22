@@ -93,7 +93,7 @@ func (c Configuration) Dump() {
 }
 
 func (c Configuration) GetChecks() []*pkg.Check {
-	var checks []*pkg.Check //nolint:prealloc
+	checks := make([]*pkg.Check, 0, len(c.Checks.List))
 	timeout := time.Duration(c.Checks.TimeOut) * time.Millisecond
 	for _, check := range c.Checks.List {
 		url, err := url.Parse(check)
