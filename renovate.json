@@ -1,4 +1,10 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", ":automergeLinters", ":automergeMinor"]
+  "extends": ["config:recommended", ":automergeLinters", ":automergeMinor"],
+  "packageRules": [
+    {
+      "matchDatasources": ["golang-version"],
+      "rangeStrategy": "bump"
+    }
+  ]
 }
