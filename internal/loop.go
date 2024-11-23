@@ -89,11 +89,11 @@ func (checker Checker) CheckRun(c pkg.Check) {
 }
 
 func (checker Checker) ProbeSuccess(report *pkg.Report) {
-	logger.WithField("report", report).Debug("[Check] check run")
+	logger.WithField("report", report).Debug("[Check] success")
 }
 
 func (checker Checker) ProbeFailure(report *pkg.Report) {
-	logger.WithField("report", report).Warn("[Check] check failed")
+	logger.WithField("report", report).Warn("[Check] failed")
 }
 
 func (l *Loop) Run() {
