@@ -34,10 +34,12 @@ type DownActionLoop struct {
 
 const BackoffFactor = 1.5
 
+var ErrNoCommand = errors.New("no command to execute")
+
 // Only return an error if the command cannot be run.
 func (dal *DownActionLoop) Execute(execString string) error {
 	if execString == "" {
-		return errors.New("no command to execute")
+		return ErrNoCommand
 	}
 	command, errSh := shlex.Split(execString)
 	if errSh != nil {

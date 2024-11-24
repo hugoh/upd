@@ -23,9 +23,11 @@ func (l *Loop) hasDownAction() bool {
 	return l.DownAction != nil
 }
 
+var ErrDownActionRunning = errors.New("cannot start new DownAction when one is already running")
+
 func (l *Loop) DownActionStart() error {
 	if l.downActionLoop != nil {
-		return errors.New("cannot start new DownAction when one is already running")
+		return ErrDownActionRunning
 	}
 	l.downActionLoop = l.DownAction.Start()
 	return nil
