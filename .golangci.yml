@@ -7,6 +7,7 @@ linters:
   disable:
     - depguard
     - godot
+    - godox
     - nlreturn
     - varnamelen
     - wsl
