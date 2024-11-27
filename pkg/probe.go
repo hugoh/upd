@@ -43,10 +43,10 @@ func (p DNSProbe) Scheme() string {
 }
 
 func (p DNSProbe) Probe(timeout time.Duration) *Report {
-	r := &net.Resolver{ //nolint:exhaustruct
+	r := &net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-			d := net.Dialer{ //nolint:exhaustruct
+			d := net.Dialer{
 				Timeout: timeout,
 			}
 			return d.DialContext(ctx, network, p.DNSResolver)
@@ -75,11 +75,11 @@ func (p HTTPProbe) Scheme() string {
 }
 
 func (p HTTPProbe) Probe(timeout time.Duration) *Report {
-	client := &http.Client{Timeout: timeout} //nolint:exhaustruct
+	client := &http.Client{Timeout: timeout}
 	ctx := context.Background()
 	req, bErr := http.NewRequestWithContext(ctx, http.MethodGet, p.URL, nil)
 	if bErr != nil {
-		report := &Report{Protocol: p.Scheme()} //nolint:exhaustruct
+		report := &Report{Protocol: p.Scheme()}
 		report.Error = fmt.Errorf("error building request to %s: %w", p.URL, bErr)
 		return report
 	}

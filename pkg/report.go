@@ -23,7 +23,7 @@ type Report struct {
 }
 
 func BuildReport(p Probe, startTime time.Time) *Report {
-	return &Report{ //nolint:exhaustruct
+	return &Report{
 		Protocol: p.Scheme(),
 		Elapsed:  time.Since(startTime),
 	}

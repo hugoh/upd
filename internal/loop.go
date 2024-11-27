@@ -68,7 +68,7 @@ func (l *Loop) ProcessCheck(upStatus bool) {
 	} else {
 		err := l.DownActionStart()
 		if err != nil {
-			logger.WithField("err", err).Error("[Loop] could not start DownAction")
+			logger.WithError(err).Error("[Loop] could not start DownAction")
 		}
 	}
 }
@@ -108,7 +108,7 @@ func (l *Loop) Run() {
 		if err == nil {
 			l.ProcessCheck(status)
 		} else {
-			logger.WithField("err", err).Error("[Loop] error")
+			logger.WithError(err).Error("[Loop] error")
 		}
 		sleepTime := l.Delays[l.isUp]
 		logger.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")

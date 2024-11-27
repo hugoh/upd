@@ -52,7 +52,7 @@ func run(cmd *cobra.Command, _ []string) {
 func Execute(version string) {
 	v := viper.New()
 
-	rootCmd := &cobra.Command{ //nolint:exhaustruct
+	rootCmd := &cobra.Command{
 		Use:   internal.AppName,
 		Short: internal.AppShort,
 		Long:  internal.AppDesc,
