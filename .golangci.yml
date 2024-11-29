@@ -1,12 +1,14 @@
 ---
 issues:
-  exclude-files: _test\.go
+  exclude-files:
+    - _test\.go
 linters:
   enable-all: true
   disable:
     - depguard
-    - err113
+    - exhaustruct
     - godot
+    - godox
     - nlreturn
     - varnamelen
     - wsl

@@ -34,10 +34,12 @@ type DownActionLoop struct {
 
 const BackoffFactor = 1.5
 
+var ErrNoCommand = errors.New("no command to execute")
+
 // Only return an error if the command cannot be run.
 func (dal *DownActionLoop) Execute(execString string) error {
 	if execString == "" {
-		return errors.New("no command to execute")
+		return ErrNoCommand
 	}
 	command, errSh := shlex.Split(execString)
 	if errSh != nil {
@@ -49,26 +51,20 @@ func (dal *DownActionLoop) Execute(execString string) error {
 	logger.WithField("exec", cmd.String()).Info("[DownAction] executing command")
 	err := cmd.Start()
 	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"exec": cmd.String(),
-			"err":  err,
-		}).Error("[DownAction] failed to run")
+		logger.WithField("exec", cmd.String()).WithError(err).Error("[DownAction] failed to run")
 		return fmt.Errorf("failed to execute DownAction: %w", err)
 	}
 	go func() {
 		err := cmd.Wait()
 		if err != nil {
-			logger.WithFields(logrus.Fields{
-				"exec": cmd.String(),
-				"err":  err,
-			}).Warn("[DownAction] error executing command")
+			logger.WithField("exec", cmd.String()).WithError(err).Warn("[DownAction] error executing command")
 		}
 	}()
 	return nil
 }
 
 func NewDaIteration() *DaIteration {
-	return &DaIteration{ //nolint:exhaustruct
+	return &DaIteration{
 		iteration: -1,
 	}
 }
@@ -107,7 +103,7 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 		}
 		err := dal.Execute(dal.da.Exec)
 		if err != nil {
-			logger.WithField("err", err).Error("[DownAction] failed to execute")
+			logger.WithError(err).Error("[DownAction] failed to execute")
 		}
 		if dal.da.Every > 0 {
 			dal.iterate()

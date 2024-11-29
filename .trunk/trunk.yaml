@@ -12,7 +12,7 @@ plugins:
 # Many linters and tools depend on runtimes - configure them here. (https://docs.trunk.io/runtimes)
 runtimes:
   enabled:
-    - go@1.21.0
+    - go@1.23.3
     - node@18.12.1
     - python@3.10.8
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
@@ -30,7 +30,7 @@ lint:
     - prettier@3.3.3
     - renovate@39.16.0
     - trivy@0.56.2
-    - trufflehog@3.83.6
+    - trufflehog@3.83.7
     - yamllint@1.35.1
 actions:
   disabled:

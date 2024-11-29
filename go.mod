@@ -1,6 +1,6 @@
 module github.com/hugoh/upd
 
-go 1.22.5
+go 1.23.3
 
 require (
 	github.com/sirupsen/logrus v1.9.3

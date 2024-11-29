@@ -7,11 +7,15 @@ import (
 	"time"
 
 	"github.com/go-playground/validator"
-	"github.com/hugoh/upd/pkg/conncheck"
-	"github.com/hugoh/upd/pkg/up"
+	"github.com/hugoh/upd/pkg"
 	"github.com/kr/pretty"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+)
+
+const (
+	ConfigBase string = ".upd"
+	ConfigType string = "yaml"
 )
 
 type Configuration struct {
@@ -44,13 +48,13 @@ func configFatal(msg string, err error) {
 }
 
 func ReadConf(cfgFile string) *Configuration {
-	viper.SetConfigType("yaml")
+	viper.SetConfigType(ConfigType)
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
-		viper.SetConfigName(".upd")
-		viper.AddConfigPath("$HOME/")
+		viper.SetConfigName(ConfigBase)
 		viper.AddConfigPath(".")
+		viper.AddConfigPath("$HOME/")
 	}
 
 	logger.WithField("file", viper.ConfigFileUsed()).Debug("[Config] config file used")
@@ -93,8 +97,8 @@ func (c Configuration) Dump() {
 	fmt.Printf("%# v\n", pretty.Formatter(c)) //nolint:forbidigo
 }
 
-func (c Configuration) GetChecks() []*conncheck.Check {
-	var checks []*conncheck.Check //nolint:prealloc
+func (c Configuration) GetChecks() []*pkg.Check {
+	checks := make([]*pkg.Check, 0, len(c.Checks.List))
 	timeout := time.Duration(c.Checks.TimeOut) * time.Millisecond
 	for _, check := range c.Checks.List {
 		url, err := url.Parse(check)
@@ -105,32 +109,30 @@ func (c Configuration) GetChecks() []*conncheck.Check {
 			}).Error("could not parse check in config")
 			continue
 		}
-		p, errP := up.ProtocolByID(url.Scheme)
-		if errP != nil {
-			logger.WithFields(logrus.Fields{
-				"check":    check,
-				"protocol": url.Scheme,
-				"err":      errP,
-			}).Error("unknown protocol in config")
-			continue
-		}
-		var target string
-		switch p.ID {
-		case "dns":
+		var probe pkg.Probe
+		switch url.Scheme {
+		case pkg.DNS:
+			domain := url.Path[1:]
 			port := url.Port()
 			if port == "" {
 				port = "53"
 			}
-			p.DNSResolver = url.Hostname() + ":" + port
-			target = url.Path[1:]
-		case "http":
-			target = url.String()
-		case "tcp":
-			target = fmt.Sprintf("%s:%s", url.Hostname(), url.Port())
+			dnsResolver := url.Host + ":" + port
+			probe = pkg.GetDNSProbe(dnsResolver, domain)
+		case pkg.HTTP, pkg.HTTPS:
+			probe = pkg.GetHTTPProbe(url.String())
+		case pkg.TCP:
+			hostPort := fmt.Sprintf("%s:%s", url.Hostname(), url.Port())
+			probe = pkg.GetTCPProbe(hostPort)
+		default:
+			logger.WithFields(logrus.Fields{
+				"check":    check,
+				"protocol": url.Scheme,
+			}).Error("unknown protocol in config")
+			continue
 		}
-		checks = append(checks, &conncheck.Check{
-			Proto:   p,
-			Target:  target,
+		checks = append(checks, &pkg.Check{
+			Probe:   &probe,
 			Timeout: timeout,
 		})
 	}
