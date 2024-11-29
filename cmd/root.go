@@ -62,7 +62,7 @@ func Execute(version string) {
 	rootCmd.Version = version
 
 	rootCmd.PersistentFlags().
-		StringP("config", "c", "", "config file (default is $HOME/.up.yaml)")
+		StringP("config", "c", "", "config file (default is "+internal.ConfigBase+"."+internal.ConfigType+")")
 	rootCmd.PersistentFlags().
 		BoolP("debug", "d", false, "display debugging output in the console")
 	rootCmd.PersistentFlags().

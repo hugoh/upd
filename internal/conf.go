@@ -13,6 +13,11 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	ConfigBase string = ".upd"
+	ConfigType string = "yaml"
+)
+
 type Configuration struct {
 	Checks struct {
 		Every struct {
@@ -43,13 +48,13 @@ func configFatal(msg string, err error) {
 }
 
 func ReadConf(cfgFile string) *Configuration {
-	viper.SetConfigType("yaml")
+	viper.SetConfigType(ConfigType)
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
-		viper.SetConfigName(".upd")
-		viper.AddConfigPath("$HOME/")
+		viper.SetConfigName(ConfigBase)
 		viper.AddConfigPath(".")
+		viper.AddConfigPath("$HOME/")
 	}
 
 	logger.WithField("file", viper.ConfigFileUsed()).Debug("[Config] config file used")
