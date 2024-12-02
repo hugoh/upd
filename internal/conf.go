@@ -53,11 +53,10 @@ func configFatal(msg string, path string, err error) {
 func ReadConf(cfgFile string) *Configuration {
 	k := koanf.New(".")
 
-	parser := yaml.Parser()
 	if cfgFile == "" {
 		cfgFile = DefaultConfig
 	}
-	if err := k.Load(file.Provider(cfgFile), parser); err != nil {
+	if err := k.Load(file.Provider(cfgFile), yaml.Parser()); err != nil {
 		configFatal("Could not read config", cfgFile, err)
 	}
 	logger.WithField("file", cfgFile).Debug("[Config] config file used")
@@ -94,7 +93,10 @@ func (c Configuration) logSetup() {
 }
 
 func (c Configuration) Dump() {
-	fmt.Printf("%# v\n", pretty.Formatter(c)) //nolint:forbidigo
+	_, err := pretty.Println(c)
+	if err != nil {
+		logger.WithError(err).Error("[Config]")
+	}
 }
 
 func (c Configuration) GetChecks() []*pkg.Check {
