@@ -16,20 +16,21 @@ Download the latest release and extract the `upd` or `upd.exe` binary.
 `upd -h` and `upd.exe -h` will show:
 
 ```text
-Usage:
-  upd [flags]
+Usage: upd [flags]
+
+Tool to monitor if the network connection is up.
 
 Flags:
-  -c, --config string   config file (default is $HOME/.up.yaml)
-  -d, --debug           display debugging output in the console
-  -D, --dump            dump parsed configuration and quit
-  -h, --help            help for upd
-  -v, --version         version for upd
+  -h, --help             Show context-sensitive help.
+  -c, --config=STRING    config file
+  -d, --debug            display debugging output in the console
+  -D, --dump             dump parsed configuration and quit
+      --version          print version information
 ```
 
 ## Configuration
 
-Configuration by default is located in `.upd.yaml` either in the working directory or the home directory.
+Configuration by default is located in `.upd.yaml` in the working directory.
 
 An example is:
 
