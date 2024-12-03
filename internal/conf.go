@@ -44,10 +44,7 @@ type Configuration struct {
 }
 
 func configFatal(msg string, path string, err error) {
-	logger.WithFields(logrus.Fields{
-		"file": path,
-		"err":  err,
-	}).Fatal(msg)
+	logrus.WithField("file", path).WithError(err).Fatal(msg)
 }
 
 func ReadConf(cfgFile string) *Configuration {
