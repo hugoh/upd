@@ -11,7 +11,6 @@ import (
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
-	"github.com/kr/pretty"
 	"github.com/sirupsen/logrus"
 )
 
@@ -47,7 +46,7 @@ func configFatal(msg string, path string, err error) {
 	logrus.WithField("file", path).WithError(err).Fatal(msg)
 }
 
-func ReadConf(cfgFile string) *Configuration {
+func ReadConf(cfgFile string, print bool) *Configuration {
 	k := koanf.New(".")
 
 	if cfgFile == "" {
@@ -61,6 +60,11 @@ func ReadConf(cfgFile string) *Configuration {
 	if err := k.UnmarshalWithConf("", &conf, koanf.UnmarshalConf{}); err != nil {
 		configFatal("Unable to parse the config", cfgFile, err)
 	}
+
+	if print {
+		k.Print()
+	}
+
 	validate := validator.New()
 	if err := validate.Struct(&conf); err != nil {
 		configFatal("Missing required attributes", cfgFile, err)
@@ -86,13 +90,6 @@ func (c Configuration) logSetup() {
 		logger.SetLevel(logrus.WarnLevel)
 	default:
 		logger.WithField("loglevel", c.LogLevel).Error("[Config] Unknown loglevel")
-	}
-}
-
-func (c Configuration) Dump() {
-	_, err := pretty.Println(c)
-	if err != nil {
-		logger.WithError(err).Error("[Config]")
 	}
 }
 

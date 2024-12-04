@@ -4,7 +4,7 @@ Copyright © 2024 Hugo Haas <hugoh@hugoh.net>
 package cmd
 
 import (
-	"os"
+	"log"
 
 	"github.com/alecthomas/kong"
 	"github.com/hugoh/upd/internal"
@@ -19,7 +19,12 @@ type CLI struct {
 
 func (cli *CLI) Run(_ *kong.Context) error {
 	internal.LogSetup(cli.Debug)
-	conf := internal.ReadConf(cli.Config)
+	conf := internal.ReadConf(cli.Config, cli.Dump)
+
+	if cli.Dump {
+		return nil
+	}
+
 	checks := conf.GetChecks()
 	delays := conf.GetDelays()
 	da := conf.GetDownAction()
@@ -29,11 +34,6 @@ func (cli *CLI) Run(_ *kong.Context) error {
 		Delays:     delays,
 		DownAction: da,
 		Shuffle:    conf.Checks.Shuffled,
-	}
-
-	if cli.Dump {
-		conf.Dump()
-		return nil
 	}
 
 	loop.Run()
@@ -55,6 +55,6 @@ func Execute(version string) {
 
 	err := ctx.Run()
 	if err != nil {
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }
