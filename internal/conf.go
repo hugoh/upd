@@ -46,7 +46,7 @@ func configFatal(msg string, path string, err error) {
 	logrus.WithField("file", path).WithError(err).Fatal(msg)
 }
 
-func ReadConf(cfgFile string, print bool) *Configuration {
+func ReadConf(cfgFile string, printConfig bool) *Configuration {
 	k := koanf.New(".")
 
 	if cfgFile == "" {
@@ -61,7 +61,7 @@ func ReadConf(cfgFile string, print bool) *Configuration {
 		configFatal("Unable to parse the config", cfgFile, err)
 	}
 
-	if print {
+	if printConfig {
 		k.Print()
 	}
 
