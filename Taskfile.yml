@@ -33,6 +33,11 @@ tasks:
       - gci write .
       - gofumpt -w .
 
+  fix:
+    summary: Fix lint issues
+    cmds:
+      - golangci-lint run --fix
+
   tidy:
     summary: Tidy the module
     cmds:
