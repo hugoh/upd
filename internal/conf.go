@@ -27,19 +27,19 @@ type Configuration struct {
 			Normal int `koanf:"normal" validate:"required,gt=0"`
 			Down   int `koanf:"down"   validate:"required,gt=0"`
 		} `koanf:"everySec"`
-		List     []string `koanf:"list"         validate:"required"`
-		TimeOut  int      `koanf:"timeoutMilli" validate:"required"`
+		List     []string `koanf:"list"         validate:"required,dive,required,uri"`
+		TimeOut  int      `koanf:"timeoutMilli" validate:"required,gt=0"`
 		Shuffled bool     `koanf:"shuffled"`
 	} `koanf:"checks" validate:"required"`
 	DownAction struct {
-		Exec  string `koanf:"exec" validate:"omitempty"`
+		Exec  string `koanf:"exec"`
 		Every struct {
-			After        int `koanf:"after"           validate:"omitempty,gte=0"`
-			Repeat       int `koanf:"repeat"          validate:"omitempty,gte=0"`
+			After        int `koanf:"after"           validate:"omitempty,gt=0"`
+			Repeat       int `koanf:"repeat"          validate:"omitempty,gt=0"`
 			BackoffLimit int `koanf:"expBackoffLimit" validate:"omitempty,gte=0"`
 		} `koanf:"everySec"`
 		StopExec string `koanf:"stopExec" validate:"omitempty"`
-	} `koanf:"downAction"`
+	} `koanf:"downAction" validate:"omitempty"`
 	LogLevel string `koanf:"logLevel" validate:"omitempty,oneof=trace debug info warn"`
 }
 
