@@ -1,9 +1,9 @@
 package main
 
-import "github.com/hugoh/upd/cmd"
+import "github.com/hugoh/upd/internal"
 
 const version = "dev"
 
 func main() {
-	cmd.Execute(version)
+	internal.Cmd(version)
 }
