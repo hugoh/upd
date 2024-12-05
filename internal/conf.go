@@ -8,66 +8,66 @@ import (
 
 	"github.com/go-playground/validator"
 	"github.com/hugoh/upd/pkg"
-	"github.com/kr/pretty"
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/v2"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
+var ConfigFileUsed string //nolint:gochecknoglobals
+
 const (
-	ConfigBase string = ".upd"
-	ConfigType string = "yaml"
+	DefaultConfig string = ".upd.yaml"
 )
 
 type Configuration struct {
 	Checks struct {
 		Every struct {
-			Normal int `mapstructure:"normal" validate:"required,gt=0"`
-			Down   int `mapstructure:"down"   validate:"required,gt=0"`
-		} `mapstructure:"everySec"`
-		List     []string `mapstructure:"list"         validate:"required"`
-		TimeOut  int      `mapstructure:"timeoutMilli" validate:"required"`
-		Shuffled bool     `mapstructure:"shuffled"`
-	} `mapstructure:"checks" validate:"required"`
+			Normal int `koanf:"normal" validate:"required,gt=0"`
+			Down   int `koanf:"down"   validate:"required,gt=0"`
+		} `koanf:"everySec"`
+		List     []string `koanf:"list"         validate:"required,dive,required,uri"`
+		TimeOut  int      `koanf:"timeoutMilli" validate:"required,gt=0"`
+		Shuffled bool     `koanf:"shuffled"`
+	} `koanf:"checks" validate:"required"`
 	DownAction struct {
-		Exec  string `mapstructure:"exec" validate:"omitempty"`
+		Exec  string `koanf:"exec"`
 		Every struct {
-			After        int `mapstructure:"after"           validate:"omitempty,gte=0"`
-			Repeat       int `mapstructure:"repeat"          validate:"omitempty,gte=0"`
-			BackoffLimit int `mapstructure:"expBackoffLimit" validate:"omitempty,gte=0"`
-		} `mapstructure:"everySec"`
-		StopExec string `mapstructure:"stopExec" validate:"omitempty"`
-	} `mapstructure:"downAction"`
-	LogLevel string `mapstructure:"logLevel" validate:"omitempty,oneof=trace debug info warn"`
+			After        int `koanf:"after"           validate:"omitempty,gt=0"`
+			Repeat       int `koanf:"repeat"          validate:"omitempty,gt=0"`
+			BackoffLimit int `koanf:"expBackoffLimit" validate:"omitempty,gte=0"`
+		} `koanf:"everySec"`
+		StopExec string `koanf:"stopExec" validate:"omitempty"`
+	} `koanf:"downAction" validate:"omitempty"`
+	LogLevel string `koanf:"logLevel" validate:"omitempty,oneof=trace debug info warn"`
 }
 
-func configFatal(msg string, err error) {
-	logger.WithFields(logrus.Fields{
-		"file": viper.ConfigFileUsed(),
-		"err":  err,
-	}).Fatal(msg)
+func configFatal(msg string, path string, err error) {
+	logrus.WithField("file", path).WithError(err).Fatal(msg)
 }
 
-func ReadConf(cfgFile string) *Configuration {
-	viper.SetConfigType(ConfigType)
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	} else {
-		viper.SetConfigName(ConfigBase)
-		viper.AddConfigPath(".")
-		viper.AddConfigPath("$HOME/")
-	}
+func ReadConf(cfgFile string, printConfig bool) *Configuration {
+	k := koanf.New(".")
 
-	logger.WithField("file", viper.ConfigFileUsed()).Debug("[Config] config file used")
-	if err := viper.ReadInConfig(); err != nil {
-		configFatal("Could not read config", err)
+	if cfgFile == "" {
+		cfgFile = DefaultConfig
 	}
+	if err := k.Load(file.Provider(cfgFile), yaml.Parser()); err != nil {
+		configFatal("Could not read config", cfgFile, err)
+	}
+	logger.WithField("file", cfgFile).Debug("[Config] config file used")
 	var conf Configuration
-	if err := viper.Unmarshal(&conf); err != nil {
-		configFatal("Unable to parse the config", err)
+	if err := k.UnmarshalWithConf("", &conf, koanf.UnmarshalConf{}); err != nil {
+		configFatal("Unable to parse the config", cfgFile, err)
 	}
+
+	if printConfig {
+		k.Print()
+	}
+
 	validate := validator.New()
 	if err := validate.Struct(&conf); err != nil {
-		configFatal("Missing required attributes", err)
+		configFatal("Missing required attributes", cfgFile, err)
 	}
 
 	conf.logSetup()
@@ -91,10 +91,6 @@ func (c Configuration) logSetup() {
 	default:
 		logger.WithField("loglevel", c.LogLevel).Error("[Config] Unknown loglevel")
 	}
-}
-
-func (c Configuration) Dump() {
-	fmt.Printf("%# v\n", pretty.Formatter(c)) //nolint:forbidigo
 }
 
 func (c Configuration) GetChecks() []*pkg.Check {
