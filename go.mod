@@ -1,6 +1,6 @@
 module github.com/hugoh/upd
 
-go 1.23.3
+go 1.23.4
 
 require (
 	github.com/knadh/koanf/parsers/yaml v0.1.0
@@ -34,6 +34,6 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	golang.org/x/sys v0.27.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
