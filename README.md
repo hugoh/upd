@@ -16,16 +16,21 @@ Download the latest release and extract the `upd` or `upd.exe` binary.
 `upd -h` and `upd.exe -h` will show:
 
 ```text
-Usage: upd [flags]
+NAME:
+   upd - Tool to monitor if the network connection is up.
 
-Tool to monitor if the network connection is up.
+USAGE:
+   upd [global options] command [command options]
 
-Flags:
-  -h, --help             Show context-sensitive help.
-  -c, --config=STRING    config file
-  -d, --debug            display debugging output in the console
-  -D, --dump             dump parsed configuration and quit
-      --version          print version information
+COMMANDS:
+   help, h  Shows a list of commands or help for one command
+
+GLOBAL OPTIONS:
+   --config value, -c value  use the specified YAML configuration file (default: ".upd.yaml")
+   --debug, -d               display debugging output in the console (default: false)
+   --dump, -D                dump parsed configuration and quit (default: false)
+   --help, -h                show help
+   --version, -v             print the version
 ```
 
 ## Configuration
