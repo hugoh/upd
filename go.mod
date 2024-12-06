@@ -1,6 +1,6 @@
 module github.com/hugoh/upd
 
-go 1.23.4
+go 1.22
 
 require (
 	github.com/knadh/koanf/parsers/yaml v0.1.0
