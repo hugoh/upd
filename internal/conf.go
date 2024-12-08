@@ -39,7 +39,8 @@ type Configuration struct {
 		} `koanf:"everySec"`
 		StopExec string `koanf:"stopExec" validate:"omitempty"`
 	} `koanf:"downAction" validate:"omitempty"`
-	LogLevel string `koanf:"logLevel" validate:"omitempty,oneof=trace debug info warn"`
+	Stats    StatServerConfig `validate:"omitempty"`
+	LogLevel string           `koanf:"logLevel"     validate:"omitempty,oneof=trace debug info warn"`
 }
 
 func configFatal(msg string, path string, err error) {
@@ -66,6 +67,9 @@ func ReadConf(cfgFile string, printConfig bool) *Configuration {
 	}
 
 	validate := validator.New()
+	if err := validate.RegisterValidation("validTCPPort", isValidTCPPort); err != nil {
+		logrus.WithError(err).Fatal("failed to instantiate config validator")
+	}
 	if err := validate.Struct(&conf); err != nil {
 		configFatal("Missing required attributes", cfgFile, err)
 	}

@@ -34,9 +34,10 @@ func Run(cCtx *cli.Context) error {
 	delays := conf.GetDelays()
 	da := conf.GetDownAction()
 
-	status := NewStatus(0) // TODO: parse config
+	status := NewStatus(conf.Stats.Retention)
 
 	loop := NewLoop(checks, delays, da, conf.Checks.Shuffled, status)
+	StartStatServer(status, &conf.Stats)
 
 	loop.Run()
 	return nil
