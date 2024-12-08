@@ -7,17 +7,18 @@ import (
 	"html/template"
 	"net/http"
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
+type StatReportByPeriod struct {
+	Period       time.Duration `json:"period"`
+	Availability float64       `json:"availability"`
+}
+
 type StatReport struct {
-	Up     bool          `json:"currentlyUp"`
-	Uptime time.Duration `json:"uptime"`
-	Stats  []struct {
-		Period       time.Duration `json:"period"`
-		Availability float64       `json:"availability"`
-	} `json:"stats"`
+	Up        bool                 `json:"currentlyUp"`
+	Uptime    time.Duration        `json:"uptime"`
+	Stats     []StatReportByPeriod `json:"stats"`
+	Generated time.Time            `json:"generated"`
 }
 
 type StatHandler struct {
@@ -28,12 +29,11 @@ type StatHandler struct {
 var ErrCompilingTemplate = errors.New("error compiling HTML template")
 
 func NewStatHandler(server *StatServer) (*StatHandler, error) {
-	// HTML template with Prism.js integration
 	tmpl := `
 	<!DOCTYPE html>
 	<html>
 	<head>
-		<title>Struct Pretty Print</title>
+		<title>Upd Status</title>
 		<link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism.min.css" rel="stylesheet" />
 		<script src="https://cdn.jsdelivr.net/npm/prismjs/prism.min.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-json.min.js"></script>
@@ -69,17 +69,47 @@ func NewStatHandler(server *StatServer) (*StatHandler, error) {
 	}, nil
 }
 
-func (h *StatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logrus.WithField("requestor", r.RemoteAddr).Info("[Stats] requested")
-
-	data := StatReport{
-		Up: true,
+func (h *StatHandler) GenStatReport() *StatReport {
+	logger.Trace("[Stats] generating stats")
+	generated := time.Now()
+	var reports []StatReportByPeriod
+	reportCount := len(h.StatServer.Config.Reports)
+	logger.WithField("reportCount", reportCount).Trace("[Stats] reports to generate")
+	if reportCount > 0 {
+		reports = make([]StatReportByPeriod, reportCount)
+		for i := range reportCount {
+			period := h.StatServer.Config.Reports[i]
+			logger.WithField("period", period).Trace("[Stats] generating report for period")
+			availability, err := h.StatServer.Status.StateChangeTracker.
+				CalculateUptime(h.StatServer.Status.Up, period, generated)
+			if err != nil {
+				logger.WithError(err).WithField("period", period).Debug("[Stats] invalid range for stat report")
+			}
+			reports[i] = StatReportByPeriod{
+				Period:       period,
+				Availability: availability,
+			}
+			logger.WithField("report", reports[i]).Trace("[Stats] generated report for period")
+		}
 	}
+	logger.WithField("reports", reports).Trace("[Stats] computed reports")
+	return &StatReport{
+		Generated: generated,
+		Uptime:    generated.Sub(h.StatServer.Status.StateChangeTracker.Started),
+		Up:        h.StatServer.Status.Up,
+		Stats:     reports,
+	}
+}
+
+func (h *StatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	logger.WithField("requestor", r.RemoteAddr).Info("[Stats] requested")
+
+	stats := h.GenStatReport()
 
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(data)
+	err := json.NewEncoder(w).Encode(stats)
 	if err != nil {
-		logrus.WithError(err).Error("[Stats] error output JSON stats")
+		logger.WithError(err).Error("[Stats] error output JSON stats")
 	}
 }
 
@@ -89,7 +119,7 @@ func htmlHandler(h *StatHandler) http.HandlerFunc {
 
 		err := h.template.Execute(w, jsonURL)
 		if err != nil {
-			logrus.WithError(err).Error("[Stats] error rendering HTML")
+			logger.WithError(err).Error("[Stats] error rendering HTML")
 		}
 	}
 }

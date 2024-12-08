@@ -6,11 +6,10 @@ import (
 	"time"
 
 	"github.com/go-playground/validator"
-	"github.com/sirupsen/logrus"
 )
 
 type StatServerConfig struct {
-	Port      string `validate:"validTCPPort"`
+	Port      string `validate:"omitempty,validTCPPort"`
 	Retention time.Duration
 	Reports   []time.Duration
 }
@@ -27,7 +26,7 @@ func isValidTCPPort(fl validator.FieldLevel) bool {
 
 func StartStatServer(status *Status, config *StatServerConfig) {
 	if config.Port == "" {
-		logrus.Debug("no stat server specified")
+		logger.Debug("no stat server specified")
 		return
 	}
 	server := StatServer{
@@ -44,7 +43,7 @@ func (s *StatServer) Start() {
 	mux := http.NewServeMux()
 	statHandler, err := NewStatHandler(s)
 	if err != nil {
-		logrus.WithError(err).Error("[Stats] error starting stats server")
+		logger.WithError(err).Error("[Stats] error starting stats server")
 		return
 	}
 	mux.Handle(StatRoute+".json", statHandler)
@@ -56,8 +55,8 @@ func (s *StatServer) Start() {
 		WriteTimeout: ReqTimeout,
 		IdleTimeout:  IdleTimeout,
 	}
-	logrus.Infof("Stats available at http://localhost%s%s", server.Addr, StatRoute)
+	logger.Infof("Stats available at http://localhost%s%s", server.Addr, StatRoute)
 	if err := server.ListenAndServe(); err != nil {
-		logrus.WithError(err).Error("[Stats] error starting stats server")
+		logger.WithError(err).Error("[Stats] error starting stats server")
 	}
 }

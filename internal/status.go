@@ -22,6 +22,7 @@ type StateChangeTracker struct {
 	Head      *StateChange
 	Tail      *StateChange
 	Retention time.Duration
+	Started   time.Time
 }
 
 func NewStatus(statsRetention time.Duration) *Status {
@@ -29,6 +30,7 @@ func NewStatus(statsRetention time.Duration) *Status {
 	if statsRetention > 0 {
 		stateChangeTracker = &StateChangeTracker{
 			Retention: statsRetention,
+			Started:   time.Now(),
 		}
 	}
 	return &Status{
@@ -149,7 +151,10 @@ func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 	last time.Duration, end time.Time,
 ) (float64, error) {
 	if last > tracker.Retention {
-		return 0.0, ErrInvalidRange
+		return -1, ErrInvalidRange
+	}
+	if end.Sub(tracker.Started) < last {
+		return -1, ErrInvalidRange
 	}
 	return tracker.uptimeCalculation(currentState, last, end), nil
 }

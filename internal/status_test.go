@@ -130,6 +130,10 @@ func (suite *TestSuiteStats) TestCalc() {
 		empty.uptimeCalculation(false,
 			24*time.Hour,
 			suite.Now))
+	empty.Started = suite.Now.Add(-1 * time.Minute)
+	v, err := empty.CalculateUptime(false, 1*time.Hour, suite.Now)
+	assert.Equal(t, -1.0, v)
+	assert.Error(t, err)
 }
 
 func (suite *TestSuiteStats) TestCalcError() {
