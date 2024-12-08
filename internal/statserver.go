@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"fmt"
 	"net/http"
 	"regexp"
 	"time"
@@ -38,16 +37,16 @@ func StartStatServer(status *Status, config *StatServerConfig) {
 	go server.Start()
 }
 
-func StatsHandler(w http.ResponseWriter, _ *http.Request) {
-	fmt.Fprintln(w, "Hello World") // TODO: Implement stats handler
-}
-
 func (s *StatServer) Start() {
 	const StatRoute = "/stats"
 	const ReqTimeout = 3 * time.Second
 	const IdleTimeout = 3 * time.Second
 	mux := http.NewServeMux()
-	mux.HandleFunc(StatRoute, StatsHandler)
+	statHandler := NewStatHandler(s)
+	if statHandler == nil {
+		// FIXME: error out
+	}
+	mux.Handle(StatRoute, statHandler)
 	server := &http.Server{
 		Addr:         s.Config.Port,
 		Handler:      mux,
