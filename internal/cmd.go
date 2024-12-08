@@ -34,7 +34,7 @@ func Run(cCtx *cli.Context) error {
 	delays := conf.GetDelays()
 	da := conf.GetDownAction()
 
-	status := NewStatus(conf.Stats.Retention)
+	status := NewStatus(cCtx.App.Version, conf.Stats.Retention)
 
 	loop := NewLoop(checks, delays, da, conf.Checks.Shuffled, status)
 	StartStatServer(status, &conf.Stats)

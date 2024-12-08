@@ -18,6 +18,7 @@ type StatReport struct {
 	Up        bool                 `json:"currentlyUp"`
 	Uptime    CustomDuration       `json:"uptime"`
 	Stats     []StatReportByPeriod `json:"stats"`
+	Version   string               `json:"version"`
 	Generated time.Time            `json:"generated"`
 }
 
@@ -113,6 +114,7 @@ func (h *StatHandler) GenStatReport() *StatReport {
 		Generated: generated,
 		Uptime:    CustomDuration(generated.Sub(h.StatServer.Status.StateChangeTracker.Started)),
 		Up:        h.StatServer.Status.Up,
+		Version:   h.StatServer.Status.Version,
 		Stats:     reports,
 	}
 }

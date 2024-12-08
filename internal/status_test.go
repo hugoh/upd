@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+const TestVersion = "test"
+
 type TestSuiteStats struct {
 	suite.Suite
 	Now     time.Time
@@ -147,16 +149,16 @@ func (suite *TestSuiteStats) TestCalcError() {
 }
 
 func TestNewStatus(t *testing.T) {
-	a := NewStatus(0)
+	a := NewStatus(TestVersion, 0)
 	assert.NotNil(t, a)
 	assert.Nil(t, a.StateChangeTracker)
-	a = NewStatus(1 * time.Hour)
+	a = NewStatus(TestVersion, 1*time.Hour)
 	assert.NotNil(t, a)
 	assert.NotNil(t, a.StateChangeTracker)
 }
 
 func Test_Status(t *testing.T) {
-	status := NewStatus(0)
+	status := NewStatus(TestVersion, 0)
 	assert.False(t, status.Initialized)
 	status.Set(true)
 	assert.True(t, status.Initialized)
@@ -164,7 +166,7 @@ func Test_Status(t *testing.T) {
 	status.Set(false)
 	assert.True(t, status.Initialized)
 	assert.False(t, status.Up)
-	status = NewStatus(0)
+	status = NewStatus(TestVersion, 0)
 	assert.False(t, status.Initialized)
 	status.Set(false)
 	assert.True(t, status.Initialized)

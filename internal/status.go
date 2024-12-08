@@ -8,6 +8,7 @@ import (
 type Status struct {
 	Up                 bool
 	Initialized        bool
+	Version            string
 	StateChangeTracker *StateChangeTracker
 }
 
@@ -25,7 +26,7 @@ type StateChangeTracker struct {
 	Started   time.Time
 }
 
-func NewStatus(statsRetention time.Duration) *Status {
+func NewStatus(version string, statsRetention time.Duration) *Status {
 	var stateChangeTracker *StateChangeTracker
 	if statsRetention > 0 {
 		stateChangeTracker = &StateChangeTracker{
@@ -34,6 +35,7 @@ func NewStatus(statsRetention time.Duration) *Status {
 		}
 	}
 	return &Status{
+		Version:            version,
 		StateChangeTracker: stateChangeTracker,
 	}
 }

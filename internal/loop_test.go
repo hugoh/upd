@@ -7,7 +7,7 @@ import (
 )
 
 func emptyNewLoop() *Loop {
-	return NewLoop(nil, nil, nil, false, NewStatus(0))
+	return NewLoop(nil, nil, nil, false, NewStatus(TestVersion, 0))
 }
 
 func Test_ReportUpNess(t *testing.T) {
