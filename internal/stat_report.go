@@ -10,13 +10,13 @@ import (
 )
 
 type StatReportByPeriod struct {
-	Period       time.Duration `json:"period"`
-	Availability float64       `json:"availability"`
+	Period       CustomDuration   `json:"period"`
+	Availability PercentAvailable `json:"availability"`
 }
 
 type StatReport struct {
 	Up        bool                 `json:"currentlyUp"`
-	Uptime    time.Duration        `json:"uptime"`
+	Uptime    CustomDuration       `json:"uptime"`
 	Stats     []StatReportByPeriod `json:"stats"`
 	Generated time.Time            `json:"generated"`
 }
@@ -24,6 +24,22 @@ type StatReport struct {
 type StatHandler struct {
 	StatServer *StatServer
 	template   *template.Template
+}
+
+type PercentAvailable float64
+
+func (p PercentAvailable) MarshalJSON() ([]byte, error) {
+	const Hundred = 100
+	if p == -1.0 {
+		return json.Marshal("Not computed") //nolint:wrapcheck
+	}
+	return json.Marshal(fmt.Sprintf("%.2f %%", p*Hundred)) //nolint:wrapcheck
+}
+
+type CustomDuration time.Duration
+
+func (d CustomDuration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(time.Duration(d).String()) //nolint:wrapcheck
 }
 
 var ErrCompilingTemplate = errors.New("error compiling HTML template")
@@ -86,8 +102,8 @@ func (h *StatHandler) GenStatReport() *StatReport {
 				logger.WithError(err).WithField("period", period).Debug("[Stats] invalid range for stat report")
 			}
 			reports[i] = StatReportByPeriod{
-				Period:       period,
-				Availability: availability,
+				Period:       CustomDuration(period),
+				Availability: PercentAvailable(availability),
 			}
 			logger.WithField("report", reports[i]).Trace("[Stats] generated report for period")
 		}
@@ -95,7 +111,7 @@ func (h *StatHandler) GenStatReport() *StatReport {
 	logger.WithField("reports", reports).Trace("[Stats] computed reports")
 	return &StatReport{
 		Generated: generated,
-		Uptime:    generated.Sub(h.StatServer.Status.StateChangeTracker.Started),
+		Uptime:    CustomDuration(generated.Sub(h.StatServer.Status.StateChangeTracker.Started)),
 		Up:        h.StatServer.Status.Up,
 		Stats:     reports,
 	}
