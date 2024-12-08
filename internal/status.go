@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+type Status struct {
+	Up                 bool
+	Initialized        bool
+	StateChangeTracker *StateChangeTracker
+}
+
 type StateChange struct {
 	Timestamp time.Time
 	Up        bool
@@ -18,7 +24,37 @@ type StateChangeTracker struct {
 	Retention time.Duration
 }
 
-func (tracker *StateChangeTracker) AddChange(timestamp time.Time, state bool) {
+func NewStatus(statsRetention time.Duration) *Status {
+	var stateChangeTracker *StateChangeTracker
+	if statsRetention > 0 {
+		stateChangeTracker = &StateChangeTracker{
+			Retention: statsRetention,
+		}
+	}
+	return &Status{
+		StateChangeTracker: stateChangeTracker,
+	}
+}
+
+func (s *Status) Set(up bool) {
+	if !s.Initialized {
+		s.Initialized = true
+	}
+	s.Up = up
+}
+
+func (s *Status) HasChanged(newStatus bool) bool {
+	return !s.Initialized || newStatus != s.Up
+}
+
+func (s *Status) RecordResult(up bool) {
+	if s.StateChangeTracker == nil {
+		return
+	}
+	s.StateChangeTracker.RecordChange(time.Now(), up)
+}
+
+func (tracker *StateChangeTracker) RecordChange(timestamp time.Time, state bool) {
 	// Ignore duplicate consecutive states
 	if tracker.Tail != nil && tracker.Tail.Up == state {
 		return

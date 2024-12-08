@@ -34,12 +34,9 @@ func Run(cCtx *cli.Context) error {
 	delays := conf.GetDelays()
 	da := conf.GetDownAction()
 
-	loop := &Loop{
-		Checks:     checks,
-		Delays:     delays,
-		DownAction: da,
-		Shuffle:    conf.Checks.Shuffled,
-	}
+	status := NewStatus(0) // TODO: parse config
+
+	loop := NewLoop(checks, delays, da, conf.Checks.Shuffled, status)
 
 	loop.Run()
 	return nil

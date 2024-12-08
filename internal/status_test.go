@@ -23,9 +23,9 @@ func GetTracker() *StateChangeTracker {
 func (suite *TestSuiteStats) SetupTest() {
 	tracker := GetTracker()
 	now := time.Now()
-	tracker.AddChange(now.Add(-1*time.Hour), true)     // 1 hour ago, up
-	tracker.AddChange(now.Add(-30*time.Minute), false) // 30 minutes ago, down
-	tracker.AddChange(now.Add(-15*time.Minute), true)  // 15 minutes ago, up
+	tracker.RecordChange(now.Add(-1*time.Hour), true)     // 1 hour ago, up
+	tracker.RecordChange(now.Add(-30*time.Minute), false) // 30 minutes ago, down
+	tracker.RecordChange(now.Add(-15*time.Minute), true)  // 15 minutes ago, up
 	suite.Now = now
 	suite.Tracker = tracker
 }
@@ -43,7 +43,7 @@ func (suite *TestSuiteStats) TestCount() {
 	t := suite.T()
 	tracker := suite.Tracker
 	assert.Equal(t, 3, tracker.RecordsCound())
-	tracker.AddChange(suite.Now.Add(-25*time.Hour), true) // 25 hours
+	tracker.RecordChange(suite.Now.Add(-25*time.Hour), true) // 25 hours
 	assert.Equal(t, 3, tracker.RecordsCound())
 }
 
@@ -105,7 +105,7 @@ func (suite *TestSuiteStats) TestCalc() {
 		tracker.uptimeCalculation(false,
 			24*time.Hour,
 			suite.Now))
-	empty.AddChange(suite.Now.Add(-2*time.Hour), false)
+	empty.RecordChange(suite.Now.Add(-2*time.Hour), false)
 	assert.Equal(t, 0.0,
 		empty.uptimeCalculation(true,
 			1*time.Hour,
@@ -140,4 +140,32 @@ func (suite *TestSuiteStats) TestCalcError() {
 	assert.Error(t, err)
 	_, err = empty.CalculateUptime(true, 24*time.Hour, suite.Now)
 	assert.NoError(t, err)
+}
+
+func TestNewStatus(t *testing.T) {
+	a := NewStatus(0)
+	assert.NotNil(t, a)
+	assert.Nil(t, a.StateChangeTracker)
+	a = NewStatus(1 * time.Hour)
+	assert.NotNil(t, a)
+	assert.NotNil(t, a.StateChangeTracker)
+}
+
+func Test_Status(t *testing.T) {
+	status := NewStatus(0)
+	assert.False(t, status.Initialized)
+	status.Set(true)
+	assert.True(t, status.Initialized)
+	assert.True(t, status.Up)
+	status.Set(false)
+	assert.True(t, status.Initialized)
+	assert.False(t, status.Up)
+	status = NewStatus(0)
+	assert.False(t, status.Initialized)
+	status.Set(false)
+	assert.True(t, status.Initialized)
+	assert.False(t, status.Up)
+	status.Set(true)
+	assert.True(t, status.Initialized)
+	assert.True(t, status.Up)
 }

@@ -9,14 +9,28 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type (
+	Checks []*pkg.Check
+	Delays map[bool]time.Duration
+)
+
 type Loop struct {
-	Checks         []*pkg.Check
-	Delays         map[bool]time.Duration
+	Checks         Checks
+	Delays         Delays
 	DownAction     *DownAction
 	Shuffle        bool
 	downActionLoop *DownActionLoop
-	initialized    bool
-	isUp           bool
+	Status         *Status
+}
+
+func NewLoop(checks Checks, delays Delays, da *DownAction, shuffle bool, status *Status) *Loop {
+	return &Loop{
+		Checks:     checks,
+		Delays:     delays,
+		DownAction: da,
+		Shuffle:    shuffle,
+		Status:     status,
+	}
 }
 
 func (l *Loop) hasDownAction() bool {
@@ -44,13 +58,11 @@ func (l *Loop) DownActionStop() {
 
 // Returns true if it changed
 func (l *Loop) reportUpness(result bool) bool {
-	if l.initialized && result == l.isUp {
+	l.Status.RecordResult(result)
+	if !l.Status.HasChanged(result) {
 		return false
 	}
-	if !l.initialized {
-		l.initialized = true
-	}
-	l.isUp = result
+	l.Status.Set(result)
 	return true
 }
 
@@ -59,7 +71,7 @@ func (l *Loop) ProcessCheck(upStatus bool) {
 	if !changed {
 		return
 	}
-	logger.WithField("up", l.isUp).Info("[Loop] connection status changed")
+	logger.WithField("up", l.Status.Up).Info("[Loop] connection status changed")
 	if !l.hasDownAction() {
 		return
 	}
@@ -110,7 +122,7 @@ func (l *Loop) Run() {
 		} else {
 			logger.WithError(err).Error("[Loop] error")
 		}
-		sleepTime := l.Delays[l.isUp]
+		sleepTime := l.Delays[l.Status.Up]
 		logger.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")
 		time.Sleep(sleepTime)
 	}
