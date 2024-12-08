@@ -42,11 +42,13 @@ func (s *StatServer) Start() {
 	const ReqTimeout = 3 * time.Second
 	const IdleTimeout = 3 * time.Second
 	mux := http.NewServeMux()
-	statHandler := NewStatHandler(s)
-	if statHandler == nil {
-		// FIXME: error out
+	statHandler, err := NewStatHandler(s)
+	if err != nil {
+		logrus.WithError(err).Error("[Stats] error starting stats server")
+		return
 	}
-	mux.Handle(StatRoute, statHandler)
+	mux.Handle(StatRoute+".json", statHandler)
+	mux.HandleFunc(StatRoute, htmlHandler(statHandler))
 	server := &http.Server{
 		Addr:         s.Config.Port,
 		Handler:      mux,
@@ -56,6 +58,6 @@ func (s *StatServer) Start() {
 	}
 	logrus.Infof("Stats available at http://localhost%s%s", server.Addr, StatRoute)
 	if err := server.ListenAndServe(); err != nil {
-		logrus.WithError(err).Error("error starting stats server")
+		logrus.WithError(err).Error("[Stats] error starting stats server")
 	}
 }

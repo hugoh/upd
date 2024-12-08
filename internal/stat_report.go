@@ -2,6 +2,8 @@ package internal
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"html/template"
 	"net/http"
 	"time"
@@ -23,16 +25,18 @@ type StatHandler struct {
 	template   *template.Template
 }
 
-func NewStatHandler(server *StatServer) *StatHandler {
+var ErrCompilingTemplate = errors.New("error compiling HTML template")
+
+func NewStatHandler(server *StatServer) (*StatHandler, error) {
 	// HTML template with Prism.js integration
 	tmpl := `
 	<!DOCTYPE html>
 	<html>
 	<head>
 		<title>Struct Pretty Print</title>
-		<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+		<link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism.min.css" rel="stylesheet" />
+		<script src="https://cdn.jsdelivr.net/npm/prismjs/prism.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-json.min.js"></script>
 		<style>
 			body { font-family: Arial, sans-serif; margin: 20px; }
 			pre { border: 1px solid #ddd; padding: 10px; border-radius: 5px; background: #f9f9f9; }
@@ -40,19 +44,29 @@ func NewStatHandler(server *StatServer) *StatHandler {
 	</head>
 	<body>
 		<h1>Upd Status</h1>
-		<pre><code class="language-json">{{.}}</code></pre>
+        <pre><code class="language-json" id="json"></code></pre>
+
+        <script>
+            fetch("{{.}}")
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("json").textContent = JSON.stringify(data, null, 2);
+                    Prism.highlightAll();
+                })
+                .catch(error => console.error("Error fetching JSON:", error));
+        </script>
+
 	</body>
 	</html>`
 
 	t, err := template.New("stats").Parse(tmpl)
 	if err != nil {
-		// FIXME: message
-		return nil
+		return nil, fmt.Errorf("%w: %w", ErrCompilingTemplate, err)
 	}
 	return &StatHandler{
 		StatServer: server,
 		template:   t,
-	}
+	}, nil
 }
 
 func (h *StatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -62,18 +76,20 @@ func (h *StatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Up: true,
 	}
 
-	// Convert struct to pretty-printed JSON
-	jsonData, err := json.MarshalIndent(data, "", "  ")
+	w.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(w).Encode(data)
 	if err != nil {
-		http.Error(w, "Error converting to JSON", http.StatusInternalServerError)
-		return
+		logrus.WithError(err).Error("[Stats] error output JSON stats")
 	}
+}
 
-	// Prepare template data
-	escapedJSON := string(jsonData)
+func htmlHandler(h *StatHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		jsonURL := r.RequestURI + ".json"
 
-	err = h.template.Execute(w, escapedJSON)
-	if err != nil {
-		logrus.WithError(err).Error("formatting stats")
+		err := h.template.Execute(w, jsonURL)
+		if err != nil {
+			logrus.WithError(err).Error("[Stats] error rendering HTML")
+		}
 	}
 }
