@@ -1,15 +1,15 @@
 checks:
-  everySec:
-    normal: 120
-    down: 20
+  every:
+    normal: 120s
+    down: 20s
   list:
     - ftp://foo.bar/
     - foo://bar/
-  timeoutMilli: 2000
+  timeout: 2000ms
 downAction:
   exec: cowsay
-  everySec:
-    after: 120
-    repeat: 300
+  every:
+    after: 120s
+    repeat: 300s
 # Options = debug, info, warn, error
 logLevel: debug

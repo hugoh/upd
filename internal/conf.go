@@ -23,24 +23,24 @@ const (
 type Configuration struct {
 	Checks struct {
 		Every struct {
-			Normal int `koanf:"normal" validate:"required,gt=0"`
-			Down   int `koanf:"down"   validate:"required,gt=0"`
-		} `koanf:"everySec"`
-		List     []string `koanf:"list"         validate:"required,dive,required,uri"`
-		TimeOut  int      `koanf:"timeoutMilli" validate:"required,gt=0"`
-		Shuffled bool     `koanf:"shuffled"`
-	} `koanf:"checks" validate:"required"`
+			Normal time.Duration `validate:"required,gt=0"`
+			Down   time.Duration `validate:"required,gt=0"`
+		}
+		List     []string      `validate:"required,dive,required,uri"`
+		TimeOut  time.Duration `validate:"required,gt=0"`
+		Shuffled bool
+	} `validate:"required"`
 	DownAction struct {
-		Exec  string `koanf:"exec"`
+		Exec  string
 		Every struct {
-			After        int `koanf:"after"           validate:"omitempty,gt=0"`
-			Repeat       int `koanf:"repeat"          validate:"omitempty,gt=0"`
-			BackoffLimit int `koanf:"expBackoffLimit" validate:"omitempty,gte=0"`
-		} `koanf:"everySec"`
-		StopExec string `koanf:"stopExec" validate:"omitempty"`
-	} `koanf:"downAction" validate:"omitempty"`
+			After        time.Duration `validate:"omitempty,gt=0"`
+			Repeat       time.Duration `validate:"omitempty,gt=0"`
+			BackoffLimit time.Duration `koanf:"expBackoffLimit"   validate:"omitempty,gte=0"`
+		}
+		StopExec string `validate:"omitempty"`
+	} `validate:"omitempty"`
 	Stats    StatServerConfig `validate:"omitempty"`
-	LogLevel string           `koanf:"logLevel"     validate:"omitempty,oneof=trace debug info warn"`
+	LogLevel string           `validate:"omitempty,oneof=trace debug info warn"`
 }
 
 func configFatal(msg string, path string, err error) {
@@ -99,7 +99,6 @@ func (c Configuration) logSetup() {
 
 func (c Configuration) GetChecks() []*pkg.Check {
 	checks := make([]*pkg.Check, 0, len(c.Checks.List))
-	timeout := time.Duration(c.Checks.TimeOut) * time.Millisecond
 	for _, check := range c.Checks.List {
 		url, err := url.Parse(check)
 		if err != nil {
@@ -133,7 +132,7 @@ func (c Configuration) GetChecks() []*pkg.Check {
 		}
 		checks = append(checks, &pkg.Check{
 			Probe:   &probe,
-			Timeout: timeout,
+			Timeout: c.Checks.TimeOut,
 		})
 	}
 	if len(checks) == 0 {
@@ -147,9 +146,9 @@ func (c Configuration) GetDownAction() *DownAction {
 		return nil
 	}
 	return &DownAction{
-		After:        time.Duration(c.DownAction.Every.After) * time.Second,
-		Every:        time.Duration(c.DownAction.Every.Repeat) * time.Second,
-		BackoffLimit: time.Duration(c.DownAction.Every.BackoffLimit) * time.Second,
+		After:        c.DownAction.Every.After,
+		Every:        c.DownAction.Every.Repeat,
+		BackoffLimit: c.DownAction.Every.BackoffLimit,
 		Exec:         c.DownAction.Exec,
 		StopExec:     c.DownAction.StopExec,
 	}
@@ -157,7 +156,7 @@ func (c Configuration) GetDownAction() *DownAction {
 
 func (c Configuration) GetDelays() map[bool]time.Duration {
 	delays := make(map[bool]time.Duration)
-	delays[true] = time.Duration(c.Checks.Every.Normal) * time.Second
-	delays[false] = time.Duration(c.Checks.Every.Down) * time.Second
+	delays[true] = c.Checks.Every.Normal
+	delays[false] = c.Checks.Every.Down
 	return delays
 }

@@ -1,17 +1,17 @@
 checks:
-  everySec:
-    normal: 120
-    down: 20
+  every:
+    normal: 120s
+    down: 20s
   list:
     - http://captive.apple.com/hotspot-detect.html
     - https://example.com/
     - dns://1.1.1.1/www.google.com
     - tcp://1.0.0.1:53/
-  timeoutMilli: 2000
+  timeout: 2000ms
 downAction:
   exec: cowsay
-  everySec:
-    after: 120
-    repeat: 300
+  every:
+    after: 120s
+    repeat: 300s
 # Options = debug, info, warn, error
 logLevel: debug
