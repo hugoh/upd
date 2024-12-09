@@ -11,7 +11,7 @@ import (
 
 type StatReportByPeriod struct {
 	Period       ReadableDuration `json:"period"`
-	Availability PercentAvailable `json:"availability"`
+	Availability ReadablePercent  `json:"availability"`
 }
 
 type StatReport struct {
@@ -25,22 +25,6 @@ type StatReport struct {
 type StatHandler struct {
 	StatServer *StatServer
 	template   *template.Template
-}
-
-type PercentAvailable float64
-
-func (p PercentAvailable) MarshalJSON() ([]byte, error) {
-	const Hundred = 100
-	if p == -1.0 {
-		return json.Marshal("Not computed") //nolint:wrapcheck
-	}
-	return json.Marshal(fmt.Sprintf("%.2f %%", p*Hundred)) //nolint:wrapcheck
-}
-
-type ReadableDuration time.Duration
-
-func (d ReadableDuration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(time.Duration(d).Truncate(time.Second).String()) //nolint:wrapcheck
 }
 
 var ErrCompilingTemplate = errors.New("error compiling HTML template")
@@ -104,7 +88,7 @@ func (h *StatHandler) GenStatReport() *StatReport {
 			}
 			reports[i] = StatReportByPeriod{
 				Period:       ReadableDuration(period),
-				Availability: PercentAvailable(availability),
+				Availability: ReadablePercent(availability),
 			}
 			logger.WithField("report", reports[i]).Trace("[Stats] generated report for period")
 		}
