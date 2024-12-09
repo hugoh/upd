@@ -10,16 +10,16 @@ import (
 )
 
 type StatReportByPeriod struct {
-	Period       CustomDuration   `json:"period"`
+	Period       ReadableDuration `json:"period"`
 	Availability PercentAvailable `json:"availability"`
 }
 
 type StatReport struct {
-	Up        bool                 `json:"currentlyUp"`
-	Uptime    CustomDuration       `json:"uptime"`
-	Stats     []StatReportByPeriod `json:"stats"`
-	Version   string               `json:"version"`
-	Generated time.Time            `json:"generated"`
+	Up        bool                 `json:"isUp"`
+	Stats     []StatReportByPeriod `json:"reports"`
+	Version   string               `json:"updVersion"`
+	Uptime    ReadableDuration     `json:"updUptime"`	
+	Generated time.Time            `json:"generatedAt"`
 }
 
 type StatHandler struct {
@@ -37,9 +37,9 @@ func (p PercentAvailable) MarshalJSON() ([]byte, error) {
 	return json.Marshal(fmt.Sprintf("%.2f %%", p*Hundred)) //nolint:wrapcheck
 }
 
-type CustomDuration time.Duration
+type ReadableDuration time.Duration
 
-func (d CustomDuration) MarshalJSON() ([]byte, error) {
+func (d ReadableDuration) MarshalJSON() ([]byte, error) {
 	return json.Marshal(time.Duration(d).String()) //nolint:wrapcheck
 }
 
