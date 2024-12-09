@@ -15,13 +15,13 @@ type StatusReportByPeriod struct {
 }
 
 type StatusReport struct {
-	Up          bool                   `json:"isUp"`
-	Stats       []StatusReportByPeriod `json:"reports"`
-	UpdateCount int64                  `json:"totalUpdates"`
-	LastUpdate  time.Time              `json:"lastUpdate"`
-	Version     string                 `json:"updVersion"`
-	Uptime      ReadableDuration       `json:"updUptime"`
-	Generated   time.Time              `json:"generatedAt"`
+	Up         bool                   `json:"isUp"`
+	Stats      []StatusReportByPeriod `json:"reports"`
+	CheckCount int64                  `json:"totalChecksRun"`
+	LastUpdate ReadableDuration       `json:"timeSinceLastUpdate"`
+	Uptime     ReadableDuration       `json:"updUptime"`
+	Version    string                 `json:"updVersion"`
+	Generated  time.Time              `json:"generatedAt"`
 }
 
 type StatHandler struct {
@@ -97,13 +97,13 @@ func (h *StatHandler) GenStatReport() *StatusReport {
 	}
 	logger.WithField("reports", reports).Trace("[Stats] computed reports")
 	return &StatusReport{
-		Generated:   generated,
-		Uptime:      ReadableDuration(generated.Sub(h.StatServer.Status.StateChangeTracker.Started)),
-		Up:          h.StatServer.Status.Up,
-		Version:     h.StatServer.Status.Version,
-		Stats:       reports,
-		UpdateCount: h.StatServer.Status.StateChangeTracker.UpdateCount,
-		LastUpdate:  h.StatServer.Status.StateChangeTracker.LastUpdated,
+		Generated:  generated,
+		Uptime:     ReadableDuration(generated.Sub(h.StatServer.Status.StateChangeTracker.Started)),
+		Up:         h.StatServer.Status.Up,
+		Version:    h.StatServer.Status.Version,
+		Stats:      reports,
+		CheckCount: h.StatServer.Status.StateChangeTracker.UpdateCount,
+		LastUpdate: ReadableDuration(generated.Sub(h.StatServer.Status.StateChangeTracker.LastUpdated)),
 	}
 }
 
