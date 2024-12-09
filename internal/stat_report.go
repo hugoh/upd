@@ -40,7 +40,7 @@ func (p PercentAvailable) MarshalJSON() ([]byte, error) {
 type ReadableDuration time.Duration
 
 func (d ReadableDuration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(time.Duration(d).String()) //nolint:wrapcheck
+	return json.Marshal(time.Duration(d).Truncate(time.Second).String()) //nolint:wrapcheck
 }
 
 var ErrCompilingTemplate = errors.New("error compiling HTML template")
