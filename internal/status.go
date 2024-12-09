@@ -20,10 +20,12 @@ type StateChange struct {
 }
 
 type StateChangeTracker struct {
-	Head      *StateChange
-	Tail      *StateChange
-	Retention time.Duration
-	Started   time.Time
+	Head        *StateChange
+	Tail        *StateChange
+	Retention   time.Duration
+	UpdateCount int64
+	LastUpdated time.Time
+	Started     time.Time
 }
 
 func NewStatus(version string, statsRetention time.Duration) *Status {
@@ -59,6 +61,9 @@ func (s *Status) RecordResult(up bool) {
 }
 
 func (tracker *StateChangeTracker) RecordChange(timestamp time.Time, state bool) {
+	tracker.UpdateCount++
+	tracker.LastUpdated = timestamp
+
 	// Ignore duplicate consecutive states
 	if tracker.Tail != nil && tracker.Tail.Up == state {
 		return
