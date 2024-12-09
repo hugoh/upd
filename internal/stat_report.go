@@ -103,7 +103,7 @@ func (h *StatHandler) GenStatReport() *StatReport {
 				logger.WithError(err).WithField("period", period).Debug("[Stats] invalid range for stat report")
 			}
 			reports[i] = StatReportByPeriod{
-				Period:       CustomDuration(period),
+				Period:       ReadableDuration(period),
 				Availability: PercentAvailable(availability),
 			}
 			logger.WithField("report", reports[i]).Trace("[Stats] generated report for period")
@@ -112,7 +112,7 @@ func (h *StatHandler) GenStatReport() *StatReport {
 	logger.WithField("reports", reports).Trace("[Stats] computed reports")
 	return &StatReport{
 		Generated: generated,
-		Uptime:    CustomDuration(generated.Sub(h.StatServer.Status.StateChangeTracker.Started)),
+		Uptime:    ReadableDuration(generated.Sub(h.StatServer.Status.StateChangeTracker.Started)),
 		Up:        h.StatServer.Status.Up,
 		Version:   h.StatServer.Status.Version,
 		Stats:     reports,
