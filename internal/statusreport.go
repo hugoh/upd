@@ -9,17 +9,17 @@ import (
 	"time"
 )
 
-type StatReportByPeriod struct {
+type StatusReportByPeriod struct {
 	Period       ReadableDuration `json:"period"`
 	Availability ReadablePercent  `json:"availability"`
 }
 
-type StatReport struct {
-	Up        bool                 `json:"isUp"`
-	Stats     []StatReportByPeriod `json:"reports"`
-	Version   string               `json:"updVersion"`
-	Uptime    ReadableDuration     `json:"updUptime"`
-	Generated time.Time            `json:"generatedAt"`
+type StatusReport struct {
+	Up        bool                   `json:"isUp"`
+	Stats     []StatusReportByPeriod `json:"reports"`
+	Version   string                 `json:"updVersion"`
+	Uptime    ReadableDuration       `json:"updUptime"`
+	Generated time.Time              `json:"generatedAt"`
 }
 
 type StatHandler struct {
@@ -70,14 +70,14 @@ func NewStatHandler(server *StatServer) (*StatHandler, error) {
 	}, nil
 }
 
-func (h *StatHandler) GenStatReport() *StatReport {
+func (h *StatHandler) GenStatReport() *StatusReport {
 	logger.Trace("[Stats] generating stats")
 	generated := time.Now()
-	var reports []StatReportByPeriod
+	var reports []StatusReportByPeriod
 	reportCount := len(h.StatServer.Config.Reports)
 	logger.WithField("reportCount", reportCount).Trace("[Stats] reports to generate")
 	if reportCount > 0 {
-		reports = make([]StatReportByPeriod, reportCount)
+		reports = make([]StatusReportByPeriod, reportCount)
 		for i := range reportCount {
 			period := h.StatServer.Config.Reports[i]
 			logger.WithField("period", period).Trace("[Stats] generating report for period")
@@ -86,7 +86,7 @@ func (h *StatHandler) GenStatReport() *StatReport {
 			if err != nil {
 				logger.WithError(err).WithField("period", period).Debug("[Stats] invalid range for stat report")
 			}
-			reports[i] = StatReportByPeriod{
+			reports[i] = StatusReportByPeriod{
 				Period:       ReadableDuration(period),
 				Availability: ReadablePercent(availability),
 			}
@@ -94,7 +94,7 @@ func (h *StatHandler) GenStatReport() *StatReport {
 		}
 	}
 	logger.WithField("reports", reports).Trace("[Stats] computed reports")
-	return &StatReport{
+	return &StatusReport{
 		Generated: generated,
 		Uptime:    ReadableDuration(generated.Sub(h.StatServer.Status.StateChangeTracker.Started)),
 		Up:        h.StatServer.Status.Up,
