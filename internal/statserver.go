@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"net/http"
 	"regexp"
 	"time"
@@ -55,7 +56,8 @@ func (s *StatServer) Start() {
 		WriteTimeout: ReqTimeout,
 		IdleTimeout:  IdleTimeout,
 	}
-	logger.Infof("Stats available at http://localhost%s%s", server.Addr, StatRoute)
+	logger.WithField("statserver", fmt.Sprintf("http://localhost%s%s", server.Addr, StatRoute)).
+		Info("[Stats] server started")
 	if err := server.ListenAndServe(); err != nil {
 		logger.WithError(err).Error("[Stats] error starting stats server")
 	}
