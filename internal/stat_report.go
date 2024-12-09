@@ -18,7 +18,7 @@ type StatReport struct {
 	Up        bool                 `json:"isUp"`
 	Stats     []StatReportByPeriod `json:"reports"`
 	Version   string               `json:"updVersion"`
-	Uptime    ReadableDuration     `json:"updUptime"`	
+	Uptime    ReadableDuration     `json:"updUptime"`
 	Generated time.Time            `json:"generatedAt"`
 }
 
