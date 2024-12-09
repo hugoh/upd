@@ -26,8 +26,12 @@ func formatDuration(d time.Duration) string {
 		return str
 	}
 	// Remove trailing "0s" or "0m0s"
-	str = strings.TrimSuffix(str, "0s")
-	str = strings.TrimSuffix(str, "0m")
+	if strings.HasSuffix(str, "m0s") {
+		str = strings.TrimSuffix(str, "0s")
+	}
+	if strings.HasSuffix(str, "h0m") {
+		str = strings.TrimSuffix(str, "0m")
+	}
 	return str
 }
 
