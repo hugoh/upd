@@ -82,7 +82,7 @@ tasks:
 
   lint:
     summary: Run linters
-    deps: [devdep]
+    deps: [devdep, minify]
     cmds:
       - go vet ./...
       - golangci-lint run ./...
