@@ -27,28 +27,34 @@ func NewStatus(version string, statsRetention time.Duration) *Status {
 	}
 }
 
-func (s *Status) Set(up bool) {
-	s.mutex.Lock()
+func (s *Status) set(up bool) {
 	if !s.Initialized {
 		s.Initialized = true
 	}
 	s.Up = up
-	s.mutex.Unlock()
 }
 
-func (s *Status) HasChanged(newStatus bool) bool {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+func (s *Status) hasChanged(newStatus bool) bool {
 	return !s.Initialized || newStatus != s.Up
 }
 
-func (s *Status) RecordResult(up bool) {
+func (s *Status) recordResult(up bool) {
 	if s.StateChangeTracker == nil {
 		return
 	}
-	s.mutex.Lock()
 	s.StateChangeTracker.RecordChange(time.Now(), up)
-	s.mutex.Unlock()
+}
+
+// Returns true if it changed
+func (s *Status) Update(up bool) bool {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.recordResult(up)
+	if !s.hasChanged(up) {
+		return false
+	}
+	s.set(up)
+	return true
 }
 
 func (s *Status) GenStatReport(periods []time.Duration) *StatusReport {

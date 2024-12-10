@@ -19,18 +19,35 @@ func TestNewStatus(t *testing.T) {
 func Test_Status(t *testing.T) {
 	status := NewStatus(TestVersion, 0)
 	assert.False(t, status.Initialized)
-	status.Set(true)
+	status.set(true)
 	assert.True(t, status.Initialized)
 	assert.True(t, status.Up)
-	status.Set(false)
+	status.set(false)
 	assert.True(t, status.Initialized)
 	assert.False(t, status.Up)
 	status = NewStatus(TestVersion, 0)
 	assert.False(t, status.Initialized)
-	status.Set(false)
+	status.set(false)
 	assert.True(t, status.Initialized)
 	assert.False(t, status.Up)
-	status.Set(true)
+	status.set(true)
 	assert.True(t, status.Initialized)
 	assert.True(t, status.Up)
+}
+
+func Test_Update(t *testing.T) {
+	var s *Status
+	var c bool
+	s = NewStatus(TestVersion, 0)
+	c = s.Update(true)
+	assert.True(t, c)
+	c = s.Update(true)
+	assert.False(t, c)
+	c = s.Update(false)
+	assert.True(t, c)
+	s = NewStatus(TestVersion, 0)
+	c = s.Update(false)
+	assert.True(t, c)
+	c = s.Update(true)
+	assert.True(t, c)
 }

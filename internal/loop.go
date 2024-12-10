@@ -56,18 +56,8 @@ func (l *Loop) DownActionStop() {
 	l.downActionLoop = nil
 }
 
-// Returns true if it changed
-func (l *Loop) reportUpness(result bool) bool {
-	l.Status.RecordResult(result)
-	if !l.Status.HasChanged(result) {
-		return false
-	}
-	l.Status.Set(result)
-	return true
-}
-
 func (l *Loop) ProcessCheck(upStatus bool) {
-	changed := l.reportUpness(upStatus)
+	changed := l.Status.Update(upStatus)
 	if !changed {
 		return
 	}
