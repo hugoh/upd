@@ -17,7 +17,7 @@ tasks:
 
   minify:
     summary: Minify HTML
-    deps: [devdep]
+    deps: [devdepminify]
     sources:
       - "{{.HTML}}"
     generates:
@@ -39,8 +39,6 @@ tasks:
   devdep:
     summary: Install dev dependencies
     cmds:
-      # Minifier
-      - go install github.com/tdewolff/minify/v2/cmd/minify@latest
       # Linters
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
       - go install honnef.co/go/tools/cmd/staticcheck@latest
@@ -49,12 +47,18 @@ tasks:
       - go install mvdan.cc/gofumpt@latest
       - go install github.com/daixiang0/gci@latest
     status:
-      - "{{.ISPRESENT}}/minify"
       - "{{.ISPRESENT}}/golangci-lint"
       - "{{.ISPRESENT}}/staticcheck"
       - "{{.ISPRESENT}}/gosec"
       - "{{.ISPRESENT}}/gofumpt"
       - "{{.ISPRESENT}}/gci"
+
+  devdepminify:
+    summary: Install minification tool
+    cmds:
+      - go install github.com/tdewolff/minify/v2/cmd/minify@latest
+    status:
+      - "{{.ISPRESENT}}/minify"
 
   fixlint:
     summary: Fix lint issues

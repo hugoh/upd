@@ -22,8 +22,6 @@ jobs:
           go-version: stable
       - name: Install Task
         uses: arduino/setup-task@v2
-      - name: Install dependencies
-        run: task devdep
       - name: Run linters
         run: task lint
       - name: Run tests
