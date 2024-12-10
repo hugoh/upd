@@ -42,13 +42,9 @@ func (s *StatServer) Start() {
 	const ReqTimeout = 3 * time.Second
 	const IdleTimeout = 3 * time.Second
 	mux := http.NewServeMux()
-	statHandler, err := NewStatHandler(s)
-	if err != nil {
-		logger.WithError(err).Error("[Stats] error starting stats server")
-		return
-	}
+	statHandler := NewStatHandler(s)
 	mux.Handle(StatRoute+".json", statHandler)
-	mux.HandleFunc(StatRoute, htmlHandler(statHandler))
+	mux.HandleFunc(StatRoute, StatPage)
 	server := &http.Server{
 		Addr:         s.Config.Port,
 		Handler:      mux,

@@ -1,10 +1,10 @@
 package internal
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"net/http"
 	"time"
 )
@@ -26,50 +26,25 @@ type StatusReport struct {
 
 type StatHandler struct {
 	StatServer *StatServer
-	template   *template.Template
 }
 
 var ErrCompilingTemplate = errors.New("error compiling HTML template")
 
-func NewStatHandler(server *StatServer) (*StatHandler, error) {
-	tmpl := `
-	<!DOCTYPE html>
-	<html>
-	<head>
-		<title>Upd Status</title>
-		<link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism.min.css" rel="stylesheet" />
-		<script src="https://cdn.jsdelivr.net/npm/prismjs/prism.min.js"></script>
-		<script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-json.min.js"></script>
-		<style>
-			body { font-family: Arial, sans-serif; margin: 20px; }
-			pre { border: 1px solid #ddd; padding: 10px; border-radius: 5px; background: #f9f9f9; }
-		</style>
-	</head>
-	<body>
-		<h1>Upd Status</h1>
-        <pre><code class="language-json" id="json"></code></pre>
-
-        <script>
-            fetch("{{.}}")
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById("json").textContent = JSON.stringify(data, null, 2);
-                    Prism.highlightAll();
-                })
-                .catch(error => console.error("Error fetching JSON:", error));
-        </script>
-
-	</body>
-	</html>`
-
-	t, err := template.New("stats").Parse(tmpl)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrCompilingTemplate, err)
-	}
+func NewStatHandler(server *StatServer) *StatHandler {
 	return &StatHandler{
 		StatServer: server,
-		template:   t,
-	}, nil
+	}
+}
+
+//go:embed static/stats.min.html
+var statPage string
+
+func StatPage(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Cache-Control", "max-age=604800") // 7 days
+	_, err := fmt.Fprint(w, statPage)
+	if err != nil {
+		http.Error(w, "Failed to return stats page", http.StatusInternalServerError)
+	}
 }
 
 func (h *StatHandler) GenStatReport() *StatusReport {
@@ -116,16 +91,5 @@ func (h *StatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err := json.NewEncoder(w).Encode(stats)
 	if err != nil {
 		logger.WithError(err).Error("[Stats] error output JSON stats")
-	}
-}
-
-func htmlHandler(h *StatHandler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		jsonURL := r.RequestURI + ".json"
-
-		err := h.template.Execute(w, jsonURL)
-		if err != nil {
-			logger.WithError(err).Error("[Stats] error rendering HTML")
-		}
 	}
 }
