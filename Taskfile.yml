@@ -1,20 +1,40 @@
 version: "3"
 
+vars:
+  STATICDIR: internal/static
+  HTML: "{{.STATICDIR}}/stats.html"
+  MIN: "{{.STATICDIR}}/stats.min.html"
+  ISPRESENT: test -x "$(go env GOPATH)/bin"
+
 tasks:
   default:
     deps: [dev]
 
   dev:
     summary: Development mode
+    deps: [minify]
     cmd: go run . {{.CLI_ARGS}}
+
+  minify:
+    summary: Minify HTML
+    deps: [devdepminify]
+    sources:
+      - "{{.HTML}}"
+    generates:
+      - "{{.MIN}}"
+    cmds:
+      - minify -o {{.MIN}} {{.HTML}}
 
   build:
     summary: Build application
+    deps: [minify]
     cmd: go build -o dist/upd .
 
   clean:
     summary: Clean the project
-    cmd: go clean
+    cmds:
+      - go clean
+      - rm {{.MIN}}
 
   devdep:
     summary: Install dev dependencies
@@ -26,17 +46,32 @@ tasks:
       # Formatters
       - go install mvdan.cc/gofumpt@latest
       - go install github.com/daixiang0/gci@latest
+    status:
+      - "{{.ISPRESENT}}/golangci-lint"
+      - "{{.ISPRESENT}}/staticcheck"
+      - "{{.ISPRESENT}}/gosec"
+      - "{{.ISPRESENT}}/gofumpt"
+      - "{{.ISPRESENT}}/gci"
+
+  devdepminify:
+    summary: Install minification tool
+    cmds:
+      - go install github.com/tdewolff/minify/v2/cmd/minify@latest
+    status:
+      - "{{.ISPRESENT}}/minify"
+
+  fixlint:
+    summary: Fix lint issues
+    deps: [devdep]
+    cmds:
+      - golangci-lint run --fix
 
   fmt:
     summary: Format the code
+    deps: [devdep]
     cmds:
       - gci write .
       - gofumpt -w .
-
-  fix:
-    summary: Fix lint issues
-    cmds:
-      - golangci-lint run --fix
 
   tidy:
     summary: Tidy the module
@@ -51,6 +86,7 @@ tasks:
 
   lint:
     summary: Run linters
+    deps: [devdep, minify]
     cmds:
       - go vet ./...
       - golangci-lint run ./...
