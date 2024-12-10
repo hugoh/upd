@@ -48,38 +48,7 @@ func StatPage(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (h *StatHandler) GenStatReport() *StatusReport {
-	logger.Trace("[Stats] generating stats")
-	generated := time.Now()
-	var reports []StatusReportByPeriod
-	reportCount := len(h.StatServer.Config.Reports)
-	logger.WithField("reportCount", reportCount).Trace("[Stats] reports to generate")
-	if reportCount > 0 {
-		reports = make([]StatusReportByPeriod, reportCount)
-		for i := range reportCount {
-			period := h.StatServer.Config.Reports[i]
-			logger.WithField("period", period).Trace("[Stats] generating report for period")
-			availability, err := h.StatServer.Status.StateChangeTracker.
-				CalculateUptime(h.StatServer.Status.Up, period, generated)
-			if err != nil {
-				logger.WithError(err).WithField("period", period).Debug("[Stats] invalid range for stat report")
-			}
-			reports[i] = StatusReportByPeriod{
-				Period:       ReadableDuration(period),
-				Availability: ReadablePercent(availability),
-			}
-			logger.WithField("report", reports[i]).Trace("[Stats] generated report for period")
-		}
-	}
-	logger.WithField("reports", reports).Trace("[Stats] computed reports")
-	return &StatusReport{
-		Generated:  generated,
-		Uptime:     ReadableDuration(generated.Sub(h.StatServer.Status.StateChangeTracker.Started)),
-		Up:         h.StatServer.Status.Up,
-		Version:    h.StatServer.Status.Version,
-		Stats:      reports,
-		CheckCount: h.StatServer.Status.StateChangeTracker.UpdateCount,
-		LastUpdate: ReadableDuration(generated.Sub(h.StatServer.Status.StateChangeTracker.LastUpdated)),
-	}
+	return h.StatServer.Status.GenStatReport(h.StatServer.Config.Reports)
 }
 
 func (h *StatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
