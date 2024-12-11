@@ -57,11 +57,11 @@ func (s *Status) Update(up bool) bool {
 	return true
 }
 
-func (s *Status) GenStatReport(periods []time.Duration) *StatusReport {
+func (s *Status) GenStatReport(periods []time.Duration) *Report {
 	generated := time.Now()
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	return &StatusReport{
+	return &Report{
 		Generated:  generated,
 		Uptime:     ReadableDuration(generated.Sub(s.StateChangeTracker.Started)),
 		Up:         s.Up,

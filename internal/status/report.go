@@ -11,19 +11,19 @@ import (
 	"github.com/hugoh/upd/internal/logger"
 )
 
-type StatusReportByPeriod struct {
+type ReportByPeriod struct {
 	Period       ReadableDuration `json:"period"`
 	Availability ReadablePercent  `json:"availability"`
 }
 
-type StatusReport struct {
-	Up         bool                   `json:"isUp"`
-	Stats      []StatusReportByPeriod `json:"reports"`
-	CheckCount int64                  `json:"totalChecksRun"`
-	LastUpdate ReadableDuration       `json:"timeSinceLastUpdate"`
-	Uptime     ReadableDuration       `json:"updUptime"`
-	Version    string                 `json:"updVersion"`
-	Generated  time.Time              `json:"generatedAt"`
+type Report struct {
+	Up         bool             `json:"isUp"`
+	Stats      []ReportByPeriod `json:"reports"`
+	CheckCount int64            `json:"totalChecksRun"`
+	LastUpdate ReadableDuration `json:"timeSinceLastUpdate"`
+	Uptime     ReadableDuration `json:"updUptime"`
+	Version    string           `json:"updVersion"`
+	Generated  time.Time        `json:"generatedAt"`
 }
 
 type StatHandler struct {
@@ -49,7 +49,7 @@ func StatPage(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-func (h *StatHandler) GenStatReport() *StatusReport {
+func (h *StatHandler) GenStatReport() *Report {
 	return h.StatServer.Status.GenStatReport(h.StatServer.Config.Reports)
 }
 
