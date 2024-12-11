@@ -1,42 +1,97 @@
 version: "3"
 
+vars:
+  STATICDIR: internal/status/static
+  HTML: "{{.STATICDIR}}/stats.html"
+  MIN: "{{.STATICDIR}}/stats.min.html"
+  COVEROUT: cover.out
+  GOBIN: $(go env GOPATH)/bin
+  ISPRESENT: test -x "{{.GOBIN}}"
+
 tasks:
   default:
     deps: [dev]
 
+  coverage:
+    summary: Generate test coverage
+    cmds:
+      - task: test
+        vars:
+          CLI_ARGS: -coverprofile={{.COVEROUT}} -covermode=atomic -coverpkg=./...
+    sources:
+      - "**/*.go"
+    generates:
+      - "{{.COVEROUT}}"
+
+  covercheck:
+    summary: Check test coverage
+    deps:
+      - task: devdep
+        vars:
+          {
+            DEP: github.com/vladopajic/go-test-coverage/v2,
+            BIN: go-test-coverage,
+          }
+      - coverage
+    cmds:
+      - "{{.GOBIN}}/go-test-coverage --config=./.testcoverage.yml"
+
   dev:
     summary: Development mode
+    deps: [minify]
     cmd: go run . {{.CLI_ARGS}}
+
+  minify:
+    summary: Minify HTML
+    deps:
+      - task: devdep
+        vars: { DEP: github.com/tdewolff/minify/v2/cmd/minify, BIN: minify }
+    sources:
+      - "{{.HTML}}"
+    generates:
+      - "{{.MIN}}"
+    cmds:
+      - minify -o {{.MIN}} {{.HTML}}
 
   build:
     summary: Build application
+    deps: [minify]
     cmd: go build -o dist/upd .
 
   clean:
     summary: Clean the project
-    cmd: go clean
+    cmds:
+      - go clean
+      - rm -f {{.MIN}}
+      - rm -f {{.COVEROUT}}
 
   devdep:
-    summary: Install dev dependencies
+    summary: Install dev dependency
+    requires:
+      vars: [DEP, BIN]
     cmds:
       # Linters
-      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-      - go install honnef.co/go/tools/cmd/staticcheck@latest
-      - go install github.com/securego/gosec/v2/cmd/gosec@latest
-      # Formatters
-      - go install mvdan.cc/gofumpt@latest
-      - go install github.com/daixiang0/gci@latest
+      - go install {{.DEP}}@latest
+      # - go install github.com/securego/gosec/v2/cmd/gosec@latest
+    status:
+      - "{{.ISPRESENT}}/{{.BIN}}"
+
+  fixlint:
+    summary: Fix lint issues
+    deps: [devdep]
+    cmds:
+      - golangci-lint run --fix
 
   fmt:
     summary: Format the code
+    deps:
+      - task: devdep
+        vars: { DEP: mvdan.cc/gofumpt, BIN: gofumpt }
+      - task: devdep
+        vars: { DEP: github.com/daixiang0/gci, BIN: gci }
     cmds:
       - gci write .
       - gofumpt -w .
-
-  fix:
-    summary: Fix lint issues
-    cmds:
-      - golangci-lint run --fix
 
   tidy:
     summary: Tidy the module
@@ -50,13 +105,63 @@ tasks:
       - task tidy
 
   lint:
-    summary: Run linters
+    summary: Lint code
     cmds:
-      - go vet ./...
-      - golangci-lint run ./...
-      - staticcheck ./...
-      - gosec -fmt=golint -quiet ./...
+      - task: minify
+      - task: runalllinters
+
+  runalllinters:
+    summary: Run all linters
+    deps:
+      - task: runlinter
+        vars:
+          {
+            DEP: honnef.co/go/tools/cmd/staticcheck,
+            BIN: staticcheck,
+            RUN: staticcheck,
+          }
+      - task: runlinter
+        vars:
+          {
+            DEP: github.com/securego/gosec/v2/cmd/gosec,
+            BIN: gosec,
+            RUN: gosec -fmt=golint -quiet,
+          }
+      - task: runlinter
+        vars:
+          {
+            DEP: github.com/golangci/golangci-lint/cmd/golangci-lint,
+            BIN: golangci-lint,
+            RUN: golangci-lint run,
+          }
+      - runvet
+
+  rungosec:
+    summary: gosec
+    deps:
+      - task: devdep
+        vars: { DEP: github.com/securego/gosec/v2/cmd/gosec, BIN: gosec }
+    cmd: gosec -fmt=golint -quiet ./...
+
+  runlinter:
+    summary: Run specific linter
+    requires:
+      vars: [DEP, BIN, RUN]
+    deps:
+      - task: devdep
+        vars:
+          DEP:
+            ref: .DEP
+          BIN:
+            ref: .BIN
+    cmds:
+      - "{{.RUN}} ./..."
+
+  runvet:
+    summary: Go vet
+    cmd: go vet ./...
 
   test:
     summary: Run tests
+    deps: [minify]
     cmd: go test ./... {{.CLI_ARGS}}

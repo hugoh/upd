@@ -41,9 +41,9 @@ An example is:
 
 ```yaml
 checks:
-  everySec:
-    normal: 120 # Run check every 2 minutes
-    down: 10 # Run check every 10 seconds if the connection is detected as down
+  every:
+    normal: 2m # Run check every 2 minutes
+    down: 10s # Run check every 10 seconds if the connection is detected as down
   list: # List of checks to run
     # From https://en.wikipedia.org/wiki/Captive_portal
     - http://captive.apple.com/hotspot-detect.html
@@ -58,14 +58,23 @@ checks:
     - dns://149.112.112.112/www.google.com
     - tcp://1.1.1.1:80/
     - tcp://www.google.com:80/
-  timeoutMilli: 2000 # After 2s, consider connection down
+  timeout: 2000ms # After 2s, consider connection down
   shuffled: true # Pick a random check every time
 downAction: # What to do if the connection is detected as down
   exec: /internet-monitor/tmhi-cli -c /etc/internet-monitor/tmhi-cli.yaml reboot # Command to run
-  everySec:
-    after: 90 # Run after 90 seconds of the connection being down
-    repeat: 240 # Re-run after 4 minutes
-    expBackoffLimit: 1200 # Next re-runs will be exponentially delayed, but at most will be run every 20 minutes
+  every:
+    after: 90s # Run after 90 seconds of the connection being down
+    repeat: 4m # Re-run after 4 minutes
+    expBackoffLimit: 20m # Next re-runs will be exponentially delayed, but at most will be run every 20 minutes
   stopExec: /etc/internet-monitor/reboot_notify.sh # Command to run once the connection becomes up again
 logLevel: debug # Logging level; default is info
+stats:
+  port: :42080 # Start a stat server at http://<ip>:42080/stats
+  retention: 168h # Keep data for 1 week
+  reports: # Generate availability stats for the last
+    - 1m
+    - 15m
+    - 1h
+    - 24h
+    - 168h
 ```

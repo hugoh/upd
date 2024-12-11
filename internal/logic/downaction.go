@@ -1,4 +1,4 @@
-package internal
+package logic
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/shlex"
+	"github.com/hugoh/upd/internal/logger"
 	"github.com/sirupsen/logrus"
 )
 
@@ -48,16 +49,16 @@ func (dal *DownActionLoop) Execute(execString string) error {
 	cmd := exec.Command(command[0], command[1:]...) // #nosec G204
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("UPD_ITERATION=%d", dal.it.iteration))
-	logger.WithField("exec", cmd.String()).Info("[DownAction] executing command")
+	logger.L.WithField("exec", cmd.String()).Info("[DownAction] executing command")
 	err := cmd.Start()
 	if err != nil {
-		logger.WithField("exec", cmd.String()).WithError(err).Error("[DownAction] failed to run")
+		logger.L.WithField("exec", cmd.String()).WithError(err).Error("[DownAction] failed to run")
 		return fmt.Errorf("failed to execute DownAction: %w", err)
 	}
 	go func() {
 		err := cmd.Wait()
 		if err != nil {
-			logger.WithField("exec", cmd.String()).WithError(err).Warn("[DownAction] error executing command")
+			logger.L.WithField("exec", cmd.String()).WithError(err).Warn("[DownAction] error executing command")
 		}
 	}()
 	return nil
@@ -85,7 +86,7 @@ func (dal *DownActionLoop) iterate() {
 			}
 		}
 	}
-	logger.WithFields(logrus.Fields{
+	logger.L.WithFields(logrus.Fields{
 		"iteration":    dal.it.iteration,
 		"sleepTime":    dal.it.sleepTime,
 		"limitReached": dal.it.limitReached,
@@ -97,13 +98,13 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Debug("[DownAction] canceled")
+			logger.L.Debug("[DownAction] canceled")
 			return
 		case <-time.After(dal.it.sleepTime):
 		}
 		err := dal.Execute(dal.da.Exec)
 		if err != nil {
-			logger.WithError(err).Error("[DownAction] failed to execute")
+			logger.L.WithError(err).Error("[DownAction] failed to execute")
 		}
 		if dal.da.Every > 0 {
 			dal.iterate()
@@ -125,13 +126,13 @@ func (da *DownAction) NewDownActionLoop() (*DownActionLoop, context.Context) {
 
 func (da *DownAction) Start() *DownActionLoop {
 	dal, ctx := da.NewDownActionLoop()
-	logger.Debug("[DownAction] kicking off run loop")
+	logger.L.Debug("[DownAction] kicking off run loop")
 	go dal.run(ctx)
 	return dal
 }
 
 func (dal *DownActionLoop) Stop() {
 	_ = dal.Execute(dal.da.StopExec) //nolint:errcheck
-	logger.Debug("[DownAction] sending shutdown signal")
+	logger.L.Debug("[DownAction] sending shutdown signal")
 	dal.cancelFunc()
 }

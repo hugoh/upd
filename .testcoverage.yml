@@ -1,0 +1,10 @@
+profile: cover.out
+
+threshold:
+  package: 55
+  total: 60
+
+exclude:
+  paths:
+    - ^main\.go$
+    - ^internal/logger

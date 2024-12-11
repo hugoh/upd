@@ -1,7 +1,7 @@
 checks:
-  everySec:
-    normal: 5
-    down: 5
+  every:
+    normal: 5s
+    down: 5s
   list:
     # From https://en.wikipedia.org/wiki/Captive_portal
     - http://captive.apple.com/hotspot-detect.html
@@ -13,13 +13,22 @@ checks:
     - tcp://8.8.8.8:53/
     - tcp://8.8.4.4:53/
     - dns://1.1.1.1/www.google.com
-  timeoutMilli: 2000
+  timeout: 2s
   shuffled: true
 downAction:
   exec: cowsay
   everySec:
-    after: 1
-    repeat: 3
+    after: 1s
+    repeat: 3s
   stopExec: ./testdata/echo-reboot-count.sh
 # Options = debug, info, warn, error
 logLevel: trace
+stats:
+  port: :8080
+  retention: 10080m
+  reports:
+    - 10s
+    - 15m
+    - 60m
+    - 1440m
+    - 10080m
