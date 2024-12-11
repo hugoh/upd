@@ -13,7 +13,6 @@ tasks:
 
   coverage:
     summary: Generate test coverage
-    deps: [devdepcover]
     cmds:
       - task test -- -coverprofile=./cover.out -covermode=atomic -coverpkg=./...
     sources:
@@ -23,7 +22,7 @@ tasks:
 
   covercheck:
     summary: Check test coverage
-    deps: [coverage]
+    deps: [devdepcover, coverage]
     cmds:
       - "{{.GOBIN}}/go-test-coverage --config=./.testcoverage.yml"
 
