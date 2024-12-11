@@ -21,7 +21,7 @@ type StatServer struct {
 
 func StartStatServer(status *Status, config *StatServerConfig) {
 	if config.Port == "" {
-		logger.Logger.Debug("no stat server specified")
+		logger.L.Debug("no stat server specified")
 		return
 	}
 	server := StatServer{
@@ -46,9 +46,9 @@ func (s *StatServer) Start() {
 		WriteTimeout: ReqTimeout,
 		IdleTimeout:  IdleTimeout,
 	}
-	logger.Logger.WithField("statserver", fmt.Sprintf("http://localhost%s%s", server.Addr, StatRoute)).
+	logger.L.WithField("statserver", fmt.Sprintf("http://localhost%s%s", server.Addr, StatRoute)).
 		Info("[Stats] server started")
 	if err := server.ListenAndServe(); err != nil {
-		logger.Logger.WithError(err).Error("[Stats] error starting stats server")
+		logger.L.WithError(err).Error("[Stats] error starting stats server")
 	}
 }

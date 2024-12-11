@@ -60,7 +60,7 @@ func ReadConf(cfgFile string, printConfig bool) *Configuration {
 	if err := k.Load(file.Provider(cfgFile), yaml.Parser()); err != nil {
 		configFatal("Could not read config", cfgFile, err)
 	}
-	logger.Logger.WithField("file", cfgFile).Debug("[Config] config file used")
+	logger.L.WithField("file", cfgFile).Debug("[Config] config file used")
 	var conf Configuration
 	if err := k.UnmarshalWithConf("", &conf, koanf.UnmarshalConf{}); err != nil {
 		configFatal("Unable to parse the config", cfgFile, err)
@@ -88,21 +88,21 @@ func isValidTCPPort(fl validator.FieldLevel) bool {
 }
 
 func (c Configuration) logSetup() {
-	if logger.Logger.GetLevel() == logrus.DebugLevel {
+	if logger.L.GetLevel() == logrus.DebugLevel {
 		// Already set
 		return
 	}
 	switch c.LogLevel {
 	case "trace":
-		logger.Logger.SetLevel(logrus.TraceLevel)
+		logger.L.SetLevel(logrus.TraceLevel)
 	case "debug":
-		logger.Logger.SetLevel(logrus.DebugLevel)
+		logger.L.SetLevel(logrus.DebugLevel)
 	case "info":
-		logger.Logger.SetLevel(logrus.InfoLevel)
+		logger.L.SetLevel(logrus.InfoLevel)
 	case "warn", "":
-		logger.Logger.SetLevel(logrus.WarnLevel)
+		logger.L.SetLevel(logrus.WarnLevel)
 	default:
-		logger.Logger.WithField("loglevel", c.LogLevel).Error("[Config] Unknown loglevel")
+		logger.L.WithField("loglevel", c.LogLevel).Error("[Config] Unknown loglevel")
 	}
 }
 
@@ -111,7 +111,7 @@ func (c Configuration) GetChecks() []*pkg.Check {
 	for _, check := range c.Checks.List {
 		url, err := url.Parse(check)
 		if err != nil {
-			logger.Logger.WithFields(logrus.Fields{
+			logger.L.WithFields(logrus.Fields{
 				"check": check,
 				"err":   err,
 			}).Error("could not parse check in config")
@@ -133,7 +133,7 @@ func (c Configuration) GetChecks() []*pkg.Check {
 			hostPort := fmt.Sprintf("%s:%s", url.Hostname(), url.Port())
 			probe = pkg.GetTCPProbe(hostPort)
 		default:
-			logger.Logger.WithFields(logrus.Fields{
+			logger.L.WithFields(logrus.Fields{
 				"check":    check,
 				"protocol": url.Scheme,
 			}).Error("unknown protocol in config")
@@ -145,7 +145,7 @@ func (c Configuration) GetChecks() []*pkg.Check {
 		})
 	}
 	if len(checks) == 0 {
-		logger.Logger.Fatal("No valid check found")
+		logger.L.Fatal("No valid check found")
 	}
 	return checks
 }

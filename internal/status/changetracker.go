@@ -151,7 +151,7 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 		period := periods[i]
 		availability, err := tracker.CalculateUptime(currentState, period, end)
 		if err != nil {
-			logger.Logger.WithError(err).WithField("period", period).Debug("[Stats] invalid range for stat report")
+			logger.L.WithError(err).WithField("period", period).Debug("[Stats] invalid range for stat report")
 		}
 		reports[i] = ReportByPeriod{
 			Period:       ReadableDuration(period),

@@ -54,13 +54,13 @@ func (h *StatHandler) GenStatReport() *Report {
 }
 
 func (h *StatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger.Logger.WithField("requestor", r.RemoteAddr).Info("[Stats] requested")
+	logger.L.WithField("requestor", r.RemoteAddr).Info("[Stats] requested")
 
 	stats := h.GenStatReport()
 
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(stats)
 	if err != nil {
-		logger.Logger.WithError(err).Error("[Stats] error output JSON stats")
+		logger.L.WithError(err).Error("[Stats] error output JSON stats")
 	}
 }

@@ -63,7 +63,7 @@ func (l *Loop) ProcessCheck(upStatus bool) {
 	if !changed {
 		return
 	}
-	logger.Logger.WithField("up", l.Status.Up).Info("[Loop] connection status changed")
+	logger.L.WithField("up", l.Status.Up).Info("[Loop] connection status changed")
 	if !l.hasDownAction() {
 		return
 	}
@@ -72,7 +72,7 @@ func (l *Loop) ProcessCheck(upStatus bool) {
 	} else {
 		err := l.DownActionStart()
 		if err != nil {
-			logger.Logger.WithError(err).Error("[Loop] could not start DownAction")
+			logger.L.WithError(err).Error("[Loop] could not start DownAction")
 		}
 	}
 }
@@ -87,7 +87,7 @@ type Checker struct{}
 
 func (checker Checker) CheckRun(c pkg.Check) {
 	probe := *c.Probe
-	logger.Logger.WithFields(logrus.Fields{
+	logger.L.WithFields(logrus.Fields{
 		"probe":    probe,
 		"protocol": probe.Scheme(),
 		"timeout":  c.Timeout,
@@ -95,11 +95,11 @@ func (checker Checker) CheckRun(c pkg.Check) {
 }
 
 func (checker Checker) ProbeSuccess(report *pkg.Report) {
-	logger.Logger.WithField("report", report).Debug("[Check] success")
+	logger.L.WithField("report", report).Debug("[Check] success")
 }
 
 func (checker Checker) ProbeFailure(report *pkg.Report) {
-	logger.Logger.WithField("report", report).Warn("[Check] failed")
+	logger.L.WithField("report", report).Warn("[Check] failed")
 }
 
 func (l *Loop) Run() {
@@ -112,10 +112,10 @@ func (l *Loop) Run() {
 		if err == nil {
 			l.ProcessCheck(status)
 		} else {
-			logger.Logger.WithError(err).Error("[Loop] error")
+			logger.L.WithError(err).Error("[Loop] error")
 		}
 		sleepTime := l.Delays[l.Status.Up]
-		logger.Logger.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")
+		logger.L.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")
 		time.Sleep(sleepTime)
 	}
 }

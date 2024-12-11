@@ -9,7 +9,7 @@ import (
 )
 
 func NewNullLoggerHook() *test.Hook {
-	logger.Logger = logrus.New()
-	logger.Logger.Out = io.Discard
-	return test.NewLocal(logger.Logger)
+	logger.L = logrus.New()
+	logger.L.Out = io.Discard
+	return test.NewLocal(logger.L)
 }

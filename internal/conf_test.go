@@ -66,7 +66,7 @@ func TestGetChecksIgnored(t *testing.T) {
 
 func TestGetChecksFromConfFail(t *testing.T) {
 	nulllogger.NewNullLoggerHook()
-	logger.Logger.ExitFunc = func(code int) { panic(code) }
+	logger.L.ExitFunc = func(code int) { panic(code) }
 	conf := readConf("upd_test_allbad.yaml")
 	assert.Panics(t, func() { conf.GetChecks() })
 }
