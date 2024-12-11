@@ -4,6 +4,7 @@ vars:
   STATICDIR: internal/status/static
   HTML: "{{.STATICDIR}}/stats.html"
   MIN: "{{.STATICDIR}}/stats.min.html"
+  COVEROUT: cover.out
   GOBIN: $(go env GOPATH)/bin
   ISPRESENT: test -x "{{.GOBIN}}"
 
@@ -14,11 +15,13 @@ tasks:
   coverage:
     summary: Generate test coverage
     cmds:
-      - task test -- -coverprofile=./cover.out -covermode=atomic -coverpkg=./...
+      - task: test
+        vars:
+          CLI_ARGS: -coverprofile={{.COVEROUT}} -covermode=atomic -coverpkg=./...
     sources:
       - "**/*.go"
     generates:
-      - cover.out
+      - "{{.COVEROUT}}"
 
   covercheck:
     summary: Check test coverage
@@ -59,10 +62,13 @@ tasks:
     summary: Clean the project
     cmds:
       - go clean
-      - rm {{.MIN}}
+      - rm -f {{.MIN}}
+      - rm -f {{.COVEROUT}}
 
   devdep:
     summary: Install dev dependency
+    requires:
+      vars: [DEP, BIN]
     cmds:
       # Linters
       - go install {{.DEP}}@latest
@@ -99,23 +105,29 @@ tasks:
       - task tidy
 
   lint:
+    summary: Lint code
+    cmds:
+      - task: minify
+      - task: runalllinters
+
+  runalllinters:
     summary: Run all linters
     deps:
-      - task: runlint
+      - task: runlinter
         vars:
           {
             DEP: honnef.co/go/tools/cmd/staticcheck,
             BIN: staticcheck,
             RUN: staticcheck,
           }
-      - task: runlint
+      - task: runlinter
         vars:
           {
             DEP: github.com/securego/gosec/v2/cmd/gosec,
             BIN: gosec,
             RUN: gosec -fmt=golint -quiet,
           }
-      - task: runlint
+      - task: runlinter
         vars:
           {
             DEP: github.com/golangci/golangci-lint/cmd/golangci-lint,
@@ -131,21 +143,25 @@ tasks:
         vars: { DEP: github.com/securego/gosec/v2/cmd/gosec, BIN: gosec }
     cmd: gosec -fmt=golint -quiet ./...
 
-  runlint:
+  runlinter:
     summary: Run specific linter
-    # FIXME: this would be more elegant but not supported
-    # deps:
-    #   - task: devdep
-    #     vars: { DEP: {{.DEP}}, BIN: {{.BIN}} }
+    requires:
+      vars: [DEP, BIN, RUN]
+    deps:
+      - task: devdep
+        vars:
+          DEP:
+            ref: .DEP
+          BIN:
+            ref: .BIN
     cmds:
-      - task devdep DEP={{.DEP}} BIN={{.BIN}}
       - "{{.RUN}} ./..."
 
   runvet:
     summary: Go vet
-    deps: [minify]
     cmd: go vet ./...
 
   test:
     summary: Run tests
+    deps: [minify]
     cmd: go test ./... {{.CLI_ARGS}}
