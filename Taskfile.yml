@@ -4,11 +4,28 @@ vars:
   STATICDIR: internal/status/static
   HTML: "{{.STATICDIR}}/stats.html"
   MIN: "{{.STATICDIR}}/stats.min.html"
-  ISPRESENT: test -x "$(go env GOPATH)/bin"
+  GOBIN: $(go env GOPATH)/bin
+  ISPRESENT: test -x "{{.GOBIN}}"
 
 tasks:
   default:
     deps: [dev]
+
+  coverage:
+    summary: Generate test coverage
+    deps: [devdepcover]
+    cmds:
+      - task test -- -coverprofile=./cover.out -covermode=atomic -coverpkg=./...
+    sources:
+      - "**/*.go"
+    generates:
+      - cover.out
+
+  covercheck:
+    summary: Check test coverage
+    deps: [coverage]
+    cmds:
+      - "{{.GOBIN}}/go-test-coverage --config=./.testcoverage.yml"
 
   dev:
     summary: Development mode
@@ -52,6 +69,13 @@ tasks:
       - "{{.ISPRESENT}}/gosec"
       - "{{.ISPRESENT}}/gofumpt"
       - "{{.ISPRESENT}}/gci"
+
+  devdepcover:
+    summary: Install test coverage tool
+    cmds:
+      - go install github.com/vladopajic/go-test-coverage/v2@latest
+    status:
+      - "{{.ISPRESENT}}/go-test-coverage"
 
   devdepminify:
     summary: Install minification tool

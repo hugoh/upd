@@ -26,6 +26,11 @@ jobs:
         run: task lint
       - name: Run tests
         run: task test
+      - name: Generate test coverage
+        run: task coverage
+      - name: Check test coverage
+        uses: vladopajic/go-test-coverage@v2
+
   release:
     name: Semantic Release
     runs-on: ubuntu-latest
