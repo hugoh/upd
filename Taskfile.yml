@@ -22,7 +22,14 @@ tasks:
 
   covercheck:
     summary: Check test coverage
-    deps: [devdepcover, coverage]
+    deps:
+      - task: devdep
+        vars:
+          {
+            DEP: github.com/vladopajic/go-test-coverage/v2,
+            BIN: go-test-coverage,
+          }
+      - coverage
     cmds:
       - "{{.GOBIN}}/go-test-coverage --config=./.testcoverage.yml"
 
@@ -33,7 +40,9 @@ tasks:
 
   minify:
     summary: Minify HTML
-    deps: [devdepminify]
+    deps:
+      - task: devdep
+        vars: { DEP: github.com/tdewolff/minify/v2/cmd/minify, BIN: minify }
     sources:
       - "{{.HTML}}"
     generates:
@@ -53,35 +62,13 @@ tasks:
       - rm {{.MIN}}
 
   devdep:
-    summary: Install dev dependencies
+    summary: Install dev dependency
     cmds:
       # Linters
-      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-      - go install honnef.co/go/tools/cmd/staticcheck@latest
-      - go install github.com/securego/gosec/v2/cmd/gosec@latest
-      # Formatters
-      - go install mvdan.cc/gofumpt@latest
-      - go install github.com/daixiang0/gci@latest
+      - go install {{.DEP}}@latest
+      # - go install github.com/securego/gosec/v2/cmd/gosec@latest
     status:
-      - "{{.ISPRESENT}}/golangci-lint"
-      - "{{.ISPRESENT}}/staticcheck"
-      - "{{.ISPRESENT}}/gosec"
-      - "{{.ISPRESENT}}/gofumpt"
-      - "{{.ISPRESENT}}/gci"
-
-  devdepcover:
-    summary: Install test coverage tool
-    cmds:
-      - go install github.com/vladopajic/go-test-coverage/v2@latest
-    status:
-      - "{{.ISPRESENT}}/go-test-coverage"
-
-  devdepminify:
-    summary: Install minification tool
-    cmds:
-      - go install github.com/tdewolff/minify/v2/cmd/minify@latest
-    status:
-      - "{{.ISPRESENT}}/minify"
+      - "{{.ISPRESENT}}/{{.BIN}}"
 
   fixlint:
     summary: Fix lint issues
@@ -91,7 +78,11 @@ tasks:
 
   fmt:
     summary: Format the code
-    deps: [devdep]
+    deps:
+      - task: devdep
+        vars: { DEP: mvdan.cc/gofumpt, BIN: gofumpt }
+      - task: devdep
+        vars: { DEP: github.com/daixiang0/gci, BIN: gci }
     cmds:
       - gci write .
       - gofumpt -w .
@@ -108,13 +99,52 @@ tasks:
       - task tidy
 
   lint:
-    summary: Run linters
-    deps: [devdep, minify]
+    summary: Run all linters
+    deps:
+      - task: runlint
+        vars:
+          {
+            DEP: honnef.co/go/tools/cmd/staticcheck,
+            BIN: staticcheck,
+            RUN: staticcheck,
+          }
+      - task: runlint
+        vars:
+          {
+            DEP: github.com/securego/gosec/v2/cmd/gosec,
+            BIN: gosec,
+            RUN: gosec -fmt=golint -quiet,
+          }
+      - task: runlint
+        vars:
+          {
+            DEP: github.com/golangci/golangci-lint/cmd/golangci-lint,
+            BIN: golangci-lint,
+            RUN: golangci-lint run,
+          }
+      - runvet
+
+  rungosec:
+    summary: gosec
+    deps:
+      - task: devdep
+        vars: { DEP: github.com/securego/gosec/v2/cmd/gosec, BIN: gosec }
+    cmd: gosec -fmt=golint -quiet ./...
+
+  runlint:
+    summary: Run specific linter
+    # FIXME: this would be more elegant but not supported
+    # deps:
+    #   - task: devdep
+    #     vars: { DEP: {{.DEP}}, BIN: {{.BIN}} }
     cmds:
-      - go vet ./...
-      - golangci-lint run ./...
-      - staticcheck ./...
-      - gosec -fmt=golint -quiet ./...
+      - task devdep DEP={{.DEP}} BIN={{.BIN}}
+      - "{{.RUN}} ./..."
+
+  runvet:
+    summary: Go vet
+    deps: [minify]
+    cmd: go vet ./...
 
   test:
     summary: Run tests
