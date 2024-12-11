@@ -1,9 +1,10 @@
-package internal
+package logic
 
 import (
 	"testing"
 	"time"
 
+	"github.com/hugoh/upd/internal/conftest"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -28,7 +29,7 @@ func Test_ExecuteSucceed(t *testing.T) {
 	da := &DownAction{
 		Exec: "true",
 	}
-	hook := NewNullLoggerHook()
+	hook := conftest.NewNullLoggerHook()
 	dal, _ := da.NewDownActionLoop()
 	err := dal.Execute(da.Exec)
 	assert.NoError(t, err)
@@ -39,7 +40,7 @@ func Test_ExecuteFail(t *testing.T) {
 	da := &DownAction{
 		Exec: "false",
 	}
-	hook := NewNullLoggerHook()
+	hook := conftest.NewNullLoggerHook()
 	dal, _ := da.NewDownActionLoop()
 	err := dal.Execute(da.Exec)
 	assert.NoError(t, err, "Success in starting a command that fails")
@@ -83,7 +84,7 @@ func Test_StartAndStop(t *testing.T) {
 		Exec:     "true",
 		StopExec: "false",
 	}
-	hook := NewNullLoggerHook()
+	hook := conftest.NewNullLoggerHook()
 	dal := da.Start()
 	assert.NotNil(t, dal, "DownAction loop is running")
 	time.Sleep(waitTime) // Give it time to startExec

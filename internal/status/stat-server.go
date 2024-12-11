@@ -1,12 +1,11 @@
-package internal
+package status
 
 import (
 	"fmt"
 	"net/http"
-	"regexp"
 	"time"
 
-	"github.com/go-playground/validator"
+	"github.com/hugoh/upd/internal/logger"
 )
 
 type StatServerConfig struct {
@@ -20,14 +19,9 @@ type StatServer struct {
 	Config *StatServerConfig
 }
 
-func isValidTCPPort(fl validator.FieldLevel) bool {
-	re := regexp.MustCompile(`^:(6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[0-9]{1,4})$`)
-	return re.MatchString(fl.Field().String())
-}
-
 func StartStatServer(status *Status, config *StatServerConfig) {
 	if config.Port == "" {
-		logger.Debug("no stat server specified")
+		logger.Logger.Debug("no stat server specified")
 		return
 	}
 	server := StatServer{
@@ -52,9 +46,9 @@ func (s *StatServer) Start() {
 		WriteTimeout: ReqTimeout,
 		IdleTimeout:  IdleTimeout,
 	}
-	logger.WithField("statserver", fmt.Sprintf("http://localhost%s%s", server.Addr, StatRoute)).
+	logger.Logger.WithField("statserver", fmt.Sprintf("http://localhost%s%s", server.Addr, StatRoute)).
 		Info("[Stats] server started")
 	if err := server.ListenAndServe(); err != nil {
-		logger.WithError(err).Error("[Stats] error starting stats server")
+		logger.Logger.WithError(err).Error("[Stats] error starting stats server")
 	}
 }

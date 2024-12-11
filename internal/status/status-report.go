@@ -1,4 +1,4 @@
-package internal
+package status
 
 import (
 	_ "embed"
@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/hugoh/upd/internal/logger"
 )
 
 type StatusReportByPeriod struct {
@@ -52,13 +54,13 @@ func (h *StatHandler) GenStatReport() *StatusReport {
 }
 
 func (h *StatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger.WithField("requestor", r.RemoteAddr).Info("[Stats] requested")
+	logger.Logger.WithField("requestor", r.RemoteAddr).Info("[Stats] requested")
 
 	stats := h.GenStatReport()
 
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(stats)
 	if err != nil {
-		logger.WithError(err).Error("[Stats] error output JSON stats")
+		logger.Logger.WithError(err).Error("[Stats] error output JSON stats")
 	}
 }

@@ -1,7 +1,7 @@
 version: "3"
 
 vars:
-  STATICDIR: internal/static
+  STATICDIR: internal/status/static
   HTML: "{{.STATICDIR}}/stats.html"
   MIN: "{{.STATICDIR}}/stats.min.html"
   ISPRESENT: test -x "$(go env GOPATH)/bin"

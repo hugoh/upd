@@ -1,10 +1,12 @@
-package internal
+package logic
 
 import (
 	"errors"
 	"math/rand/v2"
 	"time"
 
+	"github.com/hugoh/upd/internal/logger"
+	"github.com/hugoh/upd/internal/status"
 	"github.com/hugoh/upd/pkg"
 	"github.com/sirupsen/logrus"
 )
@@ -20,10 +22,10 @@ type Loop struct {
 	DownAction     *DownAction
 	Shuffle        bool
 	downActionLoop *DownActionLoop
-	Status         *Status
+	Status         *status.Status
 }
 
-func NewLoop(checks Checks, delays Delays, da *DownAction, shuffle bool, status *Status) *Loop {
+func NewLoop(checks Checks, delays Delays, da *DownAction, shuffle bool, status *status.Status) *Loop {
 	return &Loop{
 		Checks:     checks,
 		Delays:     delays,
@@ -61,7 +63,7 @@ func (l *Loop) ProcessCheck(upStatus bool) {
 	if !changed {
 		return
 	}
-	logger.WithField("up", l.Status.Up).Info("[Loop] connection status changed")
+	logger.Logger.WithField("up", l.Status.Up).Info("[Loop] connection status changed")
 	if !l.hasDownAction() {
 		return
 	}
@@ -70,7 +72,7 @@ func (l *Loop) ProcessCheck(upStatus bool) {
 	} else {
 		err := l.DownActionStart()
 		if err != nil {
-			logger.WithError(err).Error("[Loop] could not start DownAction")
+			logger.Logger.WithError(err).Error("[Loop] could not start DownAction")
 		}
 	}
 }
@@ -85,7 +87,7 @@ type Checker struct{}
 
 func (checker Checker) CheckRun(c pkg.Check) {
 	probe := *c.Probe
-	logger.WithFields(logrus.Fields{
+	logger.Logger.WithFields(logrus.Fields{
 		"probe":    probe,
 		"protocol": probe.Scheme(),
 		"timeout":  c.Timeout,
@@ -93,11 +95,11 @@ func (checker Checker) CheckRun(c pkg.Check) {
 }
 
 func (checker Checker) ProbeSuccess(report *pkg.Report) {
-	logger.WithField("report", report).Debug("[Check] success")
+	logger.Logger.WithField("report", report).Debug("[Check] success")
 }
 
 func (checker Checker) ProbeFailure(report *pkg.Report) {
-	logger.WithField("report", report).Warn("[Check] failed")
+	logger.Logger.WithField("report", report).Warn("[Check] failed")
 }
 
 func (l *Loop) Run() {
@@ -110,10 +112,10 @@ func (l *Loop) Run() {
 		if err == nil {
 			l.ProcessCheck(status)
 		} else {
-			logger.WithError(err).Error("[Loop] error")
+			logger.Logger.WithError(err).Error("[Loop] error")
 		}
 		sleepTime := l.Delays[l.Status.Up]
-		logger.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")
+		logger.Logger.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")
 		time.Sleep(sleepTime)
 	}
 }

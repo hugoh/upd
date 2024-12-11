@@ -4,9 +4,13 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"regexp"
 	"time"
 
 	"github.com/go-playground/validator"
+	"github.com/hugoh/upd/internal/logger"
+	"github.com/hugoh/upd/internal/logic"
+	"github.com/hugoh/upd/internal/status"
 	"github.com/hugoh/upd/pkg"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/file"
@@ -39,8 +43,8 @@ type Configuration struct {
 		}
 		StopExec string `validate:"omitempty"`
 	} `validate:"omitempty"`
-	Stats    StatServerConfig `validate:"omitempty"`
-	LogLevel string           `validate:"omitempty,oneof=trace debug info warn"`
+	Stats    status.StatServerConfig `validate:"omitempty"`
+	LogLevel string                  `validate:"omitempty,oneof=trace debug info warn"`
 }
 
 func configFatal(msg string, path string, err error) {
@@ -56,7 +60,7 @@ func ReadConf(cfgFile string, printConfig bool) *Configuration {
 	if err := k.Load(file.Provider(cfgFile), yaml.Parser()); err != nil {
 		configFatal("Could not read config", cfgFile, err)
 	}
-	logger.WithField("file", cfgFile).Debug("[Config] config file used")
+	logger.Logger.WithField("file", cfgFile).Debug("[Config] config file used")
 	var conf Configuration
 	if err := k.UnmarshalWithConf("", &conf, koanf.UnmarshalConf{}); err != nil {
 		configFatal("Unable to parse the config", cfgFile, err)
@@ -78,22 +82,27 @@ func ReadConf(cfgFile string, printConfig bool) *Configuration {
 	return &conf
 }
 
+func isValidTCPPort(fl validator.FieldLevel) bool {
+	re := regexp.MustCompile(`^:(6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[0-9]{1,4})$`)
+	return re.MatchString(fl.Field().String())
+}
+
 func (c Configuration) logSetup() {
-	if logger.GetLevel() == logrus.DebugLevel {
+	if logger.Logger.GetLevel() == logrus.DebugLevel {
 		// Already set
 		return
 	}
 	switch c.LogLevel {
 	case "trace":
-		logger.SetLevel(logrus.TraceLevel)
+		logger.Logger.SetLevel(logrus.TraceLevel)
 	case "debug":
-		logger.SetLevel(logrus.DebugLevel)
+		logger.Logger.SetLevel(logrus.DebugLevel)
 	case "info":
-		logger.SetLevel(logrus.InfoLevel)
+		logger.Logger.SetLevel(logrus.InfoLevel)
 	case "warn", "":
-		logger.SetLevel(logrus.WarnLevel)
+		logger.Logger.SetLevel(logrus.WarnLevel)
 	default:
-		logger.WithField("loglevel", c.LogLevel).Error("[Config] Unknown loglevel")
+		logger.Logger.WithField("loglevel", c.LogLevel).Error("[Config] Unknown loglevel")
 	}
 }
 
@@ -102,7 +111,7 @@ func (c Configuration) GetChecks() []*pkg.Check {
 	for _, check := range c.Checks.List {
 		url, err := url.Parse(check)
 		if err != nil {
-			logger.WithFields(logrus.Fields{
+			logger.Logger.WithFields(logrus.Fields{
 				"check": check,
 				"err":   err,
 			}).Error("could not parse check in config")
@@ -124,7 +133,7 @@ func (c Configuration) GetChecks() []*pkg.Check {
 			hostPort := fmt.Sprintf("%s:%s", url.Hostname(), url.Port())
 			probe = pkg.GetTCPProbe(hostPort)
 		default:
-			logger.WithFields(logrus.Fields{
+			logger.Logger.WithFields(logrus.Fields{
 				"check":    check,
 				"protocol": url.Scheme,
 			}).Error("unknown protocol in config")
@@ -136,16 +145,16 @@ func (c Configuration) GetChecks() []*pkg.Check {
 		})
 	}
 	if len(checks) == 0 {
-		logger.Fatal("No valid check found")
+		logger.Logger.Fatal("No valid check found")
 	}
 	return checks
 }
 
-func (c Configuration) GetDownAction() *DownAction {
+func (c Configuration) GetDownAction() *logic.DownAction {
 	if reflect.ValueOf(c.DownAction).IsZero() {
 		return nil
 	}
-	return &DownAction{
+	return &logic.DownAction{
 		After:        c.DownAction.Every.After,
 		Every:        c.DownAction.Every.Repeat,
 		BackoffLimit: c.DownAction.Every.BackoffLimit,

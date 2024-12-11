@@ -1,8 +1,10 @@
-package internal
+package status
 
 import (
 	"errors"
 	"time"
+
+	"github.com/hugoh/upd/internal/logger"
 )
 
 type StateChange struct {
@@ -149,7 +151,7 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 		period := periods[i]
 		availability, err := tracker.CalculateUptime(currentState, period, end)
 		if err != nil {
-			logger.WithError(err).WithField("period", period).Debug("[Stats] invalid range for stat report")
+			logger.Logger.WithError(err).WithField("period", period).Debug("[Stats] invalid range for stat report")
 		}
 		reports[i] = StatusReportByPeriod{
 			Period:       ReadableDuration(period),
