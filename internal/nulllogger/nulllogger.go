@@ -1,4 +1,4 @@
-package conftest
+package nulllogger
 
 import (
 	"io"

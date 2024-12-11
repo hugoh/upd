@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hugoh/upd/internal/conftest"
+	"github.com/hugoh/upd/internal/nulllogger"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,7 +29,7 @@ func Test_ExecuteSucceed(t *testing.T) {
 	da := &DownAction{
 		Exec: "true",
 	}
-	hook := conftest.NewNullLoggerHook()
+	hook := nulllogger.NewNullLoggerHook()
 	dal, _ := da.NewDownActionLoop()
 	err := dal.Execute(da.Exec)
 	assert.NoError(t, err)
@@ -40,7 +40,7 @@ func Test_ExecuteFail(t *testing.T) {
 	da := &DownAction{
 		Exec: "false",
 	}
-	hook := conftest.NewNullLoggerHook()
+	hook := nulllogger.NewNullLoggerHook()
 	dal, _ := da.NewDownActionLoop()
 	err := dal.Execute(da.Exec)
 	assert.NoError(t, err, "Success in starting a command that fails")
@@ -84,7 +84,7 @@ func Test_StartAndStop(t *testing.T) {
 		Exec:     "true",
 		StopExec: "false",
 	}
-	hook := conftest.NewNullLoggerHook()
+	hook := nulllogger.NewNullLoggerHook()
 	dal := da.Start()
 	assert.NotNil(t, dal, "DownAction loop is running")
 	time.Sleep(waitTime) // Give it time to startExec

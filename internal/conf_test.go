@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hugoh/upd/internal/conftest"
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
+	"github.com/hugoh/upd/internal/nulllogger"
 	"github.com/hugoh/upd/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -26,7 +26,7 @@ func readConf(cfgFile string) *Configuration {
 }
 
 func (suite *TestSuite) SetupTest() {
-	conftest.NewNullLoggerHook()
+	nulllogger.NewNullLoggerHook()
 	suite.conf = readConf("upd_test_good.yaml")
 }
 
@@ -65,7 +65,7 @@ func TestGetChecksIgnored(t *testing.T) {
 }
 
 func TestGetChecksFromConfFail(t *testing.T) {
-	conftest.NewNullLoggerHook()
+	nulllogger.NewNullLoggerHook()
 	logger.Logger.ExitFunc = func(code int) { panic(code) }
 	conf := readConf("upd_test_allbad.yaml")
 	assert.Panics(t, func() { conf.GetChecks() })
