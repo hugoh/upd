@@ -78,3 +78,47 @@ stats:
     - 24h
     - 168h
 ```
+
+## Status
+
+In the configuration, `stats` can be used to capture statistics that are made available via a web interface.
+
+The sample configuration above will provide data looking like this:
+
+```json
+{
+  "isUp": true,
+  "reports": [
+    {
+      "period": "1m",
+      "availability": "100.00 %",
+      "downTime": "0s"
+    },
+    {
+      "period": "15m",
+      "availability": "100.00 %",
+      "downTime": "0s"
+    },
+    {
+      "period": "1h",
+      "availability": "100.00 %",
+      "downTime": "0s"
+    },
+    {
+      "period": "24h",
+      "availability": "Not computed",
+      "downTime": "0s"
+    },
+    {
+      "period": "168h",
+      "availability": "Not computed",
+      "downTime": "0s"
+    }
+  ],
+  "totalChecksRun": 612,
+  "timeSinceLastUpdate": "35s",
+  "updUptime": "20h25m15s",
+  "updVersion": "2.0.0-beta.10",
+  "generatedAt": "2024-12-12T17:38:01.738046722-06:00"
+}
+```
