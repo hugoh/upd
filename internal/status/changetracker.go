@@ -69,13 +69,13 @@ func (tracker *StateChangeTracker) Prune(currentTime time.Time) {
 
 func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
 	last time.Duration, end time.Time,
-) float64 {
+) (float64, time.Duration) {
 	if tracker.Tail == nil {
 		// No records other than the current status
 		if currentState {
-			return 1.0
+			return 1.0, 0
 		}
-		return 0.0
+		return 0.0, last
 	}
 
 	uptime := time.Duration(0)
@@ -112,21 +112,22 @@ func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
 		}
 	}
 
-	return (float64(uptime) / float64(last))
+	return (float64(uptime) / float64(last)), last - uptime
 }
 
 var ErrInvalidRange = errors.New("range greater than the retention period")
 
 func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 	last time.Duration, end time.Time,
-) (float64, error) {
+) (float64, time.Duration, error) {
 	if last > tracker.Retention {
-		return -1, ErrInvalidRange
+		return -1, 0, ErrInvalidRange
 	}
 	if end.Sub(tracker.Started) < last {
-		return -1, ErrInvalidRange
+		return -1, 0, ErrInvalidRange
 	}
-	return tracker.uptimeCalculation(currentState, last, end), nil
+	availability, downtime := tracker.uptimeCalculation(currentState, last, end)
+	return availability, downtime, nil
 }
 
 func (tracker *StateChangeTracker) RecordsCound() int {
@@ -149,13 +150,14 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 	reports := make([]ReportByPeriod, reportCount)
 	for i := range reportCount {
 		period := periods[i]
-		availability, err := tracker.CalculateUptime(currentState, period, end)
+		availability, downtime, err := tracker.CalculateUptime(currentState, period, end)
 		if err != nil {
 			logger.L.WithError(err).WithField("period", period).Debug("[Stats] invalid range for stat report")
 		}
 		reports[i] = ReportByPeriod{
 			Period:       ReadableDuration(period),
 			Availability: ReadablePercent(availability),
+			Downtime:     ReadableDuration(downtime),
 		}
 	}
 	return reports

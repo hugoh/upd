@@ -14,6 +14,7 @@ import (
 type ReportByPeriod struct {
 	Period       ReadableDuration `json:"period"`
 	Availability ReadablePercent  `json:"availability"`
+	Downtime     ReadableDuration `json:"downTime"`
 }
 
 type Report struct {

@@ -58,83 +58,88 @@ func (suite *TestSuiteStats) TestPrune() {
 func (suite *TestSuiteStats) TestCalc() {
 	t := suite.T()
 	empty := GetTracker()
-	assert.Equal(t, 1.0,
-		empty.uptimeCalculation(true,
-			1*time.Minute,
-			suite.Now))
-	assert.Equal(t, 0.0,
-		empty.uptimeCalculation(false,
-			1*time.Minute,
-			suite.Now))
+
+	// Updated test cases for the new return values.
+	actual, downtime := empty.uptimeCalculation(true, 1*time.Minute, suite.Now)
+	assert.Equal(t, 1.0, actual)
+	assert.Equal(t, time.Duration(0), downtime)
+
+	actual, downtime = empty.uptimeCalculation(false, 1*time.Minute, suite.Now)
+	assert.Equal(t, 0.0, actual)
+	assert.Equal(t, 1*time.Minute, downtime)
+
 	tracker := suite.Tracker
-	assert.Equal(t, 1.0,
-		tracker.uptimeCalculation(true,
-			1*time.Minute,
-			suite.Now))
-	assert.Equal(t, 1.0,
-		tracker.uptimeCalculation(false,
-			1*time.Minute,
-			suite.Now))
-	assert.Equal(t, 1.0,
-		tracker.uptimeCalculation(true,
-			14*time.Minute,
-			suite.Now))
-	assert.Equal(t, 1.0,
-		tracker.uptimeCalculation(false,
-			14*time.Minute,
-			suite.Now))
-	assert.Equal(t, 15.0/16.0,
-		tracker.uptimeCalculation(true,
-			16*time.Minute,
-			suite.Now))
-	assert.Equal(t, 15.0/16.0,
-		tracker.uptimeCalculation(false,
-			16*time.Minute,
-			suite.Now))
-	assert.Equal(t, 0.5,
-		tracker.uptimeCalculation(true,
-			30*time.Minute,
-			suite.Now))
-	assert.Equal(t, 0.5,
-		tracker.uptimeCalculation(false,
-			30*time.Minute,
-			suite.Now))
-	assert.Equal(t, 0.75/24,
-		tracker.uptimeCalculation(true,
-			24*time.Hour,
-			suite.Now))
-	assert.Equal(t, 0.75/24,
-		tracker.uptimeCalculation(false,
-			24*time.Hour,
-			suite.Now))
+
+	actual, downtime = tracker.uptimeCalculation(true, 1*time.Minute, suite.Now)
+	assert.Equal(t, 1.0, actual)
+	assert.Equal(t, time.Duration(0), downtime)
+
+	actual, downtime = tracker.uptimeCalculation(false, 1*time.Minute, suite.Now)
+	assert.Equal(t, 1.0, actual)
+	assert.Equal(t, time.Duration(0), downtime)
+
+	actual, downtime = tracker.uptimeCalculation(true, 14*time.Minute, suite.Now)
+	assert.Equal(t, 1.0, actual)
+	assert.Equal(t, time.Duration(0), downtime)
+
+	actual, downtime = tracker.uptimeCalculation(false, 14*time.Minute, suite.Now)
+	assert.Equal(t, 1.0, actual)
+	assert.Equal(t, time.Duration(0), downtime)
+
+	actual, downtime = tracker.uptimeCalculation(true, 16*time.Minute, suite.Now)
+	assert.Equal(t, 15.0/16.0, actual)
+	assert.Equal(t, 1*time.Minute, downtime)
+
+	actual, downtime = tracker.uptimeCalculation(false, 16*time.Minute, suite.Now)
+	assert.Equal(t, 15.0/16.0, actual)
+	assert.Equal(t, 1*time.Minute, downtime)
+
+	actual, downtime = tracker.uptimeCalculation(true, 30*time.Minute, suite.Now)
+	assert.Equal(t, 0.5, actual)
+	assert.Equal(t, 15*time.Minute, downtime)
+
+	actual, downtime = tracker.uptimeCalculation(false, 30*time.Minute, suite.Now)
+	assert.Equal(t, 0.5, actual)
+	assert.Equal(t, 15*time.Minute, downtime)
+
+	actual, downtime = tracker.uptimeCalculation(true, 24*time.Hour, suite.Now)
+	assert.Equal(t, 0.75/24, actual)
+	assert.Equal(t, 23*time.Hour+15*time.Minute, downtime)
+
+	actual, downtime = tracker.uptimeCalculation(false, 24*time.Hour, suite.Now)
+	assert.Equal(t, 0.75/24, actual)
+	assert.Equal(t, 23*time.Hour+15*time.Minute, downtime)
+
 	empty.RecordChange(suite.Now.Add(-2*time.Hour), false)
-	assert.Equal(t, 0.0,
-		empty.uptimeCalculation(true,
-			1*time.Hour,
-			suite.Now))
-	assert.Equal(t, 0.0,
-		empty.uptimeCalculation(false,
-			1*time.Hour,
-			suite.Now))
-	assert.Equal(t, 0.0,
-		empty.uptimeCalculation(true,
-			2*time.Hour,
-			suite.Now))
-	assert.Equal(t, 0.0,
-		empty.uptimeCalculation(false,
-			2*time.Hour,
-			suite.Now))
-	assert.Equal(t, 22.0/24,
-		empty.uptimeCalculation(true,
-			24*time.Hour,
-			suite.Now))
-	assert.Equal(t, 22.0/24,
-		empty.uptimeCalculation(false,
-			24*time.Hour,
-			suite.Now))
+
+	actual, downtime = empty.uptimeCalculation(true, 1*time.Hour, suite.Now)
+	assert.Equal(t, 0.0, actual)
+	assert.Equal(t, 1*time.Hour, downtime)
+
+	actual, downtime = empty.uptimeCalculation(false, 1*time.Hour, suite.Now)
+	assert.Equal(t, 0.0, actual)
+	assert.Equal(t, 1*time.Hour, downtime)
+
+	actual, downtime = empty.uptimeCalculation(true, 2*time.Hour, suite.Now)
+	assert.Equal(t, 0.0, actual)
+	assert.Equal(t, 2*time.Hour, downtime)
+
+	actual, downtime = empty.uptimeCalculation(false, 2*time.Hour, suite.Now)
+	assert.Equal(t, 0.0, actual)
+	assert.Equal(t, 2*time.Hour, downtime)
+
+	actual, downtime = empty.uptimeCalculation(true, 24*time.Hour, suite.Now)
+	assert.Equal(t, 22.0/24, actual)
+	assert.Equal(t, 2*time.Hour, downtime)
+
+	actual, downtime = empty.uptimeCalculation(false, 24*time.Hour, suite.Now)
+	assert.Equal(t, 22.0/24, actual)
+	assert.Equal(t, 2*time.Hour, downtime)
+
 	empty.Started = suite.Now.Add(-1 * time.Minute)
-	v, err := empty.CalculateUptime(false, 1*time.Hour, suite.Now)
+	v, w, err := empty.CalculateUptime(false, 1*time.Hour, suite.Now)
 	assert.Equal(t, -1.0, v)
+	assert.Equal(t, time.Duration(0), w)
 	assert.Error(t, err)
 }
 
@@ -142,8 +147,8 @@ func (suite *TestSuiteStats) TestCalcError() {
 	t := suite.T()
 	empty := GetTracker()
 	var err error
-	_, err = empty.CalculateUptime(true, 72*time.Hour, suite.Now)
+	_, _, err = empty.CalculateUptime(true, 72*time.Hour, suite.Now)
 	assert.Error(t, err)
-	_, err = empty.CalculateUptime(true, 24*time.Hour, suite.Now)
+	_, _, err = empty.CalculateUptime(true, 24*time.Hour, suite.Now)
 	assert.NoError(t, err)
 }
