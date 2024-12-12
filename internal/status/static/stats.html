@@ -8,35 +8,25 @@
     />
     <style>
       body {
-        font-family: Arial, sans-serif;
-        margin: 20px;
-      }
-      pre {
-        border: 1px solid #ddd;
-        padding: 10px;
-        border-radius: 5px;
-        background: #f9f9f9;
+        font-family: sans-serif;
       }
     </style>
   </head>
   <body>
     <h1>Upd Status</h1>
-    <pre><code class="language-json" id="json"></code></pre>
+    <pre><code class="language-json" id="json">{}</code></pre>
 
-    <script src="https://cdn.jsdelivr.net/npm/prismjs/prism.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-json.min.js"></script>
     <script>
       fetch("/stats.json")
         .then((response) => response.json())
         .then((data) => {
-          document.getElementById("json").textContent = JSON.stringify(
-            data,
-            null,
-            2,
-          );
-          Prism.highlightAll();
+          var s = document.getElementById("json");
+          s.textContent = JSON.stringify(data, null, 2);
+          Prism.highlightElement(s);
         })
         .catch((error) => console.error("Error fetching JSON:", error));
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-json.min.js"></script>
   </body>
 </html>
