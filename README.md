@@ -118,7 +118,7 @@ The sample configuration above will provide data looking like this:
   "totalChecksRun": 612,
   "timeSinceLastUpdate": "35s",
   "updUptime": "20h25m15s",
-  "updVersion": "2.0.0-beta.10",
+  "updVersion": "2.0.0",
   "generatedAt": "2024-12-12T17:38:01.738046722-06:00"
 }
 ```
