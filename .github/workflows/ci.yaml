@@ -22,12 +22,17 @@ jobs:
           go-version: stable
       - name: Install Task
         uses: arduino/setup-task@v2
-      - name: Install dependencies
-        run: task devdep
       - name: Run linters
         run: task lint
       - name: Run tests
         run: task test
+      - name: Generate test coverage
+        run: task coverage
+      - name: Check test coverage
+        uses: vladopajic/go-test-coverage@v2
+        with:
+          config: ./.testcoverage.yml
+
   release:
     name: Semantic Release
     runs-on: ubuntu-latest
@@ -39,6 +44,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+      - name: Install Task
+        uses: arduino/setup-task@v2
       - uses: go-semantic-release/action@v1
         with:
           hooks: goreleaser

@@ -7,6 +7,9 @@ import (
 	"log"
 	"os"
 
+	"github.com/hugoh/upd/internal/logger"
+	"github.com/hugoh/upd/internal/logic"
+	"github.com/hugoh/upd/internal/status"
 	"github.com/urfave/cli/v2"
 )
 
@@ -22,7 +25,7 @@ const (
 )
 
 func Run(cCtx *cli.Context) error {
-	LogSetup(cCtx.Bool(ConfigDebug))
+	logger.LogSetup(cCtx.Bool(ConfigDebug))
 	dump := cCtx.Bool(ConfigDump)
 	conf := ReadConf(cCtx.Path(ConfigConfig), dump)
 
@@ -34,12 +37,10 @@ func Run(cCtx *cli.Context) error {
 	delays := conf.GetDelays()
 	da := conf.GetDownAction()
 
-	loop := &Loop{
-		Checks:     checks,
-		Delays:     delays,
-		DownAction: da,
-		Shuffle:    conf.Checks.Shuffled,
-	}
+	s := status.NewStatus(cCtx.App.Version, conf.Stats.Retention)
+
+	loop := logic.NewLoop(checks, delays, da, conf.Checks.Shuffled, s)
+	status.StartStatServer(s, &conf.Stats)
 
 	loop.Run()
 	return nil

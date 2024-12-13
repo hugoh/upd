@@ -1,17 +1,17 @@
 checks:
-  everySec:
-    normal: 120
-    down: 20
+  every:
+    normal: 120s
+    down: 20s
   list:
     # From https://en.wikipedia.org/wiki/Captive_portal
     - http://captive.apple.com/hotspot-detect.html
     - ftp://foo.bar/ # This one should be ignored
     - dns://8.8.4.4/
-  timeoutMilli: 2000
+  timeout: 2000ms
 downAction:
   exec: cowsay
-  everySec:
-    after: 120
-    repeat: 300
+  every:
+    after: 120s
+    repeat: 300s
 # Options = debug, info, warn, error
 logLevel: debug

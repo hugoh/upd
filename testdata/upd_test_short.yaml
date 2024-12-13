@@ -1,7 +1,7 @@
 checks:
-  everySec:
-    normal: 120
-    down: 20
+  every:
+    normal: 120s
+    down: 20s
   list:
     # From https://en.wikipedia.org/wiki/Captive_portal
     - http://captive.apple.com/hotspot-detect.html
@@ -12,12 +12,12 @@ checks:
     - dns://1.0.0.1/
     - dns://8.8.8.8/
     - dns://8.8.4.4/
-  timeoutMilli: 10
+  timeout: 10ms
 downAction:
   exec: cowsay
-  everySec:
-    after: 1
-    repeat: 1
-    expBackoffLimit: 3
+  every:
+    after: 1s
+    repeat: 1s
+    expBackoffLimit: 3s
 # Options = debug, info, warn, error
 logLevel: debug

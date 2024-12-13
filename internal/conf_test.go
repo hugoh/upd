@@ -2,13 +2,13 @@ package internal
 
 import (
 	"fmt"
-	"io"
 	"testing"
 	"time"
 
+	"github.com/hugoh/upd/internal/logger"
+	"github.com/hugoh/upd/internal/logic"
+	"github.com/hugoh/upd/internal/nulllogger"
 	"github.com/hugoh/upd/pkg"
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -25,14 +25,8 @@ func readConf(cfgFile string) *Configuration {
 	return conf
 }
 
-func NewNullLoggerHook() *test.Hook {
-	logger = logrus.New()
-	logger.Out = io.Discard
-	return test.NewLocal(logger)
-}
-
 func (suite *TestSuite) SetupTest() {
-	NewNullLoggerHook()
+	nulllogger.NewNullLoggerHook()
 	suite.conf = readConf("upd_test_good.yaml")
 }
 
@@ -43,7 +37,7 @@ func TestSuiteRun(t *testing.T) {
 func (suite *TestSuite) TestGetDownActionFromConf() {
 	da := suite.conf.GetDownAction()
 	assert.NotNil(suite.T(), da, "DownAction parsed")
-	assert.Equal(suite.T(), &DownAction{
+	assert.Equal(suite.T(), &logic.DownAction{
 		After: 120 * time.Second,
 		Every: 300 * time.Second,
 		Exec:  "cowsay",
@@ -71,8 +65,8 @@ func TestGetChecksIgnored(t *testing.T) {
 }
 
 func TestGetChecksFromConfFail(t *testing.T) {
-	NewNullLoggerHook()
-	logger.ExitFunc = func(code int) { panic(code) }
+	nulllogger.NewNullLoggerHook()
+	logger.L.ExitFunc = func(code int) { panic(code) }
 	conf := readConf("upd_test_allbad.yaml")
 	assert.Panics(t, func() { conf.GetChecks() })
 }
