@@ -10,7 +10,7 @@ permissions: {}
 jobs:
   test:
     name: Lint and Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -35,7 +35,7 @@ jobs:
 
   release:
     name: Semantic Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: test
     permissions:
       contents: write
