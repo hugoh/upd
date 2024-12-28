@@ -6,6 +6,7 @@
     ":automergeMinor",
     "customManagers:githubActionsVersions"
   ],
+  "postUpdateOptions": ["gomodTidy", "gomodUpdateImportPaths"],
   "customManagers": [
     {
       "customType": "regex",
