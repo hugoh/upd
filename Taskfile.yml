@@ -8,7 +8,7 @@ vars:
   GOBIN: $(go env GOPATH)/bin
   # Versions
   # renovate: datasource=go depName=github.com/vladopajic/go-test-coverage/v2
-  GOTESTCOVERAGE_VERSION: 2.11.3
+  GOTESTCOVERAGE_VERSION: 2.11.4
   # renovate: datasource=go depName=github.com/daixiang0/gci
   GCI_VERSION: 0.13.5
   # renovate: datasource=go depName=mvdan.cc/gofumpt
