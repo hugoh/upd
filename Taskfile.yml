@@ -57,7 +57,6 @@ tasks:
 
   fixlint:
     summary: Fix lint issues
-    deps: [devdep]
     cmds:
       - go tool github.com/golangci/golangci-lint/cmd/golangci-lint run --fix
 
@@ -81,12 +80,24 @@ tasks:
   lint:
     summary: Lint code
     deps:
-      - task: minify
-    cmds:
-      - go vet ./...
-      - go tool honnef.co/go/tools/cmd/staticcheck ./...
-      - go tool github.com/securego/gosec/v2/cmd/gosec -fmt=golint -quiet ./...
-      - go tool github.com/golangci/golangci-lint/cmd/golangci-lint run ./...
+      - task: runlinter
+        vars:
+          RUN: vet
+      - task: runlinter
+        vars:
+          RUN: tool honnef.co/go/tools/cmd/staticcheck
+      - task: runlinter
+        vars:
+          RUN: tool github.com/securego/gosec/v2/cmd/gosec -fmt=golint -quiet
+      - task: runlinter
+        vars:
+          RUN: tool github.com/golangci/golangci-lint/cmd/golangci-lint run
+
+  runlinter:
+    summary: Run specific linter
+    requires:
+      vars: [RUN]
+    cmd: go {{.RUN}} ./...
 
   test:
     summary: Run tests
