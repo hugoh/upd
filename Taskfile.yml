@@ -18,7 +18,7 @@ vars:
   # renovate: datasource=go depName=github.com/securego/gosec/v2
   GOSEC_VERSION: 2.22.1
   # renovate: datasource=go depName=github.com/golangci/golangci-lint
-  GOLANGCILINT_VERSION: 1.63.4
+  GOLANGCILINT_VERSION: 1.64.5
   # renovate: datasource=go depName=tdewolff/minify/v2
   MINIFY_VERSION: 2.21.2
 
