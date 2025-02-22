@@ -14,7 +14,7 @@ vars:
   # renovate: datasource=go depName=mvdan.cc/gofumpt
   GOFUMPT_VERSION: 0.7.0
   # renovate: datasource=go depName=honnef.co/go/tools
-  STATICCHECK_VERSION: 0.5.1
+  STATICCHECK_VERSION: 0.6.0
   # renovate: datasource=go depName=github.com/securego/gosec/v2
   GOSEC_VERSION: 2.22.1
   # renovate: datasource=go depName=github.com/golangci/golangci-lint
