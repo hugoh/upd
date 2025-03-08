@@ -6,21 +6,6 @@ vars:
   MIN: "{{.STATICDIR}}/stats.min.html"
   COVEROUT: cover.out
   GOBIN: $(go env GOPATH)/bin
-  # Versions
-  # renovate: datasource=go depName=github.com/vladopajic/go-test-coverage/v2
-  GOTESTCOVERAGE_VERSION: 2.12.1
-  # renovate: datasource=go depName=github.com/daixiang0/gci
-  GCI_VERSION: 0.13.5
-  # renovate: datasource=go depName=mvdan.cc/gofumpt
-  GOFUMPT_VERSION: 0.7.0
-  # renovate: datasource=go depName=honnef.co/go/tools
-  STATICCHECK_VERSION: 0.6.0
-  # renovate: datasource=go depName=github.com/securego/gosec/v2
-  GOSEC_VERSION: 2.22.1
-  # renovate: datasource=go depName=github.com/golangci/golangci-lint
-  GOLANGCILINT_VERSION: 1.64.5
-  # renovate: datasource=go depName=tdewolff/minify/v2
-  MINIFY_VERSION: 2.21.2
 
 tasks:
   default:
@@ -40,15 +25,9 @@ tasks:
   covercheck:
     summary: Check test coverage
     deps:
-      - task: devdep
-        vars:
-          DEP: github.com/vladopajic/go-test-coverage/v2
-          BIN: go-test-coverage
-          VER:
-            ref: .GOTESTCOVERAGE_VERSION
       - coverage
     cmds:
-      - "{{.GOBIN}}/go-test-coverage --config=./.testcoverage.yml"
+      - go tool github.com/vladopajic/go-test-coverage/v2 --config=./.testcoverage.yml
 
   dev:
     summary: Development mode
@@ -57,19 +36,12 @@ tasks:
 
   minify:
     summary: Minify HTML
-    deps:
-      - task: devdep
-        vars:
-          DEP: github.com/tdewolff/minify/v2/cmd/minify
-          VER:
-            ref: .MINIFY_VERSION
-          BIN: minify
     sources:
       - "{{.HTML}}"
     generates:
       - "{{.MIN}}"
     cmds:
-      - minify -o {{.MIN}} {{.HTML}}
+      - go tool github.com/tdewolff/minify/v2/cmd/minify -o {{.MIN}} {{.HTML}}
 
   build:
     summary: Build application
@@ -83,37 +55,16 @@ tasks:
       - rm -f {{.MIN}}
       - rm -f {{.COVEROUT}}
 
-  devdep:
-    summary: Install dev dependency
-    requires:
-      vars: [DEP, BIN, VER]
-    cmds:
-      - go install {{.DEP}}@v{{.VER}}
-
   fixlint:
     summary: Fix lint issues
-    deps: [devdep]
     cmds:
-      - golangci-lint run --fix
+      - go tool github.com/golangci/golangci-lint/cmd/golangci-lint run --fix
 
   fmt:
     summary: Format the code
-    deps:
-      - task: devdep
-        vars:
-          DEP: mvdan.cc/gofumpt
-          BIN: gofumpt
-          VER:
-            ref: .GOFUMPT_VERSION
-      - task: devdep
-        vars:
-          DEP: github.com/daixiang0/gci
-          BIN: gci
-          VER:
-            ref: .GCI_VERSION
     cmds:
-      - gci write .
-      - gofumpt -w .
+      - go tool github.com/daixiang0/gci write .
+      - go tool mvdan.cc/gofumpt -w .
 
   tidy:
     summary: Tidy the module
@@ -128,55 +79,26 @@ tasks:
 
   lint:
     summary: Lint code
-    cmds:
-      - task: minify
-      - task: runalllinters
-
-  runalllinters:
-    summary: Run all linters
     deps:
       - task: runlinter
         vars:
-          DEP: honnef.co/go/tools/cmd/staticcheck
-          BIN: staticcheck
-          VER:
-            ref: .STATICCHECK_VERSION
-          RUN: staticcheck
+          RUN: vet
       - task: runlinter
         vars:
-          DEP: github.com/securego/gosec/v2/cmd/gosec
-          BIN: gosec
-          VER:
-            ref: .GOSEC_VERSION
-          RUN: gosec -fmt=golint -quiet
+          RUN: tool honnef.co/go/tools/cmd/staticcheck
       - task: runlinter
         vars:
-          DEP: github.com/golangci/golangci-lint/cmd/golangci-lint
-          BIN: golangci-lint
-          VER:
-            ref: .GOLANGCILINT_VERSION
-          RUN: golangci-lint run
-      - runvet
+          RUN: tool github.com/securego/gosec/v2/cmd/gosec -fmt=golint -quiet
+      - task: runlinter
+        vars:
+          RUN: tool github.com/golangci/golangci-lint/cmd/golangci-lint run
 
   runlinter:
     summary: Run specific linter
+    deps: [minify]
     requires:
-      vars: [DEP, BIN, VER, RUN]
-    deps:
-      - task: devdep
-        vars:
-          DEP:
-            ref: .DEP
-          BIN:
-            ref: .BIN
-          VER:
-            ref: .VER
-    cmds:
-      - "{{.RUN}} ./..."
-
-  runvet:
-    summary: Go vet
-    cmd: go vet ./...
+      vars: [RUN]
+    cmd: go {{.RUN}} ./...
 
   test:
     summary: Run tests
