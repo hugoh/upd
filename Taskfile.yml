@@ -95,6 +95,7 @@ tasks:
 
   runlinter:
     summary: Run specific linter
+    deps: [minify]
     requires:
       vars: [RUN]
     cmd: go {{.RUN}} ./...
