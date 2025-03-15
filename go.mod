@@ -2,7 +2,7 @@ module github.com/hugoh/upd
 
 go 1.23.0
 
-toolchain go1.24.0
+toolchain go1.24.1
 
 require (
 	github.com/knadh/koanf/parsers/yaml v0.1.0
