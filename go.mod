@@ -1,6 +1,6 @@
 module github.com/hugoh/upd
 
-go 1.23.0
+go 1.24
 
 toolchain go1.24.2
 
@@ -208,7 +208,7 @@ require (
 	github.com/ultraware/whitespace v0.2.0 // indirect
 	github.com/uudashr/gocognit v1.2.0 // indirect
 	github.com/uudashr/iface v1.3.1 // indirect
-	github.com/vladopajic/go-test-coverage/v2 v2.11.4 // indirect
+	github.com/vladopajic/go-test-coverage/v2 v2.13.1 // indirect
 	github.com/xen0n/gosmopolitan v1.2.2 // indirect
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
@@ -229,7 +229,6 @@ require (
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
-	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20250210185358-939b2ce775ac // indirect
 	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
