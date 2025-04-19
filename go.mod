@@ -208,7 +208,7 @@ require (
 	github.com/ultraware/whitespace v0.2.0 // indirect
 	github.com/uudashr/gocognit v1.2.0 // indirect
 	github.com/uudashr/iface v1.3.1 // indirect
-	github.com/vladopajic/go-test-coverage/v2 v2.13.1 // indirect
+	github.com/vladopajic/go-test-coverage/v2 v2.13.2 // indirect
 	github.com/xen0n/gosmopolitan v1.2.2 // indirect
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
