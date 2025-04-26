@@ -4,13 +4,14 @@ Copyright © 2024 Hugo Haas <hugoh@hugoh.net>
 package internal
 
 import (
+	"context"
 	"log"
 	"os"
 
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
 	"github.com/hugoh/upd/internal/status"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 const (
@@ -24,10 +25,10 @@ const (
 	ConfigDump   string = "dump"
 )
 
-func Run(cCtx *cli.Context) error {
+func Run(ctx context.Context, cCtx *cli.Command) error {
 	logger.LogSetup(cCtx.Bool(ConfigDebug))
 	dump := cCtx.Bool(ConfigDump)
-	conf := ReadConf(cCtx.Path(ConfigConfig), dump)
+	conf := ReadConf(cCtx.String(ConfigConfig), dump)
 
 	if dump {
 		return nil
@@ -37,7 +38,7 @@ func Run(cCtx *cli.Context) error {
 	delays := conf.GetDelays()
 	da := conf.GetDownAction()
 
-	s := status.NewStatus(cCtx.App.Version, conf.Stats.Retention)
+	s := status.NewStatus(cCtx.Version, conf.Stats.Retention)
 
 	loop := logic.NewLoop(checks, delays, da, conf.Checks.Shuffled, s)
 	status.StartStatServer(s, &conf.Stats)
@@ -48,7 +49,7 @@ func Run(cCtx *cli.Context) error {
 
 func Cmd(version string) {
 	flags := []cli.Flag{
-		&cli.PathFlag{
+		&cli.StringFlag{
 			Name:      ConfigConfig,
 			Aliases:   []string{"c"},
 			Usage:     "use the specified YAML configuration file",
@@ -69,7 +70,7 @@ func Cmd(version string) {
 		},
 	}
 
-	app := &cli.App{
+	app := &cli.Command{
 		Name:    AppName,
 		Usage:   AppShort,
 		Version: version,
@@ -77,7 +78,7 @@ func Cmd(version string) {
 		Action:  Run,
 	}
 
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(context.Background(), os.Args); err != nil {
 		log.Fatal(err)
 	}
 }
