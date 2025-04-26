@@ -22,7 +22,7 @@ var (
 	toutFail    = 1 * time.Microsecond
 )
 
-func checkTimeout(t *testing.T, report *Report, want string) {
+func checkError(t *testing.T, report *Report) error {
 	err := report.Error
 	if err == nil {
 		t.Fatal("got nil, want an error")
@@ -31,7 +31,12 @@ func checkTimeout(t *testing.T, report *Report, want string) {
 	if got != "" {
 		t.Fatalf("got %q should be zero", got)
 	}
-	got = report.Error.Error()
+	return err
+}
+
+func checkTimeout(t *testing.T, report *Report, want string) {
+	checkError(t, report)
+	got := report.Error.Error()
 	if !strings.Contains(got, want) {
 		t.Fatalf("got %q, missing %q", got, want)
 	}
@@ -60,15 +65,8 @@ func TestHttpProbe(t *testing.T) {
 		u := url.URL{Scheme: "http", Host: "localhost"}
 		httpProbe := GetHTTPProbe(u.String())
 		report := httpProbe.Probe(context.Background(), tout)
-		err := report.Error
-		if err == nil {
-			t.Fatal("got nil, want an error")
-		}
-		got := report.Response
-		if got != "" {
-			t.Fatalf("got %q should be zero", got)
-		}
-		got = err.Error()
+		err := checkError(t, report)
+		got := err.Error()
 		prefix := "error making request to http://localhost: Get \"http://localhost\""
 		if !strings.HasPrefix(got, prefix) {
 			t.Fatalf("got %q, want prefix %q", got, prefix)
@@ -203,15 +201,8 @@ func TestDnsProbe(t *testing.T) {
 	t.Run("returns an error if the request fails", func(t *testing.T) {
 		dnsProbe := GetDNSProbe(dnsResolver, "invalid.aa")
 		report := dnsProbe.Probe(context.Background(), tout)
-		err := report.Error
-		if err == nil {
-			t.Fatal("got nil, want an error")
-		}
-		got := report.Response
-		if got != "" {
-			t.Fatalf("got %q should be zero", got)
-		}
-		got = err.Error()
+		err := checkError(t, report)
+		got := err.Error()
 		prefix := "error resolving invalid.aa"
 		if !strings.HasPrefix(got, prefix) {
 			t.Fatalf("got %q, want prefix %q", got, prefix)
