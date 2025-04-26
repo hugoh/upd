@@ -13,7 +13,7 @@ import (
 )
 
 type Probe interface {
-	Probe(timeout time.Duration) *Report
+	Probe(ctx context.Context, timeout time.Duration) *Report
 	Scheme() string
 }
 
@@ -42,7 +42,7 @@ func (p DNSProbe) Scheme() string {
 	return DNS
 }
 
-func (p DNSProbe) Probe(timeout time.Duration) *Report {
+func (p DNSProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
 	r := &net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
@@ -53,7 +53,7 @@ func (p DNSProbe) Probe(timeout time.Duration) *Report {
 		},
 	}
 	start := time.Now()
-	addr, err := r.LookupHost(context.Background(), p.Domain)
+	addr, err := r.LookupHost(ctx, p.Domain)
 	report := BuildReport(p, start)
 	if err != nil {
 		report.Error = fmt.Errorf("error resolving %s: %w", p.Domain, err)
@@ -74,9 +74,8 @@ func (p HTTPProbe) Scheme() string {
 	return HTTP
 }
 
-func (p HTTPProbe) Probe(timeout time.Duration) *Report {
+func (p HTTPProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
 	client := &http.Client{Timeout: timeout}
-	ctx := context.Background()
 	req, bErr := http.NewRequestWithContext(ctx, http.MethodGet, p.URL, nil)
 	if bErr != nil {
 		report := &Report{Protocol: p.Scheme()}
@@ -110,7 +109,7 @@ func (p TCPProbe) Scheme() string {
 	return TCP
 }
 
-func (p TCPProbe) Probe(timeout time.Duration) *Report {
+func (p TCPProbe) Probe(_ context.Context, timeout time.Duration) *Report {
 	start := time.Now()
 	conn, err := net.DialTimeout("tcp", p.HostPort, timeout)
 	report := BuildReport(p, start)

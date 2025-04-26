@@ -25,7 +25,7 @@ const (
 	ConfigDump   string = "dump"
 )
 
-func Run(_ context.Context, cCtx *cli.Command) error {
+func Run(ctx context.Context, cCtx *cli.Command) error {
 	logger.LogSetup(cCtx.Bool(ConfigDebug))
 	dump := cCtx.Bool(ConfigDump)
 	conf := ReadConf(cCtx.String(ConfigConfig), dump)
@@ -43,7 +43,7 @@ func Run(_ context.Context, cCtx *cli.Command) error {
 	loop := logic.NewLoop(checks, delays, da, conf.Checks.Shuffled, s)
 	status.StartStatServer(s, &conf.Stats)
 
-	loop.Run()
+	loop.Run(ctx)
 	return nil
 }
 

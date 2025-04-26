@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -30,7 +31,7 @@ func Test_ExecuteSucceed(t *testing.T) {
 		Exec: "true",
 	}
 	hook := nulllogger.NewNullLoggerHook()
-	dal, _ := da.NewDownActionLoop()
+	dal, _ := da.NewDownActionLoop(context.Background())
 	err := dal.Execute(da.Exec)
 	assert.NoError(t, err)
 	ensureExec(t, hook, "/usr/bin/true", 1)
@@ -41,7 +42,7 @@ func Test_ExecuteFail(t *testing.T) {
 		Exec: "false",
 	}
 	hook := nulllogger.NewNullLoggerHook()
-	dal, _ := da.NewDownActionLoop()
+	dal, _ := da.NewDownActionLoop(context.Background())
 	err := dal.Execute(da.Exec)
 	assert.NoError(t, err, "Success in starting a command that fails")
 	ensureExec(t, hook, "/usr/bin/false", 1)
@@ -53,7 +54,7 @@ func Test_ExecuteNonExistent(t *testing.T) {
 	da := &DownAction{
 		Exec: "/DOES-NOT-EXIST",
 	}
-	dal, _ := da.NewDownActionLoop()
+	dal, _ := da.NewDownActionLoop(context.Background())
 	err := dal.Execute(da.Exec)
 	assert.Error(t, err)
 }
@@ -70,7 +71,7 @@ func getTestDA() *DownAction {
 
 func Test_Start(t *testing.T) {
 	da := getTestDA()
-	dal := da.Start()
+	dal := da.Start(context.Background())
 	assert.Equal(t, da, dal.da)
 	assert.NotNil(t, dal.cancelFunc)
 }
@@ -85,7 +86,7 @@ func Test_StartAndStop(t *testing.T) {
 		StopExec: "false",
 	}
 	hook := nulllogger.NewNullLoggerHook()
-	dal := da.Start()
+	dal := da.Start(context.Background())
 	assert.NotNil(t, dal, "DownAction loop is running")
 	time.Sleep(waitTime) // Give it time to startExec
 	ensureExec(t, hook, "/usr/bin/true", 1)
@@ -102,7 +103,7 @@ func testBackoff(t *testing.T, hasLimit bool) {
 		da.BackoffLimit = backoffLimit
 	}
 	assert.Equal(t, 1.5, BackoffFactor, "Ensuring we have the right values")
-	dal, _ := da.NewDownActionLoop()
+	dal, _ := da.NewDownActionLoop(context.Background())
 	assert.Equal(t, DaIteration{iteration: -1, sleepTime: 0}, *dal.it)
 	dal.iterate()
 	assert.Equal(t, DaIteration{iteration: 0, sleepTime: da.After}, *dal.it)

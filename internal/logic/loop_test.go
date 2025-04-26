@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hugoh/upd/internal/status"
@@ -14,16 +15,17 @@ func emptyNewLoop() *Loop {
 }
 
 func Test_DownActionStartStop(t *testing.T) {
+	ctx := context.Background()
 	da := getTestDA()
 	loop := emptyNewLoop()
 	loop.DownAction = da
 	assert.Nil(t, loop.downActionLoop)
 	loop.DownActionStop()
 	assert.Nil(t, loop.downActionLoop)
-	err := loop.DownActionStart()
+	err := loop.DownActionStart(ctx)
 	assert.NoError(t, err)
 	assert.NotNil(t, loop.downActionLoop)
-	err = loop.DownActionStart()
+	err = loop.DownActionStart(ctx)
 	assert.Error(t, err)
 	loop.DownActionStop()
 	assert.Nil(t, loop.downActionLoop)

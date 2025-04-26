@@ -70,8 +70,8 @@ func NewDaIteration() *DaIteration {
 	}
 }
 
-func (da *DownAction) NewDownActionLoop() (*DownActionLoop, context.Context) {
-	ctx, cancelFunc := context.WithCancel(context.Background())
+func (da *DownAction) NewDownActionLoop(ctx context.Context) (*DownActionLoop, context.Context) {
+	ctx, cancelFunc := context.WithCancel(ctx)
 	dal := &DownActionLoop{
 		da:         da,
 		it:         NewDaIteration(),
@@ -80,8 +80,8 @@ func (da *DownAction) NewDownActionLoop() (*DownActionLoop, context.Context) {
 	return dal, ctx
 }
 
-func (da *DownAction) Start() *DownActionLoop {
-	dal, ctx := da.NewDownActionLoop()
+func (da *DownAction) Start(ctx context.Context) *DownActionLoop {
+	dal, ctx := da.NewDownActionLoop(ctx)
 	logger.L.Debug("[DownAction] kicking off run loop")
 	go dal.run(ctx)
 	return dal
