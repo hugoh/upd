@@ -70,6 +70,29 @@ func NewDaIteration() *DaIteration {
 	}
 }
 
+func (da *DownAction) NewDownActionLoop() (*DownActionLoop, context.Context) {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	dal := &DownActionLoop{
+		da:         da,
+		it:         NewDaIteration(),
+		cancelFunc: cancelFunc,
+	}
+	return dal, ctx
+}
+
+func (da *DownAction) Start() *DownActionLoop {
+	dal, ctx := da.NewDownActionLoop()
+	logger.L.Debug("[DownAction] kicking off run loop")
+	go dal.run(ctx)
+	return dal
+}
+
+func (dal *DownActionLoop) Stop() {
+	_ = dal.Execute(dal.da.StopExec) //nolint:errcheck
+	logger.L.Debug("[DownAction] sending shutdown signal")
+	dal.cancelFunc()
+}
+
 func (dal *DownActionLoop) iterate() {
 	dal.it.iteration++
 	switch dal.it.iteration {
@@ -112,27 +135,4 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 			break
 		}
 	}
-}
-
-func (da *DownAction) NewDownActionLoop() (*DownActionLoop, context.Context) {
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	dal := &DownActionLoop{
-		da:         da,
-		it:         NewDaIteration(),
-		cancelFunc: cancelFunc,
-	}
-	return dal, ctx
-}
-
-func (da *DownAction) Start() *DownActionLoop {
-	dal, ctx := da.NewDownActionLoop()
-	logger.L.Debug("[DownAction] kicking off run loop")
-	go dal.run(ctx)
-	return dal
-}
-
-func (dal *DownActionLoop) Stop() {
-	_ = dal.Execute(dal.da.StopExec) //nolint:errcheck
-	logger.L.Debug("[DownAction] sending shutdown signal")
-	dal.cancelFunc()
 }

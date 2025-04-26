@@ -1,9 +1,6 @@
----
-issues:
-  exclude-files:
-    - _test\.go
+version: "2"
 linters:
-  enable-all: true
+  default: all
   disable:
     - depguard
     - exhaustruct
@@ -12,6 +9,31 @@ linters:
     - nlreturn
     - varnamelen
     - wsl
-linters-settings:
-  errcheck:
-    check-blank: true
+  settings:
+    errcheck:
+      check-blank: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - _test\.go
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - _test\.go
+      - third_party$
+      - builtin$
+      - examples$

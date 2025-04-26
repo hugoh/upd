@@ -67,54 +67,6 @@ func (tracker *StateChangeTracker) Prune(currentTime time.Time) {
 	}
 }
 
-func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
-	last time.Duration, end time.Time,
-) (float64, time.Duration) {
-	if tracker.Tail == nil {
-		// No records other than the current status
-		if currentState {
-			return 1.0, 0
-		}
-		return 0.0, last
-	}
-
-	uptime := time.Duration(0)
-	start := end.Add(-last)
-
-	current := tracker.Tail
-	endOfPeriod := end
-	var lastTimestampSeen time.Time
-	var lastStateRecorded bool
-
-	for current != nil {
-		lastStateRecorded = current.Up
-		lastTimestampSeen = current.Timestamp
-		if lastTimestampSeen.Before(start) {
-			lastTimestampSeen = start
-		}
-		// Add duration if state was 'up'
-		if lastStateRecorded {
-			uptime += endOfPeriod.Sub(lastTimestampSeen)
-		}
-
-		if lastTimestampSeen == start {
-			break
-		}
-
-		endOfPeriod = lastTimestampSeen
-		current = current.Prev
-	}
-
-	if lastTimestampSeen.After(start) {
-		oldState := !lastStateRecorded
-		if oldState {
-			uptime += lastTimestampSeen.Sub(start)
-		}
-	}
-
-	return (float64(uptime) / float64(last)), last - uptime
-}
-
 var ErrInvalidRange = errors.New("range greater than the retention period")
 
 func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
@@ -161,4 +113,52 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 		}
 	}
 	return reports
+}
+
+func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
+	last time.Duration, end time.Time,
+) (float64, time.Duration) {
+	if tracker.Tail == nil {
+		// No records other than the current status
+		if currentState {
+			return 1.0, 0
+		}
+		return 0.0, last
+	}
+
+	uptime := time.Duration(0)
+	start := end.Add(-last)
+
+	current := tracker.Tail
+	endOfPeriod := end
+	var lastTimestampSeen time.Time
+	var lastStateRecorded bool
+
+	for current != nil {
+		lastStateRecorded = current.Up
+		lastTimestampSeen = current.Timestamp
+		if lastTimestampSeen.Before(start) {
+			lastTimestampSeen = start
+		}
+		// Add duration if state was 'up'
+		if lastStateRecorded {
+			uptime += endOfPeriod.Sub(lastTimestampSeen)
+		}
+
+		if time.Time.Equal(lastTimestampSeen, start) {
+			break
+		}
+
+		endOfPeriod = lastTimestampSeen
+		current = current.Prev
+	}
+
+	if lastTimestampSeen.After(start) {
+		oldState := !lastStateRecorded
+		if oldState {
+			uptime += lastTimestampSeen.Sub(start)
+		}
+	}
+
+	return (float64(uptime) / float64(last)), last - uptime
 }
