@@ -35,10 +35,6 @@ func NewLoop(checks Checks, delays Delays, da *DownAction, shuffle bool, status 
 	}
 }
 
-func (l *Loop) hasDownAction() bool {
-	return l.DownAction != nil
-}
-
 var ErrDownActionRunning = errors.New("cannot start new DownAction when one is already running")
 
 func (l *Loop) DownActionStart() error {
@@ -77,6 +73,28 @@ func (l *Loop) ProcessCheck(upStatus bool) {
 	}
 }
 
+func (l *Loop) Run() {
+	var checker Checker
+	for {
+		if l.Shuffle {
+			l.shuffleChecks()
+		}
+		status, err := pkg.CheckerRun(checker, l.Checks)
+		if err == nil {
+			l.ProcessCheck(status)
+		} else {
+			logger.L.WithError(err).Error("[Loop] error")
+		}
+		sleepTime := l.Delays[l.Status.Up]
+		logger.L.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")
+		time.Sleep(sleepTime)
+	}
+}
+
+func (l *Loop) hasDownAction() bool {
+	return l.DownAction != nil
+}
+
 func (l *Loop) shuffleChecks() {
 	rand.Shuffle(len(l.Checks), func(i, j int) {
 		l.Checks[i], l.Checks[j] = l.Checks[j], l.Checks[i]
@@ -100,22 +118,4 @@ func (checker Checker) ProbeSuccess(report *pkg.Report) {
 
 func (checker Checker) ProbeFailure(report *pkg.Report) {
 	logger.L.WithField("report", report).Warn("[Check] failed")
-}
-
-func (l *Loop) Run() {
-	var checker Checker
-	for {
-		if l.Shuffle {
-			l.shuffleChecks()
-		}
-		status, err := pkg.CheckerRun(checker, l.Checks)
-		if err == nil {
-			l.ProcessCheck(status)
-		} else {
-			logger.L.WithError(err).Error("[Loop] error")
-		}
-		sleepTime := l.Delays[l.Status.Up]
-		logger.L.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")
-		time.Sleep(sleepTime)
-	}
 }

@@ -25,7 +25,7 @@ const (
 	ConfigDump   string = "dump"
 )
 
-func Run(ctx context.Context, cCtx *cli.Command) error {
+func Run(_ context.Context, cCtx *cli.Command) error {
 	logger.LogSetup(cCtx.Bool(ConfigDebug))
 	dump := cCtx.Bool(ConfigDump)
 	conf := ReadConf(cCtx.String(ConfigConfig), dump)

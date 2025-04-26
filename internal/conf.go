@@ -87,25 +87,6 @@ func isValidTCPPort(fl validator.FieldLevel) bool {
 	return re.MatchString(fl.Field().String())
 }
 
-func (c Configuration) logSetup() {
-	if logger.L.GetLevel() == logrus.DebugLevel {
-		// Already set
-		return
-	}
-	switch c.LogLevel {
-	case "trace":
-		logger.L.SetLevel(logrus.TraceLevel)
-	case "debug":
-		logger.L.SetLevel(logrus.DebugLevel)
-	case "info":
-		logger.L.SetLevel(logrus.InfoLevel)
-	case "warn", "":
-		logger.L.SetLevel(logrus.WarnLevel)
-	default:
-		logger.L.WithField("loglevel", c.LogLevel).Error("[Config] Unknown loglevel")
-	}
-}
-
 func (c Configuration) GetChecks() []*pkg.Check {
 	checks := make([]*pkg.Check, 0, len(c.Checks.List))
 	for _, check := range c.Checks.List {
@@ -168,4 +149,23 @@ func (c Configuration) GetDelays() map[bool]time.Duration {
 	delays[true] = c.Checks.Every.Normal
 	delays[false] = c.Checks.Every.Down
 	return delays
+}
+
+func (c Configuration) logSetup() {
+	if logger.L.GetLevel() == logrus.DebugLevel {
+		// Already set
+		return
+	}
+	switch c.LogLevel {
+	case "trace":
+		logger.L.SetLevel(logrus.TraceLevel)
+	case "debug":
+		logger.L.SetLevel(logrus.DebugLevel)
+	case "info":
+		logger.L.SetLevel(logrus.InfoLevel)
+	case "warn", "":
+		logger.L.SetLevel(logrus.WarnLevel)
+	default:
+		logger.L.WithField("loglevel", c.LogLevel).Error("[Config] Unknown loglevel")
+	}
 }

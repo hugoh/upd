@@ -27,24 +27,6 @@ func NewStatus(version string, statsRetention time.Duration) *Status {
 	}
 }
 
-func (s *Status) set(up bool) {
-	if !s.Initialized {
-		s.Initialized = true
-	}
-	s.Up = up
-}
-
-func (s *Status) hasChanged(newStatus bool) bool {
-	return !s.Initialized || newStatus != s.Up
-}
-
-func (s *Status) recordResult(up bool) {
-	if s.StateChangeTracker == nil {
-		return
-	}
-	s.StateChangeTracker.RecordChange(time.Now(), up)
-}
-
 // Returns true if it changed
 func (s *Status) Update(up bool) bool {
 	s.mutex.Lock()
@@ -70,4 +52,22 @@ func (s *Status) GenStatReport(periods []time.Duration) *Report {
 		CheckCount: s.StateChangeTracker.UpdateCount,
 		LastUpdate: ReadableDuration(generated.Sub(s.StateChangeTracker.LastUpdated)),
 	}
+}
+
+func (s *Status) set(up bool) {
+	if !s.Initialized {
+		s.Initialized = true
+	}
+	s.Up = up
+}
+
+func (s *Status) hasChanged(newStatus bool) bool {
+	return !s.Initialized || newStatus != s.Up
+}
+
+func (s *Status) recordResult(up bool) {
+	if s.StateChangeTracker == nil {
+		return
+	}
+	s.StateChangeTracker.RecordChange(time.Now(), up)
 }
