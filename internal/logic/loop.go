@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"context"
 	"errors"
 	"math/rand/v2"
 	"time"
@@ -37,11 +38,11 @@ func NewLoop(checks Checks, delays Delays, da *DownAction, shuffle bool, status 
 
 var ErrDownActionRunning = errors.New("cannot start new DownAction when one is already running")
 
-func (l *Loop) DownActionStart() error {
+func (l *Loop) DownActionStart(ctx context.Context) error {
 	if l.downActionLoop != nil {
 		return ErrDownActionRunning
 	}
-	l.downActionLoop = l.DownAction.Start()
+	l.downActionLoop = l.DownAction.Start(ctx)
 	return nil
 }
 
@@ -54,7 +55,7 @@ func (l *Loop) DownActionStop() {
 	l.downActionLoop = nil
 }
 
-func (l *Loop) ProcessCheck(upStatus bool) {
+func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 	changed := l.Status.Update(upStatus)
 	if !changed {
 		return
@@ -66,22 +67,22 @@ func (l *Loop) ProcessCheck(upStatus bool) {
 	if upStatus {
 		l.DownActionStop()
 	} else {
-		err := l.DownActionStart()
+		err := l.DownActionStart(ctx)
 		if err != nil {
 			logger.L.WithError(err).Error("[Loop] could not start DownAction")
 		}
 	}
 }
 
-func (l *Loop) Run() {
+func (l *Loop) Run(ctx context.Context) {
 	var checker Checker
 	for {
 		if l.Shuffle {
 			l.shuffleChecks()
 		}
-		status, err := pkg.CheckerRun(checker, l.Checks)
+		status, err := pkg.CheckerRun(ctx, checker, l.Checks)
 		if err == nil {
-			l.ProcessCheck(status)
+			l.ProcessCheck(ctx, status)
 		} else {
 			logger.L.WithError(err).Error("[Loop] error")
 		}

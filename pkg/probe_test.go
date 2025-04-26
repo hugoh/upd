@@ -5,6 +5,7 @@
 package pkg
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -15,10 +16,28 @@ import (
 	"time"
 )
 
-var dnsResolver = "1.1.1.1:53"
+var (
+	dnsResolver = "1.1.1.1:53"
+	tout        = 1 * time.Second
+	toutFail    = 1 * time.Microsecond
+)
+
+func checkTimeout(t *testing.T, report *Report, want string) {
+	err := report.Error
+	if err == nil {
+		t.Fatal("got nil, want an error")
+	}
+	got := report.Response
+	if got != "" {
+		t.Fatalf("got %q should be zero", got)
+	}
+	got = report.Error.Error()
+	if !strings.Contains(got, want) {
+		t.Fatalf("got %q, missing %q", got, want)
+	}
+}
 
 func TestHttpProbe(t *testing.T) {
-	tout := 1 * time.Second
 	server := newTestHTTPServer(t)
 	defer server.Close()
 	t.Run(
@@ -26,7 +45,7 @@ func TestHttpProbe(t *testing.T) {
 		func(t *testing.T) {
 			u := url.URL{Scheme: "http", Host: server.Addr}
 			httpProbe := GetHTTPProbe(u.String())
-			report := httpProbe.Probe(tout)
+			report := httpProbe.Probe(context.Background(), tout)
 			if report.Error != nil {
 				t.Fatal(report.Error)
 			}
@@ -40,7 +59,7 @@ func TestHttpProbe(t *testing.T) {
 	t.Run("returns an error if the request fails", func(t *testing.T) {
 		u := url.URL{Scheme: "http", Host: "localhost"}
 		httpProbe := GetHTTPProbe(u.String())
-		report := httpProbe.Probe(tout)
+		report := httpProbe.Probe(context.Background(), tout)
 		err := report.Error
 		if err == nil {
 			t.Fatal("got nil, want an error")
@@ -55,6 +74,15 @@ func TestHttpProbe(t *testing.T) {
 			t.Fatalf("got %q, want prefix %q", got, prefix)
 		}
 	})
+	t.Run(
+		"returns an error if the request is times out",
+		func(t *testing.T) {
+			u := url.URL{Scheme: "http", Host: server.Addr}
+			httpProbe := GetHTTPProbe(u.String())
+			report := httpProbe.Probe(context.Background(), toutFail)
+			checkTimeout(t, report, "Client.Timeout")
+		},
+	)
 }
 
 // Creates an HTTP server for testing.
@@ -78,7 +106,6 @@ func newTestHTTPServer(t *testing.T) *http.Server {
 }
 
 func TestTcpProbe(t *testing.T) {
-	tout := 1 * time.Second
 	listen := newTestTCPServer(t)
 	defer listen.Close()
 	go func() {
@@ -97,7 +124,7 @@ func TestTcpProbe(t *testing.T) {
 		"returns the local host/port if the request is successful",
 		func(t *testing.T) {
 			tcpProbe := GetTCPProbe(hostPort)
-			report := tcpProbe.Probe(tout)
+			report := tcpProbe.Probe(context.Background(), tout)
 			if report.Error != nil {
 				t.Fatal(report.Error)
 			}
@@ -117,7 +144,7 @@ func TestTcpProbe(t *testing.T) {
 	)
 	t.Run("returns an error if the request fails", func(t *testing.T) {
 		tcpProbe := GetTCPProbe("localhost:80")
-		report := tcpProbe.Probe(1)
+		report := tcpProbe.Probe(context.Background(), 1)
 		if report.Error == nil {
 			t.Fatal("got nil, want an error")
 		}
@@ -131,6 +158,14 @@ func TestTcpProbe(t *testing.T) {
 			t.Fatalf("got %q, want %q", got, want)
 		}
 	})
+	t.Run(
+		"returns an error if the request is times out",
+		func(t *testing.T) {
+			tcpProbe := GetTCPProbe(hostPort)
+			report := tcpProbe.Probe(context.Background(), toutFail)
+			checkTimeout(t, report, "i/o timeout")
+		},
+	)
 }
 
 // Creates a TCP server for testing.
@@ -144,13 +179,11 @@ func newTestTCPServer(t *testing.T) net.Listener {
 }
 
 func TestDnsProbe(t *testing.T) {
-	tout := 1 * time.Second
-	// We need to support custom resolvers first.
 	t.Run(
 		"returns the first resolved IP address if the request is successful",
 		func(t *testing.T) {
 			dnsProbe := GetDNSProbe(dnsResolver, "google.com")
-			report := dnsProbe.Probe(tout)
+			report := dnsProbe.Probe(context.Background(), tout)
 			if report.Error != nil {
 				t.Fatal(report.Error)
 			}
@@ -169,7 +202,7 @@ func TestDnsProbe(t *testing.T) {
 	)
 	t.Run("returns an error if the request fails", func(t *testing.T) {
 		dnsProbe := GetDNSProbe(dnsResolver, "invalid.aa")
-		report := dnsProbe.Probe(1)
+		report := dnsProbe.Probe(context.Background(), tout)
 		err := report.Error
 		if err == nil {
 			t.Fatal("got nil, want an error")
@@ -184,4 +217,12 @@ func TestDnsProbe(t *testing.T) {
 			t.Fatalf("got %q, want prefix %q", got, prefix)
 		}
 	})
+	t.Run(
+		"returns an error if the request is times out",
+		func(t *testing.T) {
+			dnsProbe := GetDNSProbe(dnsResolver, "google.com")
+			report := dnsProbe.Probe(context.Background(), toutFail)
+			checkTimeout(t, report, "i/o timeout")
+		},
+	)
 }

@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"context"
 	"time"
 )
 
@@ -18,10 +19,10 @@ type Checker interface {
 }
 
 // Run specific connection check and return report
-func (c *Check) RunProbe(checker Checker) *Report {
+func (c *Check) RunProbe(ctx context.Context, checker Checker) *Report {
 	checker.CheckRun(*c)
 	p := *c.Probe
-	return p.Probe(c.Timeout)
+	return p.Probe(ctx, c.Timeout)
 }
 
 type NullChecker struct{}
@@ -34,9 +35,9 @@ func (c NullChecker) ProbeFailure(_ *Report) {}
 Runs a series of checks.
 Returns true as soon as one is successful indicating that the connection is up, false otherwise.
 */
-func RunChecks(checks []*Check) (bool, error) {
+func RunChecks(ctx context.Context, checks []*Check) (bool, error) {
 	var nc NullChecker
-	return CheckerRun(nc, checks)
+	return CheckerRun(ctx, nc, checks)
 }
 
 /*
@@ -44,9 +45,9 @@ Runs a series of checks utilizing a Checker interface for handling probe return.
 Returns true as soon as one is successful indicating that the connection is up, false otherwise.
 Logs output using logrus.Logger instance
 */
-func CheckerRun(checker Checker, checks []*Check) (bool, error) {
+func CheckerRun(ctx context.Context, checker Checker, checks []*Check) (bool, error) {
 	for _, check := range checks {
-		report := check.RunProbe(checker)
+		report := check.RunProbe(ctx, checker)
 		if report.Error != nil {
 			checker.ProbeFailure(report)
 			continue
