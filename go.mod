@@ -207,8 +207,8 @@ require (
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/tdakkota/asciicheck v0.4.1 // indirect
 	github.com/tdewolff/argp v0.0.0-20250209172303-079abae893fb // indirect
-	github.com/tdewolff/minify/v2 v2.23.3 // indirect
-	github.com/tdewolff/parse/v2 v2.7.23 // indirect
+	github.com/tdewolff/minify/v2 v2.23.5 // indirect
+	github.com/tdewolff/parse/v2 v2.8.0 // indirect
 	github.com/tetafro/godot v1.5.1 // indirect
 	github.com/timakin/bodyclose v0.0.0-20241222091800-1db5c5ca4d67 // indirect
 	github.com/timonwong/loggercheck v0.11.0 // indirect
