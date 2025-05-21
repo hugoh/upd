@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/hugoh/upd/internal/logic"
 	"github.com/hugoh/upd/internal/nulllogger"
 	"github.com/hugoh/upd/pkg"
+	"github.com/sirupsen/logrus" // Added for logrus.StandardLogger()
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -69,6 +71,34 @@ func TestGetChecksFromConfFail(t *testing.T) {
 	logger.L.ExitFunc = func(code int) { panic(code) }
 	conf := readConf("upd_test_allbad.yaml")
 	assert.Panics(t, func() { conf.GetChecks() })
+}
+
+func TestReadConf_NonExistentFile(t *testing.T) {
+	nulllogger.NewNullLoggerHook() // Keep this to suppress normal log output
+	originalExitFunc := logrus.StandardLogger().ExitFunc
+	logrus.StandardLogger().ExitFunc = func(code int) { panic(code) }
+	defer func() { logrus.StandardLogger().ExitFunc = originalExitFunc }()
+
+	assert.Panics(t, func() { ReadConf("non_existent_config.yaml", false) })
+}
+
+func TestReadConf_MalformedFile(t *testing.T) {
+	nulllogger.NewNullLoggerHook() // Keep this to suppress normal log output
+	originalExitFunc := logrus.StandardLogger().ExitFunc
+	logrus.StandardLogger().ExitFunc = func(code int) { panic(code) }
+	defer func() { logrus.StandardLogger().ExitFunc = originalExitFunc }()
+
+	// Create a temporary malformed YAML file
+	tmpFile, err := os.CreateTemp(testConfigDir, "malformed-*.yaml")
+	assert.NoError(t, err, "Failed to create temp file")
+	defer os.Remove(tmpFile.Name()) // Clean up the file afterwards
+
+	_, err = tmpFile.WriteString("this is not valid yaml content: \n  - an item")
+	assert.NoError(t, err, "Failed to write to temp file")
+	err = tmpFile.Close()
+	assert.NoError(t, err, "Failed to close temp file")
+
+	assert.Panics(t, func() { ReadConf(tmpFile.Name(), false) })
 }
 
 func (suite *TestSuite) TestGetChecks() {

@@ -38,21 +38,96 @@ func TestSuiteStatsRun(t *testing.T) {
 
 func TestEmpty(t *testing.T) {
 	tracker := GetTracker()
-	assert.Equal(t, 0, tracker.RecordsCound())
+	assert.Equal(t, 0, tracker.RecordsCount()) // Corrected: RecordsCount
 }
 
 func (suite *TestSuiteStats) TestCount() {
 	t := suite.T()
 	tracker := suite.Tracker
-	assert.Equal(t, 3, tracker.RecordsCound())
+	assert.Equal(t, 3, tracker.RecordsCount()) // Corrected: RecordsCount
 	tracker.RecordChange(suite.Now.Add(-25*time.Hour), true) // 25 hours
-	assert.Equal(t, 3, tracker.RecordsCound())
+	// Pruning happens here. suite.Now is the 'currentTime'.
+	// suite.Now - 24h is the retention limit.
+	// The record at suite.Now.Add(-25*time.Hour) is older than this limit and should be pruned.
+	// However, the original records from SetupTest are:
+	// -1h, -30m, -15m. All are NEWER than suite.Now - 24h.
+	// So, after adding a -25h record, it gets pruned, and the 3 original records remain.
+	assert.Equal(t, 3, tracker.RecordsCount()) // Corrected: RecordsCount
 }
 
 func (suite *TestSuiteStats) TestPrune() {
 	t := suite.T()
-	tracker := suite.Tracker
-	assert.Equal(t, 3, tracker.RecordsCound())
+	baseTime := suite.Now // Use a consistent time from the suite, set during SetupTest
+
+	retentionPeriod := 10 * time.Minute
+	tracker := &StateChangeTracker{
+		Retention: retentionPeriod,
+		Started:   baseTime.Add(-1 * time.Hour), // Ensure Started is well before any records
+	}
+
+	// Timestamps for records
+	// Old records (should be pruned relative to finalRecordTime)
+	oldTime1 := baseTime.Add(-2 * retentionPeriod)              // e.g., suite.Now - 20 minutes
+	oldTime2 := baseTime.Add(-retentionPeriod - 2*time.Minute) // e.g., suite.Now - 12 minutes
+
+	// New records (should be kept relative to finalRecordTime)
+	newTime1 := baseTime.Add(-retentionPeriod / 2) // e.g., suite.Now - 5 minutes
+	newTime2 := baseTime.Add(-retentionPeriod / 3) // e.g., suite.Now - 3m20s
+
+	// Add records. Pruning happens with each RecordChange.
+	// The 'currentTime' for pruning is the timestamp of the record being added.
+
+	tracker.RecordChange(oldTime1, true)  // currentTime = oldTime1. Cutoff = oldTime1 - 10m. No records before this.
+	// List: [oldTime1(true)]
+
+	tracker.RecordChange(oldTime2, false) // currentTime = oldTime2. Cutoff = oldTime2 - 10m.
+	// oldTime1 is NOT before (oldTime2 - 10m) because -20m is not before (-12m - 10m = -22m).
+	// List: [oldTime1(true), oldTime2(false)]
+
+	tracker.RecordChange(newTime1, true)  // currentTime = newTime1. Cutoff = newTime1 - 10m.
+	// oldTime1 (-20m) IS before (newTime1 - 10m = -5m - 10m = -15m). oldTime1 is pruned.
+	// oldTime2 (-12m) is NOT before -15m.
+	// List: [oldTime2(false), newTime1(true)]
+
+	tracker.RecordChange(newTime2, false) // currentTime = newTime2. Cutoff = newTime2 - 10m.
+	// oldTime2 (-12m) IS before (newTime2 - 10m = -3m20s - 10m = -13m20s). oldTime2 is pruned.
+	// newTime1 (-5m) is NOT before -13m20s.
+	// List: [newTime1(true), newTime2(false)]
+
+	// Final record to set the "current time" for pruning accurately for the test assertion point.
+	finalRecordTime := baseTime // suite.Now
+	tracker.RecordChange(finalRecordTime, true) // currentTime = finalRecordTime. Cutoff = finalRecordTime - 10m.
+	// newTime1 (-5m from finalRecordTime) is NOT before (finalRecordTime - 10m). Kept.
+	// newTime2 (-3m20s from finalRecordTime) is NOT before (finalRecordTime - 10m). Kept.
+	// List: [newTime1(true), newTime2(false), finalRecordTime(true)]
+
+	// Expected number of records: newTime1, newTime2, and finalRecordTime record.
+	assert.Equal(t, 3, tracker.RecordsCount(), "Should only have 3 records after pruning")
+
+	// Check the content of the remaining records
+	var remainingTimestamps []time.Time
+	current := tracker.Head
+	for current != nil {
+		remainingTimestamps = append(remainingTimestamps, current.Timestamp)
+		current = current.Next
+	}
+
+	// Assert that old records' original timestamps are not present
+	assert.NotContains(t, remainingTimestamps, oldTime1, "Timestamp of old record 1 should be pruned")
+	assert.NotContains(t, remainingTimestamps, oldTime2, "Timestamp of old record 2 should be pruned")
+
+	// Assert that new records' original timestamps are present
+	assert.Contains(t, remainingTimestamps, newTime1, "Timestamp of new record 1 should be present")
+	assert.Contains(t, remainingTimestamps, newTime2, "Timestamp of new record 2 should be present")
+	assert.Contains(t, remainingTimestamps, finalRecordTime, "Timestamp of final record should be present")
+
+	// Assert that all remaining records are within the retention period relative to finalRecordTime
+	pruningCutoff := finalRecordTime.Add(-retentionPeriod)
+	for _, ts := range remainingTimestamps {
+		assert.False(t, ts.Before(pruningCutoff), "Timestamp %v should not be before cutoff %v (finalRecordTime: %v)", ts, pruningCutoff, finalRecordTime)
+		// Also check they are not in the future relative to finalRecordTime, which would be illogical.
+		assert.False(t, ts.After(finalRecordTime), "Timestamp %v should not be after the final record time %v", ts, finalRecordTime)
+	}
 }
 
 func (suite *TestSuiteStats) TestCalc() {
@@ -103,11 +178,11 @@ func (suite *TestSuiteStats) TestCalc() {
 	assert.Equal(t, 15*time.Minute, downtime)
 
 	actual, downtime = tracker.uptimeCalculation(true, 24*time.Hour, suite.Now)
-	assert.Equal(t, 0.75/24, actual)
+	assert.Equal(t, 0.75/24, actual) // This seems like an existing potentially odd test calculation, keeping as is.
 	assert.Equal(t, 23*time.Hour+15*time.Minute, downtime)
 
 	actual, downtime = tracker.uptimeCalculation(false, 24*time.Hour, suite.Now)
-	assert.Equal(t, 0.75/24, actual)
+	assert.Equal(t, 0.75/24, actual) // This seems like an existing potentially odd test calculation, keeping as is.
 	assert.Equal(t, 23*time.Hour+15*time.Minute, downtime)
 
 	empty.RecordChange(suite.Now.Add(-2*time.Hour), false)

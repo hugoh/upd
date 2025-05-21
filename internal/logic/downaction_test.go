@@ -59,6 +59,60 @@ func Test_ExecuteNonExistent(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func Test_ExecuteEmptyCommand(t *testing.T) {
+	da := &DownAction{} // Exec is empty by default
+	dal, _ := da.NewDownActionLoop(context.Background())
+	err := dal.Execute("") // Explicitly pass empty string
+	assert.Error(t, err)
+	assert.Equal(t, ErrNoCommand, err)
+}
+
+// ensureCommandLogSequence checks if the logged "exec" commands match the expected sequence.
+func ensureCommandLogSequence(t *testing.T, hook *test.Hook, expectedCmdSequence []string) {
+	loggedCmds := []string{}
+	// Give a little time for all logs to be processed, especially async warn logs from cmd.Wait()
+	time.Sleep(50 * time.Millisecond) 
+	for _, entry := range hook.AllEntries() {
+		if cmd, ok := entry.Data["exec"]; ok {
+			if cmdStr, okStr := cmd.(string); okStr {
+				loggedCmds = append(loggedCmds, cmdStr)
+			}
+		}
+	}
+	assert.Equal(t, expectedCmdSequence, loggedCmds, "Logged command sequence does not match expected. Got: %v", loggedCmds)
+}
+
+func TestDownAction_StartAndStop_WithStopExec(t *testing.T) {
+	const execCmdPath = "/usr/bin/true"
+	const stopExecCmdPath = "/usr/bin/false"
+
+	da := &DownAction{
+		After:    1 * time.Millisecond, // Run Exec quickly
+		Every:    100 * time.Second,    // Effectively run Exec only once before stop
+		Exec:     "true",               // Command that resolves to /usr/bin/true (exits 0)
+		StopExec: "false",              // Command that resolves to /usr/bin/false (exits 1)
+	}
+
+	hook := nulllogger.NewNullLoggerHook()
+	dal := da.Start(context.Background())
+	assert.NotNil(t, dal, "DownAction loop should be running")
+
+	// Allow time for Exec command to run and be logged.
+	// dal.da.After is 1ms. Add some buffer.
+	time.Sleep(50 * time.Millisecond)
+
+	dal.Stop() // This will trigger StopExec
+
+	// After Stop(), StopExec is executed. If it fails (like "false"), it's logged twice.
+	// Exec ("true") is logged once (INFO).
+	// StopExec ("false") is logged once (INFO) during Execute by Stop().
+	// StopExec ("false") is logged again (WARN) by the cmd.Wait() goroutine because "false" exits with error.
+	expectedSequence := []string{execCmdPath, stopExecCmdPath, stopExecCmdPath}
+
+	// The ensureCommandLogSequence includes a small delay to catch all logs.
+	ensureCommandLogSequence(t, hook, expectedSequence)
+}
+
 func getTestDA() *DownAction {
 	const after = 42 * time.Second
 	const every = 1 * time.Second
