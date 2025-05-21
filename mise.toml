@@ -1,3 +1,4 @@
 [tools]
 go = "latest"
+"npm:prettier" = "latest"
 task = "latest"
