@@ -1,7 +1,6 @@
 package status
 
 import (
-	_ "embed"
 	"encoding/json"
 	"errors"
 	"net/http"
