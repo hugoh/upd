@@ -68,7 +68,6 @@ require (
 	github.com/dave/dst v0.27.3 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/denis-tingaikin/go-header v0.5.0 // indirect
-	github.com/djherbis/atime v1.1.0 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/ettle/strcase v0.2.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
@@ -128,7 +127,6 @@ require (
 	github.com/jingyugao/rowserrcheck v1.1.1 // indirect
 	github.com/jjti/go-spancheck v0.6.4 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/jmoiron/sqlx v1.4.0 // indirect
 	github.com/julz/importas v0.2.0 // indirect
 	github.com/karamaru-alpha/copyloopvar v1.2.1 // indirect
 	github.com/kisielk/errcheck v1.9.0 // indirect
@@ -151,7 +149,6 @@ require (
 	github.com/maratori/testableexamples v1.0.0 // indirect
 	github.com/maratori/testpackage v1.1.1 // indirect
 	github.com/matoous/godox v1.1.0 // indirect
-	github.com/matryer/try v0.0.0-20161228173917-9ac251b645a2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
@@ -206,9 +203,6 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/tdakkota/asciicheck v0.4.1 // indirect
-	github.com/tdewolff/argp v0.0.0-20250209172303-079abae893fb // indirect
-	github.com/tdewolff/minify/v2 v2.23.5 // indirect
-	github.com/tdewolff/parse/v2 v2.8.0 // indirect
 	github.com/tetafro/godot v1.5.1 // indirect
 	github.com/timakin/bodyclose v0.0.0-20241222091800-1db5c5ca4d67 // indirect
 	github.com/timonwong/loggercheck v0.11.0 // indirect
@@ -274,7 +268,6 @@ tool (
 	github.com/daixiang0/gci
 	github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 	github.com/securego/gosec/v2/cmd/gosec
-	github.com/tdewolff/minify/v2/cmd/minify
 	github.com/vladopajic/go-test-coverage/v2
 	honnef.co/go/tools/cmd/staticcheck
 	mvdan.cc/gofumpt

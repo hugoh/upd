@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -39,17 +38,6 @@ func NewStatHandler(server *StatServer) *StatHandler {
 	}
 }
 
-//go:embed static/stats.min.html
-var statPage string
-
-func StatPage(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Cache-Control", "max-age=604800") // 7 days
-	_, err := fmt.Fprint(w, statPage)
-	if err != nil {
-		http.Error(w, "Failed to return stats page", http.StatusInternalServerError)
-	}
-}
-
 func (h *StatHandler) GenStatReport() *Report {
 	return h.StatServer.Status.GenStatReport(h.StatServer.Config.Reports)
 }
@@ -60,8 +48,16 @@ func (h *StatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	stats := h.GenStatReport()
 
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(stats)
+
+	jsonData, err := json.MarshalIndent(stats, "", "  ")
 	if err != nil {
-		logger.L.WithError(err).Error("[Stats] error output JSON stats")
+		logger.L.WithError(err).Error("[Stats] error marshalling JSON stats")
+		http.Error(w, "Failed to generate JSON", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = w.Write(jsonData)
+	if err != nil {
+		logger.L.WithError(err).Error("[Stats] error returning JSON stats")
 	}
 }

@@ -38,7 +38,6 @@ func (s *StatServer) Start() {
 	mux := http.NewServeMux()
 	statHandler := NewStatHandler(s)
 	mux.Handle(StatRoute+".json", statHandler)
-	mux.HandleFunc(StatRoute, StatPage)
 	server := &http.Server{
 		Addr:         s.Config.Port,
 		Handler:      mux,

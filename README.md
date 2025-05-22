@@ -81,7 +81,7 @@ stats:
 
 ## Status
 
-In the configuration, `stats` can be used to capture statistics that are made available via a web interface.
+In the configuration, `stats` can be used to capture statistics that are made available via a web interface at `http://<ip>:42080/stats.json`.
 
 The sample configuration above will provide data looking like this:
 
