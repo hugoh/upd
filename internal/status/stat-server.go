@@ -1,6 +1,8 @@
 package status
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -17,37 +19,53 @@ type StatServerConfig struct {
 type StatServer struct {
 	Status *Status
 	Config *StatServerConfig
+	server *http.Server
 }
 
-func StartStatServer(status *Status, config *StatServerConfig) {
+func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 	if config.Port == "" {
 		logger.L.Debug("no stat server specified")
-		return
+		return nil
 	}
 	server := StatServer{
 		Status: status,
 		Config: config,
 	}
 	go server.Start()
+	return &server
 }
 
 func (s *StatServer) Start() {
-	const StatRoute = "/stats"
+	const StatRoute = "/stats.json"
 	const ReqTimeout = 3 * time.Second
 	const IdleTimeout = 3 * time.Second
 	mux := http.NewServeMux()
 	statHandler := NewStatHandler(s)
-	mux.Handle(StatRoute+".json", statHandler)
-	server := &http.Server{
+	mux.Handle(StatRoute, statHandler)
+	s.server = &http.Server{
 		Addr:         s.Config.Port,
 		Handler:      mux,
 		ReadTimeout:  ReqTimeout,
 		WriteTimeout: ReqTimeout,
 		IdleTimeout:  IdleTimeout,
 	}
-	logger.L.WithField("statserver", fmt.Sprintf("http://localhost%s%s", server.Addr, StatRoute)).
+	logger.L.WithField("statserver", fmt.Sprintf("http://localhost%s%s", s.server.Addr, StatRoute)).
 		Info("[Stats] server started")
-	if err := server.ListenAndServe(); err != nil {
+	if err := s.server.ListenAndServe(); err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			return
+		}
 		logger.L.WithError(err).Error("[Stats] error starting stats server")
+	}
+}
+
+func (s *StatServer) StopStatServer(ctx context.Context) {
+	if s.server == nil {
+		return
+	}
+	logger.L.Info("[Stats] shutting down stats server")
+	err := s.server.Shutdown(ctx)
+	if err != nil {
+		logger.L.WithError(err).Error("[Stats] error shutting down stats server")
 	}
 }

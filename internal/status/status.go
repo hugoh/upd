@@ -13,17 +13,27 @@ type Status struct {
 	mutex              sync.Mutex
 }
 
-func NewStatus(version string, statsRetention time.Duration) *Status {
+func NewStatus(version string) *Status {
 	var stateChangeTracker *StateChangeTracker
-	if statsRetention > 0 {
-		stateChangeTracker = &StateChangeTracker{
-			Retention: statsRetention,
-			Started:   time.Now(),
-		}
-	}
 	return &Status{
 		Version:            version,
 		StateChangeTracker: stateChangeTracker,
+	}
+}
+
+func (s *Status) SetRetention(retention time.Duration) {
+	if retention <= 0 {
+		s.StateChangeTracker = nil
+		return
+	}
+	if s.StateChangeTracker == nil {
+		s.StateChangeTracker = &StateChangeTracker{
+			Retention: retention,
+			Started:   time.Now(),
+		}
+	} else {
+		s.StateChangeTracker.Retention = retention
+		s.StateChangeTracker.Prune(time.Now())
 	}
 }
 

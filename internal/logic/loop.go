@@ -18,22 +18,35 @@ type (
 )
 
 type Loop struct {
-	Checks         Checks
-	Delays         Delays
-	DownAction     *DownAction
-	Shuffle        bool
-	downActionLoop *DownActionLoop
-	Status         *status.Status
+	Checks           Checks
+	Delays           Delays
+	DownAction       *DownAction
+	Shuffle          bool
+	downActionLoop   *DownActionLoop
+	status           *status.Status
+	statServer       *status.StatServer
+	statServerConfig *status.StatServerConfig
 }
 
-func NewLoop(checks Checks, delays Delays, da *DownAction, shuffle bool, status *status.Status) *Loop {
+func NewLoop(version string) *Loop {
 	return &Loop{
-		Checks:     checks,
-		Delays:     delays,
-		DownAction: da,
-		Shuffle:    shuffle,
-		Status:     status,
+		status: status.NewStatus(version),
 	}
+}
+
+func (l *Loop) Configure(checks Checks,
+	delays Delays,
+	da *DownAction,
+	shuffle bool,
+	retention time.Duration,
+	statServerConfig *status.StatServerConfig,
+) {
+	l.Checks = checks
+	l.Delays = delays
+	l.DownAction = da
+	l.Shuffle = shuffle
+	l.status.SetRetention(retention)
+	l.statServerConfig = statServerConfig
 }
 
 var ErrDownActionRunning = errors.New("cannot start new DownAction when one is already running")
@@ -56,11 +69,11 @@ func (l *Loop) DownActionStop() {
 }
 
 func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
-	changed := l.Status.Update(upStatus)
+	changed := l.status.Update(upStatus)
 	if !changed {
 		return
 	}
-	logger.L.WithField("up", l.Status.Up).Info("[Loop] connection status changed")
+	logger.L.WithField("up", l.status.Up).Info("[Loop] connection status changed")
 	if !l.hasDownAction() {
 		return
 	}
@@ -76,6 +89,7 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 
 func (l *Loop) Run(ctx context.Context) {
 	var checker Checker
+	l.statServer = status.StartStatServer(l.status, l.statServerConfig)
 	for {
 		if l.Shuffle {
 			l.shuffleChecks()
@@ -86,9 +100,22 @@ func (l *Loop) Run(ctx context.Context) {
 		} else {
 			logger.L.WithError(err).Error("[Loop] error")
 		}
-		sleepTime := l.Delays[l.Status.Up]
+		sleepTime := l.Delays[l.status.Up]
 		logger.L.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")
-		time.Sleep(sleepTime)
+
+		select {
+		case <-ctx.Done():
+			logger.L.Debug("[Loop] context canceled during sleep, exiting Run()")
+			return
+		case <-time.After(sleepTime):
+		}
+	}
+}
+
+func (l *Loop) Stop(ctx context.Context) {
+	l.DownActionStop()
+	if l.statServer != nil {
+		l.statServer.StopStatServer(ctx)
 	}
 }
 

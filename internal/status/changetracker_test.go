@@ -38,21 +38,90 @@ func TestSuiteStatsRun(t *testing.T) {
 
 func TestEmpty(t *testing.T) {
 	tracker := GetTracker()
-	assert.Equal(t, 0, tracker.RecordsCound())
+	assert.Equal(t, 0, tracker.RecordsCount())
+}
+
+func TestRecordChange_UpdatesCurrentTimeFields(t *testing.T) {
+	tracker := GetTracker()
+	now := time.Now()
+	tracker.RecordChange(now, true)
+	assert.Equal(t, now, tracker.LastUpdated)
+	assert.Equal(t, int64(1), tracker.UpdateCount)
+}
+
+func TestRecordChange_HeadAndTailSetCorrectly(t *testing.T) {
+	tracker := GetTracker()
+	now := time.Now()
+	tracker.RecordChange(now, true)
+	assert.NotNil(t, tracker.Head)
+	assert.NotNil(t, tracker.Tail)
+	assert.Equal(t, tracker.Head, tracker.Tail)
+	assert.Equal(t, now, tracker.Head.Timestamp)
+	assert.True(t, tracker.Head.Up)
+}
+
+func TestRecordChange_IgnoresDuplicateConsecutiveStates(t *testing.T) {
+	tracker := GetTracker()
+	now := time.Now()
+	tracker.RecordChange(now, true)
+	tracker.RecordChange(now.Add(1*time.Minute), true)
+	assert.Equal(t, 1, tracker.RecordsCount())
+}
+
+func TestRecordChange_AddsNewStateChange(t *testing.T) {
+	tracker := GetTracker()
+	now := time.Now()
+	tracker.RecordChange(now, true)
+	tracker.RecordChange(now.Add(1*time.Minute), false)
+	assert.Equal(t, 2, tracker.RecordsCount())
+	assert.False(t, tracker.Tail.Up)
+	assert.True(t, tracker.Head.Up)
+}
+
+func TestPrune_RemovesOldRecords(t *testing.T) {
+	tracker := GetTracker()
+	now := time.Now()
+	tracker.Retention = 10 * time.Minute
+	tracker.RecordChange(now.Add(-20*time.Minute), true)
+	tracker.RecordChange(now.Add(-5*time.Minute), false)
+	tracker.Prune(now)
+	assert.Equal(t, 1, tracker.RecordsCount())
+	assert.Equal(t, now.Add(-5*time.Minute), tracker.Head.Timestamp)
+}
+
+func TestPrune_EmptiesListIfAllOld(t *testing.T) {
+	tracker := GetTracker()
+	now := time.Now()
+	tracker.Retention = 1 * time.Minute
+	tracker.RecordChange(now.Add(-10*time.Minute), true)
+	tracker.Prune(now)
+	assert.Nil(t, tracker.Head)
+	assert.Nil(t, tracker.Tail)
+	assert.Equal(t, 0, tracker.RecordsCount())
+}
+
+func TestPrune_DoesNotRemoveRecentRecords(t *testing.T) {
+	tracker := GetTracker()
+	now := time.Now()
+	tracker.Retention = 1 * time.Hour
+	tracker.RecordChange(now.Add(-30*time.Minute), true)
+	tracker.RecordChange(now.Add(-10*time.Minute), false)
+	tracker.Prune(now)
+	assert.Equal(t, 2, tracker.RecordsCount())
 }
 
 func (suite *TestSuiteStats) TestCount() {
 	t := suite.T()
 	tracker := suite.Tracker
-	assert.Equal(t, 3, tracker.RecordsCound())
+	assert.Equal(t, 3, tracker.RecordsCount())
 	tracker.RecordChange(suite.Now.Add(-25*time.Hour), true) // 25 hours
-	assert.Equal(t, 3, tracker.RecordsCound())
+	assert.Equal(t, 3, tracker.RecordsCount())
 }
 
 func (suite *TestSuiteStats) TestPrune() {
 	t := suite.T()
 	tracker := suite.Tracker
-	assert.Equal(t, 3, tracker.RecordsCound())
+	assert.Equal(t, 3, tracker.RecordsCount())
 }
 
 func (suite *TestSuiteStats) TestCalc() {

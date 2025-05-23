@@ -28,7 +28,6 @@ COMMANDS:
 GLOBAL OPTIONS:
    --config value, -c value  use the specified YAML configuration file (default: ".upd.yaml")
    --debug, -d               display debugging output in the console (default: false)
-   --dump, -D                dump parsed configuration and quit (default: false)
    --help, -h                show help
    --version, -v             print the version
 ```

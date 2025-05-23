@@ -17,9 +17,10 @@ import (
 )
 
 var (
-	dnsResolver = "1.1.1.1:53"
-	tout        = 1 * time.Second
-	toutFail    = 1 * time.Microsecond
+	dnsResolver       = "1.1.1.1:53"
+	addressForTimeout = "192.0.2.1:53"
+	tout              = 1 * time.Second
+	toutFail          = 1 * time.Microsecond
 )
 
 func checkError(t *testing.T, report *Report) error {
@@ -73,9 +74,9 @@ func TestHttpProbe(t *testing.T) {
 		}
 	})
 	t.Run(
-		"returns an error if the request is times out",
+		"returns an error if the request times out",
 		func(t *testing.T) {
-			u := url.URL{Scheme: "http", Host: server.Addr}
+			u := url.URL{Scheme: "http", Host: addressForTimeout}
 			httpProbe := GetHTTPProbe(u.String())
 			report := httpProbe.Probe(context.Background(), toutFail)
 			checkTimeout(t, report, "Client.Timeout")
@@ -157,9 +158,9 @@ func TestTcpProbe(t *testing.T) {
 		}
 	})
 	t.Run(
-		"returns an error if the request is times out",
+		"returns an error if the request times out",
 		func(t *testing.T) {
-			tcpProbe := GetTCPProbe(hostPort)
+			tcpProbe := GetTCPProbe(addressForTimeout)
 			report := tcpProbe.Probe(context.Background(), toutFail)
 			checkTimeout(t, report, "i/o timeout")
 		},
@@ -209,9 +210,9 @@ func TestDnsProbe(t *testing.T) {
 		}
 	})
 	t.Run(
-		"returns an error if the request is times out",
+		"returns an error if the request times out",
 		func(t *testing.T) {
-			dnsProbe := GetDNSProbe(dnsResolver, "google.com")
+			dnsProbe := GetDNSProbe(addressForTimeout, "google.com")
 			report := dnsProbe.Probe(context.Background(), toutFail)
 			checkTimeout(t, report, "i/o timeout")
 		},
