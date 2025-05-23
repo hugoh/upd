@@ -21,7 +21,7 @@ type TestSuite struct {
 const testConfigDir = "../testdata"
 
 func readConf(cfgFile string) *Configuration {
-	conf := ReadConf(fmt.Sprintf("%s/%s", testConfigDir, cfgFile), false)
+	conf, _ := ReadConf(fmt.Sprintf("%s/%s", testConfigDir, cfgFile))
 	return conf
 }
 

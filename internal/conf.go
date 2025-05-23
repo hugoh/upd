@@ -47,27 +47,24 @@ type Configuration struct {
 	LogLevel string                  `validate:"omitempty,oneof=trace debug info warn"`
 }
 
-func configFatal(msg string, path string, err error) {
-	logrus.WithField("file", path).WithError(err).Fatal(msg)
+func configError(msg string, path string, err error) (*Configuration, error) {
+	logrus.WithField("file", path).WithError(err).Error(msg)
+	return nil, fmt.Errorf("%s: %w", msg, err)
 }
 
-func ReadConf(cfgFile string, printConfig bool) *Configuration {
+func ReadConf(cfgFile string) (*Configuration, error) {
 	k := koanf.New(".")
 
 	if cfgFile == "" {
 		cfgFile = DefaultConfig
 	}
 	if err := k.Load(file.Provider(cfgFile), yaml.Parser()); err != nil {
-		configFatal("Could not read config", cfgFile, err)
+		return configError("Could not read config", cfgFile, err)
 	}
 	logger.L.WithField("file", cfgFile).Debug("[Config] config file used")
 	var conf Configuration
 	if err := k.UnmarshalWithConf("", &conf, koanf.UnmarshalConf{}); err != nil {
-		configFatal("Unable to parse the config", cfgFile, err)
-	}
-
-	if printConfig {
-		k.Print()
+		return configError("Unable to parse the config", cfgFile, err)
 	}
 
 	validate := validator.New()
@@ -75,11 +72,11 @@ func ReadConf(cfgFile string, printConfig bool) *Configuration {
 		logrus.WithError(err).Fatal("failed to instantiate config validator")
 	}
 	if err := validate.Struct(&conf); err != nil {
-		configFatal("Missing required attributes", cfgFile, err)
+		return configError("Missing required attributes", cfgFile, err)
 	}
 
 	conf.logSetup()
-	return &conf
+	return &conf, nil
 }
 
 func isValidTCPPort(fl validator.FieldLevel) bool {

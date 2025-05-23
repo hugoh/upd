@@ -82,7 +82,7 @@ func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 	return availability, downtime, nil
 }
 
-func (tracker *StateChangeTracker) RecordsCound() int {
+func (tracker *StateChangeTracker) RecordsCount() int {
 	i := 0
 	cur := tracker.Head
 	for cur != nil {

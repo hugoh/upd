@@ -20,6 +20,13 @@ tasks:
     generates:
       - "{{.COVEROUT}}"
 
+  coverfunc:
+    summary: Generate test coverage function
+    deps:
+      - coverage
+    cmds:
+      - go tool cover -func={{.COVEROUT}}
+
   covercheck:
     summary: Check test coverage
     deps:
