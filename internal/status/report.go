@@ -38,7 +38,7 @@ func NewStatHandler(server *StatServer) *StatHandler {
 }
 
 func (h *StatHandler) GenStatReport() *Report {
-	return h.statServer.status.GenStatReport(h.statServer.config.reports)
+	return h.statServer.status.GenStatReport(h.statServer.config.Reports)
 }
 
 func (h *StatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

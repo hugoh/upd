@@ -46,7 +46,7 @@ func SetupLoop(loop *logic.Loop, conf *Configuration, configPath string) error {
 		conf.GetDelays(),
 		conf.GetDownAction(),
 		conf.Checks.Shuffled,
-		conf.Stats.GetRetention(),
+		conf.Stats.Retention,
 		&conf.Stats)
 	return nil
 }

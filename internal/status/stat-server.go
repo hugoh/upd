@@ -11,9 +11,9 @@ import (
 )
 
 type StatServerConfig struct {
-	port      string `validate:"omitempty,validTCPPort"`
-	reports   []time.Duration
-	retention time.Duration
+	Port      string `validate:"omitempty,validTCPPort"`
+	Reports   []time.Duration
+	Retention time.Duration
 }
 
 type StatServer struct {
@@ -22,12 +22,8 @@ type StatServer struct {
 	status *Status
 }
 
-func (c StatServerConfig) GetRetention() time.Duration {
-	return c.retention
-}
-
 func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
-	if config.port == "" {
+	if config.Port == "" {
 		logger.L.Debug("no stat server specified")
 		return nil
 	}
@@ -47,7 +43,7 @@ func (s *StatServer) Start() {
 	statHandler := NewStatHandler(s)
 	mux.Handle(StatRoute, statHandler)
 	s.server = &http.Server{
-		Addr:         s.config.port,
+		Addr:         s.config.Port,
 		Handler:      mux,
 		ReadTimeout:  ReqTimeout,
 		WriteTimeout: ReqTimeout,
