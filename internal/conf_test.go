@@ -108,3 +108,8 @@ func (suite *TestSuite) TestGetChecks() {
 	assert.Equal(suite.T(), "tcp", tcp.Scheme())
 	assert.Equal(suite.T(), "1.0.0.1:53", tcp.HostPort)
 }
+
+func (suite *TestSuite) TestStatConf() {
+	conf := suite.conf.Stats
+	assert.Equal(suite.T(), ":8080", conf.Port)
+}
