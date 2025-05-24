@@ -19,7 +19,7 @@ func Test_DownActionStartStop(t *testing.T) {
 	ctx := context.Background()
 	da := getTestDA()
 	loop := emptyNewLoop()
-	loop.DownAction = da
+	loop.downAction = da
 	assert.Nil(t, loop.downActionLoop)
 	loop.DownActionStop()
 	assert.Nil(t, loop.downActionLoop)
@@ -45,7 +45,7 @@ func Test_ProcessCheck_StatusChanged_NoDownAction(t *testing.T) {
 	loop := emptyNewLoop()
 	// Status.Up is false by default, so passing true should change it
 	ctx := context.Background()
-	loop.DownAction = nil // explicitly no DownAction
+	loop.downAction = nil // explicitly no DownAction
 	loop.ProcessCheck(ctx, true)
 	// DownAction is nil, so nothing should be started/stopped
 	assert.Nil(t, loop.downActionLoop)
@@ -55,7 +55,7 @@ func Test_ProcessCheck_StatusChanged_UpStatus_StopsDownAction(t *testing.T) {
 	loop := emptyNewLoop()
 	ctx := context.Background()
 	da := getTestDA()
-	loop.DownAction = da
+	loop.downAction = da
 	// Simulate DownAction already running
 	_ = loop.DownActionStart(ctx)
 	assert.NotNil(t, loop.downActionLoop)
@@ -68,7 +68,7 @@ func Test_ProcessCheck_StatusChanged_DownStatus_StartsDownAction(t *testing.T) {
 	loop := emptyNewLoop()
 	ctx := context.Background()
 	da := getTestDA()
-	loop.DownAction = da
+	loop.downAction = da
 	// Status.Up is false by default, so first call with true to set Up=true
 	loop.ProcessCheck(ctx, true)
 	assert.Nil(t, loop.downActionLoop)
@@ -82,7 +82,7 @@ func Test_ProcessCheck_StatusChanged_DownStatus_StartsDownAction_Error(t *testin
 	ctx := context.Background()
 	// Use a DownAction that will simulate already running
 	da := getTestDA()
-	loop.DownAction = da
+	loop.downAction = da
 	// Simulate DownAction already running
 	_ = loop.DownActionStart(ctx)
 	// Now, status change to down should try to start again, but error is handled internally

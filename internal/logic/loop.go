@@ -18,14 +18,14 @@ type (
 )
 
 type Loop struct {
-	Checks           Checks
-	Delays           Delays
-	DownAction       *DownAction
-	Shuffle          bool
+	checks           Checks
+	delays           Delays
+	downAction       *DownAction
 	downActionLoop   *DownActionLoop
-	status           *status.Status
+	shuffle          bool
 	statServer       *status.StatServer
 	statServerConfig *status.StatServerConfig
+	status           *status.Status
 }
 
 func NewLoop(version string) *Loop {
@@ -41,10 +41,10 @@ func (l *Loop) Configure(checks Checks,
 	retention time.Duration,
 	statServerConfig *status.StatServerConfig,
 ) {
-	l.Checks = checks
-	l.Delays = delays
-	l.DownAction = da
-	l.Shuffle = shuffle
+	l.checks = checks
+	l.delays = delays
+	l.downAction = da
+	l.shuffle = shuffle
 	l.status.SetRetention(retention)
 	l.statServerConfig = statServerConfig
 }
@@ -55,7 +55,7 @@ func (l *Loop) DownActionStart(ctx context.Context) error {
 	if l.downActionLoop != nil {
 		return ErrDownActionRunning
 	}
-	l.downActionLoop = l.DownAction.Start(ctx)
+	l.downActionLoop = l.downAction.Start(ctx)
 	return nil
 }
 
@@ -91,16 +91,16 @@ func (l *Loop) Run(ctx context.Context) {
 	var checker Checker
 	l.statServer = status.StartStatServer(l.status, l.statServerConfig)
 	for {
-		if l.Shuffle {
+		if l.shuffle {
 			l.shuffleChecks()
 		}
-		status, err := pkg.CheckerRun(ctx, checker, l.Checks)
+		status, err := pkg.CheckerRun(ctx, checker, l.checks)
 		if err == nil {
 			l.ProcessCheck(ctx, status)
 		} else {
 			logger.L.WithError(err).Error("[Loop] error")
 		}
-		sleepTime := l.Delays[l.status.Up]
+		sleepTime := l.delays[l.status.Up]
 		logger.L.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")
 
 		select {
@@ -120,12 +120,12 @@ func (l *Loop) Stop(ctx context.Context) {
 }
 
 func (l *Loop) hasDownAction() bool {
-	return l.DownAction != nil
+	return l.downAction != nil
 }
 
 func (l *Loop) shuffleChecks() {
-	rand.Shuffle(len(l.Checks), func(i, j int) {
-		l.Checks[i], l.Checks[j] = l.Checks[j], l.Checks[i]
+	rand.Shuffle(len(l.checks), func(i, j int) {
+		l.checks[i], l.checks[j] = l.checks[j], l.checks[i]
 	})
 }
 
