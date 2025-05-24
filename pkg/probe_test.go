@@ -24,11 +24,11 @@ var (
 )
 
 func checkError(t *testing.T, report *Report) error {
-	err := report.Error
+	err := report.error
 	if err == nil {
 		t.Fatal("got nil, want an error")
 	}
-	got := report.Response
+	got := report.response
 	if got != "" {
 		t.Fatalf("got %q should be zero", got)
 	}
@@ -37,7 +37,7 @@ func checkError(t *testing.T, report *Report) error {
 
 func checkTimeout(t *testing.T, report *Report, want string) {
 	checkError(t, report)
-	got := report.Error.Error()
+	got := report.error.Error()
 	if !strings.Contains(got, want) {
 		t.Fatalf("got %q, missing %q", got, want)
 	}
@@ -52,11 +52,11 @@ func TestHttpProbe(t *testing.T) {
 			u := url.URL{Scheme: "http", Host: server.Addr}
 			httpProbe := GetHTTPProbe(u.String())
 			report := httpProbe.Probe(context.Background(), tout)
-			if report.Error != nil {
-				t.Fatal(report.Error)
+			if report.error != nil {
+				t.Fatal(report.error)
 			}
 			want := "200 OK"
-			got := report.Response
+			got := report.response
 			if got != want {
 				t.Fatalf("got %q, want %q", got, want)
 			}
@@ -124,10 +124,10 @@ func TestTcpProbe(t *testing.T) {
 		func(t *testing.T) {
 			tcpProbe := GetTCPProbe(hostPort)
 			report := tcpProbe.Probe(context.Background(), tout)
-			if report.Error != nil {
-				t.Fatal(report.Error)
+			if report.error != nil {
+				t.Fatal(report.error)
 			}
-			got := report.Response
+			got := report.response
 			fmt.Println("Got: ", got)
 			localHost, localPort, err := net.SplitHostPort(got)
 			if err != nil {
@@ -144,14 +144,14 @@ func TestTcpProbe(t *testing.T) {
 	t.Run("returns an error if the request fails", func(t *testing.T) {
 		tcpProbe := GetTCPProbe("localhost:80")
 		report := tcpProbe.Probe(context.Background(), 1)
-		if report.Error == nil {
+		if report.error == nil {
 			t.Fatal("got nil, want an error")
 		}
-		got := report.Response
+		got := report.response
 		if got != "" {
 			t.Fatalf("got %q should be zero", got)
 		}
-		got = report.Error.Error()
+		got = report.error.Error()
 		want := "error making request to localhost:80: dial tcp: lookup localhost: i/o timeout"
 		if got != want {
 			t.Fatalf("got %q, want %q", got, want)
@@ -183,10 +183,10 @@ func TestDnsProbe(t *testing.T) {
 		func(t *testing.T) {
 			dnsProbe := GetDNSProbe(dnsResolver, "google.com")
 			report := dnsProbe.Probe(context.Background(), tout)
-			if report.Error != nil {
-				t.Fatal(report.Error)
+			if report.error != nil {
+				t.Fatal(report.error)
 			}
-			got := report.Response
+			got := report.response
 			var ip, server string
 			// Parse the output string
 			_, err := fmt.Sscanf(got, "%s @ %s", &ip, &server)

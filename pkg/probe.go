@@ -56,10 +56,10 @@ func (p DNSProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
 	addr, err := r.LookupHost(ctx, p.Domain)
 	report := BuildReport(p, start)
 	if err != nil {
-		report.Error = fmt.Errorf("error resolving %s: %w", p.Domain, err)
+		report.error = fmt.Errorf("error resolving %s: %w", p.Domain, err)
 		return report
 	}
-	report.Response = fmt.Sprintf("%s @ %s", addr[0], p.DNSResolver)
+	report.response = fmt.Sprintf("%s @ %s", addr[0], p.DNSResolver)
 	return report
 }
 
@@ -78,23 +78,23 @@ func (p HTTPProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
 	client := &http.Client{Timeout: timeout}
 	req, bErr := http.NewRequestWithContext(ctx, http.MethodGet, p.URL, nil)
 	if bErr != nil {
-		report := &Report{Protocol: p.Scheme()}
-		report.Error = fmt.Errorf("error building request to %s: %w", p.URL, bErr)
+		report := &Report{protocol: p.Scheme()}
+		report.error = fmt.Errorf("error building request to %s: %w", p.URL, bErr)
 		return report
 	}
 	start := time.Now()
 	resp, err := client.Do(req)
 	report := BuildReport(p, start)
 	if err != nil {
-		report.Error = fmt.Errorf("error making request to %s: %w", p.URL, err)
+		report.error = fmt.Errorf("error making request to %s: %w", p.URL, err)
 		return report
 	}
 	err = resp.Body.Close()
 	if err != nil {
-		report.Error = fmt.Errorf("error closing response body: %w", err)
+		report.error = fmt.Errorf("error closing response body: %w", err)
 		return report
 	}
-	report.Response = resp.Status
+	report.response = resp.Status
 	return report
 }
 
@@ -114,14 +114,14 @@ func (p TCPProbe) Probe(_ context.Context, timeout time.Duration) *Report {
 	conn, err := net.DialTimeout("tcp", p.HostPort, timeout)
 	report := BuildReport(p, start)
 	if err != nil {
-		report.Error = fmt.Errorf("error making request to %s: %w", p.HostPort, err)
+		report.error = fmt.Errorf("error making request to %s: %w", p.HostPort, err)
 		return report
 	}
 	err = conn.Close()
 	if err != nil {
-		report.Error = fmt.Errorf("error closing connection: %w", err)
+		report.error = fmt.Errorf("error closing connection: %w", err)
 		return report
 	}
-	report.Response = conn.LocalAddr().String()
+	report.response = conn.LocalAddr().String()
 	return report
 }

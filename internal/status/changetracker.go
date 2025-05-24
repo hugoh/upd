@@ -8,62 +8,62 @@ import (
 )
 
 type StateChange struct {
-	Timestamp time.Time
-	Up        bool
-	Prev      *StateChange
-	Next      *StateChange
+	timestamp time.Time
+	up        bool
+	prev      *StateChange
+	next      *StateChange
 }
 
 type StateChangeTracker struct {
-	Head        *StateChange
-	Tail        *StateChange
-	Retention   time.Duration
-	UpdateCount int64
-	LastUpdated time.Time
-	Started     time.Time
+	head        *StateChange
+	tail        *StateChange
+	retention   time.Duration
+	updateCount int64
+	lastUpdated time.Time
+	started     time.Time
 }
 
 func (tracker *StateChangeTracker) RecordChange(timestamp time.Time, state bool) {
-	tracker.UpdateCount++
-	tracker.LastUpdated = timestamp
+	tracker.updateCount++
+	tracker.lastUpdated = timestamp
 
 	// Ignore duplicate consecutive states
-	if tracker.Tail != nil && tracker.Tail.Up == state {
+	if tracker.tail != nil && tracker.tail.up == state {
 		return
 	}
 
 	newChange := &StateChange{
-		Timestamp: timestamp,
-		Up:        state,
-		Prev:      tracker.Tail,
+		timestamp: timestamp,
+		up:        state,
+		prev:      tracker.tail,
 	}
 
-	if tracker.Tail != nil {
-		tracker.Tail.Next = newChange
+	if tracker.tail != nil {
+		tracker.tail.next = newChange
 	}
-	tracker.Tail = newChange
+	tracker.tail = newChange
 
-	if tracker.Head == nil {
-		tracker.Head = newChange
+	if tracker.head == nil {
+		tracker.head = newChange
 	}
 
 	tracker.Prune(timestamp)
 }
 
 func (tracker *StateChangeTracker) Prune(currentTime time.Time) {
-	retentionLimit := currentTime.Add(-tracker.Retention)
+	retentionLimit := currentTime.Add(-tracker.retention)
 
 	// Remove nodes at the head of the list that are outside retention
-	for tracker.Head != nil && tracker.Head.Timestamp.Before(retentionLimit) {
-		tracker.Head = tracker.Head.Next
-		if tracker.Head != nil {
-			tracker.Head.Prev = nil
+	for tracker.head != nil && tracker.head.timestamp.Before(retentionLimit) {
+		tracker.head = tracker.head.next
+		if tracker.head != nil {
+			tracker.head.prev = nil
 		}
 	}
 
 	// If the list becomes empty, reset the Tail
-	if tracker.Head == nil {
-		tracker.Tail = nil
+	if tracker.head == nil {
+		tracker.tail = nil
 	}
 }
 
@@ -72,10 +72,10 @@ var ErrInvalidRange = errors.New("range greater than the retention period")
 func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 	last time.Duration, end time.Time,
 ) (float64, time.Duration, error) {
-	if last > tracker.Retention {
+	if last > tracker.retention {
 		return -1, 0, ErrInvalidRange
 	}
-	if end.Sub(tracker.Started) < last {
+	if end.Sub(tracker.started) < last {
 		return -1, 0, ErrInvalidRange
 	}
 	availability, downtime := tracker.uptimeCalculation(currentState, last, end)
@@ -84,10 +84,10 @@ func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 
 func (tracker *StateChangeTracker) RecordsCount() int {
 	i := 0
-	cur := tracker.Head
+	cur := tracker.head
 	for cur != nil {
 		i++
-		cur = cur.Next
+		cur = cur.next
 	}
 	return i
 }
@@ -118,7 +118,7 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
 	last time.Duration, end time.Time,
 ) (float64, time.Duration) {
-	if tracker.Tail == nil {
+	if tracker.tail == nil {
 		// No records other than the current status
 		if currentState {
 			return 1.0, 0
@@ -129,14 +129,14 @@ func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
 	uptime := time.Duration(0)
 	start := end.Add(-last)
 
-	current := tracker.Tail
+	current := tracker.tail
 	endOfPeriod := end
 	var lastTimestampSeen time.Time
 	var lastStateRecorded bool
 
 	for current != nil {
-		lastStateRecorded = current.Up
-		lastTimestampSeen = current.Timestamp
+		lastStateRecorded = current.up
+		lastTimestampSeen = current.timestamp
 		if lastTimestampSeen.Before(start) {
 			lastTimestampSeen = start
 		}
@@ -150,7 +150,7 @@ func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
 		}
 
 		endOfPeriod = lastTimestampSeen
-		current = current.Prev
+		current = current.prev
 	}
 
 	if lastTimestampSeen.After(start) {

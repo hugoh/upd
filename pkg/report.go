@@ -12,19 +12,19 @@ import (
 //
 // Only one of the properties 'Response' or 'Error' is set.
 type Report struct {
-	// Protocol used to connect to.
-	Protocol string
+	// protocol used to connect to.
+	protocol string
 	// Target used to connect to.
-	Response string
+	response string
 	// Response time.
-	Elapsed time.Duration
+	elapsed time.Duration
 	// Network error.
-	Error error
+	error error
 }
 
 func BuildReport(p Probe, startTime time.Time) *Report {
 	return &Report{
-		Protocol: p.Scheme(),
-		Elapsed:  time.Since(startTime),
+		protocol: p.Scheme(),
+		elapsed:  time.Since(startTime),
 	}
 }
