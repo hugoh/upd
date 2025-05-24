@@ -26,19 +26,19 @@ type Report struct {
 }
 
 type StatHandler struct {
-	StatServer *StatServer
+	statServer *StatServer
 }
 
 var ErrCompilingTemplate = errors.New("error compiling HTML template")
 
 func NewStatHandler(server *StatServer) *StatHandler {
 	return &StatHandler{
-		StatServer: server,
+		statServer: server,
 	}
 }
 
 func (h *StatHandler) GenStatReport() *Report {
-	return h.StatServer.Status.GenStatReport(h.StatServer.Config.Reports)
+	return h.statServer.status.GenStatReport(h.statServer.config.reports)
 }
 
 func (h *StatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -7,33 +7,33 @@ import (
 
 type Status struct {
 	Up                 bool
-	Initialized        bool
-	Version            string
-	StateChangeTracker *StateChangeTracker
+	initialized        bool
 	mutex              sync.Mutex
+	stateChangeTracker *StateChangeTracker
+	version            string
 }
 
 func NewStatus(version string) *Status {
 	var stateChangeTracker *StateChangeTracker
 	return &Status{
-		Version:            version,
-		StateChangeTracker: stateChangeTracker,
+		version:            version,
+		stateChangeTracker: stateChangeTracker,
 	}
 }
 
 func (s *Status) SetRetention(retention time.Duration) {
 	if retention <= 0 {
-		s.StateChangeTracker = nil
+		s.stateChangeTracker = nil
 		return
 	}
-	if s.StateChangeTracker == nil {
-		s.StateChangeTracker = &StateChangeTracker{
+	if s.stateChangeTracker == nil {
+		s.stateChangeTracker = &StateChangeTracker{
 			Retention: retention,
 			Started:   time.Now(),
 		}
 	} else {
-		s.StateChangeTracker.Retention = retention
-		s.StateChangeTracker.Prune(time.Now())
+		s.stateChangeTracker.Retention = retention
+		s.stateChangeTracker.Prune(time.Now())
 	}
 }
 
@@ -55,29 +55,29 @@ func (s *Status) GenStatReport(periods []time.Duration) *Report {
 	defer s.mutex.Unlock()
 	return &Report{
 		Generated:  generated,
-		Uptime:     ReadableDuration(generated.Sub(s.StateChangeTracker.Started)),
+		Uptime:     ReadableDuration(generated.Sub(s.stateChangeTracker.Started)),
 		Up:         s.Up,
-		Version:    s.Version,
-		Stats:      s.StateChangeTracker.GenReports(s.Up, generated, periods),
-		CheckCount: s.StateChangeTracker.UpdateCount,
-		LastUpdate: ReadableDuration(generated.Sub(s.StateChangeTracker.LastUpdated)),
+		Version:    s.version,
+		Stats:      s.stateChangeTracker.GenReports(s.Up, generated, periods),
+		CheckCount: s.stateChangeTracker.UpdateCount,
+		LastUpdate: ReadableDuration(generated.Sub(s.stateChangeTracker.LastUpdated)),
 	}
 }
 
 func (s *Status) set(up bool) {
-	if !s.Initialized {
-		s.Initialized = true
+	if !s.initialized {
+		s.initialized = true
 	}
 	s.Up = up
 }
 
 func (s *Status) hasChanged(newStatus bool) bool {
-	return !s.Initialized || newStatus != s.Up
+	return !s.initialized || newStatus != s.Up
 }
 
 func (s *Status) recordResult(up bool) {
-	if s.StateChangeTracker == nil {
+	if s.stateChangeTracker == nil {
 		return
 	}
-	s.StateChangeTracker.RecordChange(time.Now(), up)
+	s.stateChangeTracker.RecordChange(time.Now(), up)
 }
