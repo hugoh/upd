@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -84,7 +85,9 @@ func isValidTCPPort(fl validator.FieldLevel) bool {
 	return re.MatchString(fl.Field().String())
 }
 
-func (c Configuration) GetChecks() []*pkg.Check {
+var ErrNoChecks = errors.New("no valid checks found in config")
+
+func (c Configuration) GetChecks() ([]*pkg.Check, error) {
 	checks := make([]*pkg.Check, 0, len(c.Checks.List))
 	for _, check := range c.Checks.List {
 		url, err := url.Parse(check)
@@ -123,9 +126,9 @@ func (c Configuration) GetChecks() []*pkg.Check {
 		})
 	}
 	if len(checks) == 0 {
-		logger.L.Fatal("No valid check found")
+		return nil, ErrNoChecks
 	}
-	return checks
+	return checks, nil
 }
 
 func (c Configuration) GetDownAction() *logic.DownAction {

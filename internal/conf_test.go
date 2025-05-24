@@ -20,14 +20,15 @@ type TestSuite struct {
 
 const testConfigDir = "../testdata"
 
-func readConf(cfgFile string) *Configuration {
-	conf, _ := ReadConf(fmt.Sprintf("%s/%s", testConfigDir, cfgFile))
-	return conf
+func readConf(cfgFile string) (*Configuration, error) {
+	return ReadConf(fmt.Sprintf("%s/%s", testConfigDir, cfgFile))
 }
 
 func (suite *TestSuite) SetupTest() {
 	nulllogger.NewNullLoggerHook()
-	suite.conf = readConf("upd_test_good.yaml")
+	var err error
+	suite.conf, err = readConf("upd_test_good.yaml")
+	assert.Nil(suite.T(), err, "No error expected")
 }
 
 func TestSuiteRun(t *testing.T) {
@@ -45,7 +46,8 @@ func (suite *TestSuite) TestGetDownActionFromConf() {
 }
 
 func TestNoDownAction(t *testing.T) {
-	conf := readConf("upd_test_noda.yaml")
+	conf, err := readConf("upd_test_noda.yaml")
+	assert.Nil(t, err, "No error expected")
 	da := conf.GetDownAction()
 	assert.Nil(t, da, "DownAction not found")
 }
@@ -59,20 +61,25 @@ func (suite *TestSuite) TestGetDelaysFromConf() {
 }
 
 func TestGetChecksIgnored(t *testing.T) {
-	conf := readConf("upd_test_bad.yaml")
-	checks := conf.GetChecks()
+	conf, err := readConf("upd_test_bad.yaml")
+	assert.Nil(t, err, "No error expected")
+	checks, checkErr := conf.GetChecks()
+	assert.Nil(t, checkErr, "No error expected")
 	assert.Equal(t, 2, len(checks), "1 check is invalid")
 }
 
 func TestGetChecksFromConfFail(t *testing.T) {
 	nulllogger.NewNullLoggerHook()
 	logger.L.ExitFunc = func(code int) { panic(code) }
-	conf := readConf("upd_test_allbad.yaml")
-	assert.Panics(t, func() { conf.GetChecks() })
+	conf, err := readConf("upd_test_allbad.yaml")
+	assert.Nil(t, err, "No error expected")
+	_, checkErr := conf.GetChecks()
+	assert.ErrorIs(t, checkErr, ErrNoChecks, "Error expected: no valid checks")
 }
 
 func (suite *TestSuite) TestGetChecks() {
-	ret := suite.conf.GetChecks()
+	ret, checkErr := suite.conf.GetChecks()
+	assert.Nil(suite.T(), checkErr, "No error expected")
 	var probe pkg.Probe
 	var http *pkg.HTTPProbe
 	var dns *pkg.DNSProbe
