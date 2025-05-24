@@ -48,7 +48,7 @@ Logs output using logrus.Logger instance
 func CheckerRun(ctx context.Context, checker Checker, checks []*Check) (bool, error) {
 	for _, check := range checks {
 		report := check.RunProbe(ctx, checker)
-		if report.Error != nil {
+		if report.error != nil {
 			checker.ProbeFailure(report)
 			continue
 		}

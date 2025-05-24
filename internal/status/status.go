@@ -28,11 +28,11 @@ func (s *Status) SetRetention(retention time.Duration) {
 	}
 	if s.stateChangeTracker == nil {
 		s.stateChangeTracker = &StateChangeTracker{
-			Retention: retention,
-			Started:   time.Now(),
+			retention: retention,
+			started:   time.Now(),
 		}
 	} else {
-		s.stateChangeTracker.Retention = retention
+		s.stateChangeTracker.retention = retention
 		s.stateChangeTracker.Prune(time.Now())
 	}
 }
@@ -55,12 +55,12 @@ func (s *Status) GenStatReport(periods []time.Duration) *Report {
 	defer s.mutex.Unlock()
 	return &Report{
 		Generated:  generated,
-		Uptime:     ReadableDuration(generated.Sub(s.stateChangeTracker.Started)),
+		Uptime:     ReadableDuration(generated.Sub(s.stateChangeTracker.started)),
 		Up:         s.Up,
 		Version:    s.version,
 		Stats:      s.stateChangeTracker.GenReports(s.Up, generated, periods),
-		CheckCount: s.stateChangeTracker.UpdateCount,
-		LastUpdate: ReadableDuration(generated.Sub(s.stateChangeTracker.LastUpdated)),
+		CheckCount: s.stateChangeTracker.updateCount,
+		LastUpdate: ReadableDuration(generated.Sub(s.stateChangeTracker.lastUpdated)),
 	}
 }
 

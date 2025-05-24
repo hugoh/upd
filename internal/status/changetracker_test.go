@@ -18,7 +18,7 @@ type TestSuiteStats struct {
 
 func GetTracker() *StateChangeTracker {
 	return &StateChangeTracker{
-		Retention: 24 * time.Hour, // 1 day retention
+		retention: 24 * time.Hour, // 1 day retention
 	}
 }
 
@@ -45,19 +45,19 @@ func TestRecordChange_UpdatesCurrentTimeFields(t *testing.T) {
 	tracker := GetTracker()
 	now := time.Now()
 	tracker.RecordChange(now, true)
-	assert.Equal(t, now, tracker.LastUpdated)
-	assert.Equal(t, int64(1), tracker.UpdateCount)
+	assert.Equal(t, now, tracker.lastUpdated)
+	assert.Equal(t, int64(1), tracker.updateCount)
 }
 
 func TestRecordChange_HeadAndTailSetCorrectly(t *testing.T) {
 	tracker := GetTracker()
 	now := time.Now()
 	tracker.RecordChange(now, true)
-	assert.NotNil(t, tracker.Head)
-	assert.NotNil(t, tracker.Tail)
-	assert.Equal(t, tracker.Head, tracker.Tail)
-	assert.Equal(t, now, tracker.Head.Timestamp)
-	assert.True(t, tracker.Head.Up)
+	assert.NotNil(t, tracker.head)
+	assert.NotNil(t, tracker.tail)
+	assert.Equal(t, tracker.head, tracker.tail)
+	assert.Equal(t, now, tracker.head.timestamp)
+	assert.True(t, tracker.head.up)
 }
 
 func TestRecordChange_IgnoresDuplicateConsecutiveStates(t *testing.T) {
@@ -74,36 +74,36 @@ func TestRecordChange_AddsNewStateChange(t *testing.T) {
 	tracker.RecordChange(now, true)
 	tracker.RecordChange(now.Add(1*time.Minute), false)
 	assert.Equal(t, 2, tracker.RecordsCount())
-	assert.False(t, tracker.Tail.Up)
-	assert.True(t, tracker.Head.Up)
+	assert.False(t, tracker.tail.up)
+	assert.True(t, tracker.head.up)
 }
 
 func TestPrune_RemovesOldRecords(t *testing.T) {
 	tracker := GetTracker()
 	now := time.Now()
-	tracker.Retention = 10 * time.Minute
+	tracker.retention = 10 * time.Minute
 	tracker.RecordChange(now.Add(-20*time.Minute), true)
 	tracker.RecordChange(now.Add(-5*time.Minute), false)
 	tracker.Prune(now)
 	assert.Equal(t, 1, tracker.RecordsCount())
-	assert.Equal(t, now.Add(-5*time.Minute), tracker.Head.Timestamp)
+	assert.Equal(t, now.Add(-5*time.Minute), tracker.head.timestamp)
 }
 
 func TestPrune_EmptiesListIfAllOld(t *testing.T) {
 	tracker := GetTracker()
 	now := time.Now()
-	tracker.Retention = 1 * time.Minute
+	tracker.retention = 1 * time.Minute
 	tracker.RecordChange(now.Add(-10*time.Minute), true)
 	tracker.Prune(now)
-	assert.Nil(t, tracker.Head)
-	assert.Nil(t, tracker.Tail)
+	assert.Nil(t, tracker.head)
+	assert.Nil(t, tracker.tail)
 	assert.Equal(t, 0, tracker.RecordsCount())
 }
 
 func TestPrune_DoesNotRemoveRecentRecords(t *testing.T) {
 	tracker := GetTracker()
 	now := time.Now()
-	tracker.Retention = 1 * time.Hour
+	tracker.retention = 1 * time.Hour
 	tracker.RecordChange(now.Add(-30*time.Minute), true)
 	tracker.RecordChange(now.Add(-10*time.Minute), false)
 	tracker.Prune(now)
@@ -205,7 +205,7 @@ func (suite *TestSuiteStats) TestCalc() {
 	assert.Equal(t, 22.0/24, actual)
 	assert.Equal(t, 2*time.Hour, downtime)
 
-	empty.Started = suite.Now.Add(-1 * time.Minute)
+	empty.started = suite.Now.Add(-1 * time.Minute)
 	v, w, err := empty.CalculateUptime(false, 1*time.Hour, suite.Now)
 	assert.Equal(t, -1.0, v)
 	assert.Equal(t, time.Duration(0), w)
