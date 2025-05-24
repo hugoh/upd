@@ -32,7 +32,6 @@ func SetupLoop(loop *logic.Loop, conf *Configuration, configPath string) error {
 	if err != nil {
 		if conf == nil {
 			logger.L.WithError(err).Error("error reading configuration")
-			// This will never be reached because of the fatal log
 			return fmt.Errorf("error reading configuration: %w", err)
 		}
 		logger.L.Error("[App] reusing previous configuration")
@@ -63,7 +62,6 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 	for {
 		currentWorkerCtx, cancelCurrentWorker := context.WithCancel(rootCtx)
 
-		// Run the loop in a goroutine so we can cancel it from outside
 		done := make(chan struct{})
 		go func(ctx context.Context) {
 			if err := SetupLoop(loop, conf, cmd.String(ConfigConfig)); err != nil {
@@ -76,13 +74,11 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 
 		select {
 		case <-rootCtx.Done():
-			// Program is terminating
 			logger.L.Info("[App] shutting down")
 			cancelCurrentWorker()
 			<-done
 			return nil
 		case <-sighupCh:
-			// SIGHUP received: restart the loop
 			logger.L.Info("[App] SIGHUP received: reloading configuration")
 			cancelCurrentWorker()
 			<-done
