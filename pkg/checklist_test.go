@@ -69,7 +69,7 @@ func TestCheckListIterator_Fetch(t *testing.T) {
 	ordered := Checks{newCheck(1), newCheck(2)}
 	shuffled := Checks{newCheck(3), newCheck(4)}
 	cl := &CheckList{Ordered: ordered, Shuffled: shuffled}
-	it := cl.GetIterator(nil)
+	it := cl.GetIterator()
 
 	// Should return all ordered, then all shuffled, then nil
 	got := []*Check{}
@@ -87,7 +87,7 @@ func TestCheckListIterator_Fetch(t *testing.T) {
 
 func TestCheckListIterator_Empty(t *testing.T) {
 	cl := &CheckList{}
-	it := cl.GetIterator(nil)
+	it := cl.GetIterator()
 	if it.Fetch() != nil {
 		t.Fatal("Fetch() on empty iterator should return nil")
 	}

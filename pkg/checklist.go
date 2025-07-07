@@ -29,7 +29,7 @@ type CheckListIteratorImpl struct {
 	shuffledIterator ChecksIterator
 }
 
-func NewChecksIterator(checks Checks) ChecksIterator {
+func NewChecksIterator(checks Checks) *ChecksIteratorImpl {
 	return &ChecksIteratorImpl{
 		checks: checks,
 		index:  0,
@@ -43,11 +43,11 @@ func (checks Checks) Shuffle() {
 	})
 }
 
-func (cl *ChecksIteratorImpl) ShuffleIfNeeded() {
-	if cl.index > 0 {
+func (it *ChecksIteratorImpl) ShuffleIfNeeded() {
+	if it.index > 0 {
 		return
 	}
-	cl.checks.Shuffle()
+	it.checks.Shuffle()
 }
 
 func (it *ChecksIteratorImpl) Fetch() *Check {
@@ -59,7 +59,7 @@ func (it *ChecksIteratorImpl) Fetch() *Check {
 	return nil
 }
 
-func (cl *CheckList) GetIterator() CheckListIterator {
+func (cl *CheckList) GetIterator() *CheckListIteratorImpl {
 	return &CheckListIteratorImpl{
 		orderedIterator:  NewChecksIterator(cl.Ordered),
 		shuffledIterator: NewChecksIterator(cl.Shuffled),
