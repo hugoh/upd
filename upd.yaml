@@ -3,18 +3,19 @@ checks:
     normal: 5s
     down: 5s
   list:
-    # From https://en.wikipedia.org/wiki/Captive_portal
-    - http://captive.apple.com/hotspot-detect.html
-    - http://connectivitycheck.gstatic.com/generate_204
-    - http://clients3.google.com/generate_204
-    - http://www.msftconnecttest.com/connecttest.txt
-    - tcp://1.1.1.1:53/
-    - tcp://1.0.0.1:53/
-    - tcp://8.8.8.8:53/
-    - tcp://8.8.4.4:53/
-    - dns://1.1.1.1/www.google.com
+    ordered: # Sequential list of checks to run first
+      # From https://en.wikipedia.org/wiki/Captive_portal
+      - http://captive.apple.com/hotspot-detect.html
+      - http://connectivitycheck.gstatic.com/generate_204
+    shuffled: # Random list of checks to run if the sequential ones all failed
+      - http://clients3.google.com/generate_204
+      - http://www.msftconnecttest.com/connecttest.txt
+      - tcp://1.1.1.1:53/
+      - tcp://1.0.0.1:53/
+      - tcp://8.8.8.8:53/
+      - tcp://8.8.4.4:53/
+      - dns://1.1.1.1/www.google.com
   timeout: 2s
-  shuffled: true
 downAction:
   exec: cowsay
   everySec:

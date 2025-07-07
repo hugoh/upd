@@ -3,15 +3,16 @@ checks:
     normal: 120s
     down: 20s
   list:
-    # From https://en.wikipedia.org/wiki/Captive_portal
-    - http://captive.apple.com/hotspot-detect.html
-    - http://connectivitycheck.gstatic.com/generate_204
-    - http://clients3.google.com/generate_204
-    - http://www.msftconnecttest.com/connecttest.txt
-    - dns://1.1.1.1/
-    - dns://1.0.0.1/
-    - dns://8.8.8.8/
-    - dns://8.8.4.4/
+    shuffled:
+      # From https://en.wikipedia.org/wiki/Captive_portal
+      - http://captive.apple.com/hotspot-detect.html
+      - http://connectivitycheck.gstatic.com/generate_204
+      - http://clients3.google.com/generate_204
+      - http://www.msftconnecttest.com/connecttest.txt
+      - dns://1.1.1.1/
+      - dns://1.0.0.1/
+      - dns://8.8.8.8/
+      - dns://8.8.4.4/
   timeout: 10ms
 downAction:
   exec: cowsay

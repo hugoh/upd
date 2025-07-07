@@ -3,10 +3,11 @@ checks:
     normal: 120s
     down: 20s
   list:
-    - http://captive.apple.com/hotspot-detect.html
-    - https://example.com/
-    - dns://1.1.1.1/www.google.com
-    - tcp://1.0.0.1:53/
+    shuffled:
+      - http://captive.apple.com/hotspot-detect.html
+      - https://example.com/
+      - dns://1.1.1.1/www.google.com
+      - tcp://1.0.0.1:53/
   timeout: 2000ms
 downAction:
   exec: cowsay
