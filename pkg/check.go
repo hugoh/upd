@@ -35,7 +35,7 @@ func (c NullChecker) ProbeFailure(_ *Report) {}
 Runs a series of checks.
 Returns true as soon as one is successful indicating that the connection is up, false otherwise.
 */
-func RunChecks(ctx context.Context, checkListIterator *CheckListIterator) (bool, error) {
+func RunChecks(ctx context.Context, checkListIterator CheckListIterator) (bool, error) {
 	var nc NullChecker
 	return CheckerRun(ctx, nc, checkListIterator)
 }
@@ -45,7 +45,7 @@ Runs a series of checks utilizing a Checker interface for handling probe return.
 Returns true as soon as one is successful indicating that the connection is up, false otherwise.
 Logs output using logrus.Logger instance
 */
-func CheckerRun(ctx context.Context, checker Checker, checkListIterator *CheckListIterator) (bool, error) {
+func CheckerRun(ctx context.Context, checker Checker, checkListIterator CheckListIterator) (bool, error) {
 	for {
 		check := checkListIterator.Fetch()
 		if check == nil {
