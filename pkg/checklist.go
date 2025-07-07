@@ -4,7 +4,12 @@ import "math/rand/v2"
 
 type Checks []*Check
 
-type ChecksIterator struct {
+type ChecksIterator interface {
+	Fetch() *Check
+	ShuffleIfNeeded()
+}
+
+type ChecksIteratorImpl struct {
 	checks Checks
 	index  int
 	limit  int
@@ -15,13 +20,17 @@ type CheckList struct {
 	Shuffled Checks
 }
 
-type CheckListIterator struct {
-	orderedIterator  *ChecksIterator
-	shuffledIterator *ChecksIterator
+type CheckListIterator interface {
+	Fetch() *Check
 }
 
-func NewChecksIterator(checks Checks) *ChecksIterator {
-	return &ChecksIterator{
+type CheckListIteratorImpl struct {
+	orderedIterator  ChecksIterator
+	shuffledIterator ChecksIterator
+}
+
+func NewChecksIterator(checks Checks) ChecksIterator {
+	return &ChecksIteratorImpl{
 		checks: checks,
 		index:  0,
 		limit:  len(checks),
@@ -34,14 +43,14 @@ func (checks Checks) Shuffle() {
 	})
 }
 
-func (cl *ChecksIterator) ShuffleIfNeeded() {
+func (cl *ChecksIteratorImpl) ShuffleIfNeeded() {
 	if cl.index > 0 {
 		return
 	}
 	cl.checks.Shuffle()
 }
 
-func (it *ChecksIterator) Fetch() *Check {
+func (it *ChecksIteratorImpl) Fetch() *Check {
 	if it.index < it.limit {
 		check := it.checks[it.index]
 		it.index++
@@ -50,14 +59,14 @@ func (it *ChecksIterator) Fetch() *Check {
 	return nil
 }
 
-func (cl *CheckList) GetIterator() *CheckListIterator {
-	return &CheckListIterator{
+func (cl *CheckList) GetIterator() CheckListIterator {
+	return &CheckListIteratorImpl{
 		orderedIterator:  NewChecksIterator(cl.Ordered),
 		shuffledIterator: NewChecksIterator(cl.Shuffled),
 	}
 }
 
-func (it *CheckListIterator) Fetch() *Check {
+func (it *CheckListIteratorImpl) Fetch() *Check {
 	var check *Check
 	check = it.orderedIterator.Fetch()
 	if check != nil {
