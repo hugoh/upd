@@ -63,9 +63,14 @@ func (suite *TestSuite) TestGetDelaysFromConf() {
 func TestGetChecksIgnored(t *testing.T) {
 	conf, err := readConf("upd_test_bad.yaml")
 	assert.Nil(t, err, "No error expected")
-	checks, checkErr := conf.GetChecks()
+	checklist, checkErr := conf.GetChecks()
 	assert.Nil(t, checkErr, "No error expected")
-	assert.Equal(t, 2, len(checks), "1 check is invalid")
+	// There should be 2 valid checks in total (Ordered + Shuffled)
+	totalChecks := 0
+	if checklist != nil {
+		totalChecks = len(checklist.Ordered) + len(checklist.Shuffled)
+	}
+	assert.Equal(t, 2, totalChecks, "1 check is invalid")
 }
 
 func TestGetChecksFromConfFail(t *testing.T) {
@@ -78,31 +83,34 @@ func TestGetChecksFromConfFail(t *testing.T) {
 }
 
 func (suite *TestSuite) TestGetChecks() {
-	ret, checkErr := suite.conf.GetChecks()
+	checklist, checkErr := suite.conf.GetChecks()
 	assert.Nil(suite.T(), checkErr, "No error expected")
+	// Collect all checks from both Ordered and Shuffled
+	allChecks := append([]*pkg.Check{}, checklist.Ordered...)
+	allChecks = append(allChecks, checklist.Shuffled...)
 	var probe pkg.Probe
 	var http *pkg.HTTPProbe
 	var dns *pkg.DNSProbe
 	var tcp *pkg.TCPProbe
 	var ok bool
-	assert.Equal(suite.T(), 4, len(ret))
-	probe = *ret[0].Probe
+	assert.Equal(suite.T(), 4, len(allChecks))
+	probe = *allChecks[0].Probe
 	http, ok = probe.(*pkg.HTTPProbe)
 	assert.True(suite.T(), ok)
 	assert.Equal(suite.T(), "http", http.Scheme())
 	assert.Equal(suite.T(), "http://captive.apple.com/hotspot-detect.html", http.URL)
-	probe = *ret[1].Probe
+	probe = *allChecks[1].Probe
 	http, ok = probe.(*pkg.HTTPProbe)
 	assert.True(suite.T(), ok)
 	assert.Equal(suite.T(), "http", http.Scheme())
 	assert.Equal(suite.T(), "https://example.com/", http.URL)
-	probe = *ret[2].Probe
+	probe = *allChecks[2].Probe
 	dns, ok = probe.(*pkg.DNSProbe)
 	assert.True(suite.T(), ok)
 	assert.Equal(suite.T(), "dns", dns.Scheme())
 	assert.Equal(suite.T(), "1.1.1.1:53", dns.DNSResolver)
 	assert.Equal(suite.T(), "www.google.com", dns.Domain)
-	probe = *ret[3].Probe
+	probe = *allChecks[3].Probe
 	tcp, ok = probe.(*pkg.TCPProbe)
 	assert.True(suite.T(), ok)
 	assert.Equal(suite.T(), "tcp", tcp.Scheme())

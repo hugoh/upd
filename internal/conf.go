@@ -31,9 +31,11 @@ type Configuration struct {
 			Normal time.Duration `validate:"required,gt=0"`
 			Down   time.Duration `validate:"required,gt=0"`
 		}
-		List     []string      `validate:"required,dive,required,uri"`
-		TimeOut  time.Duration `validate:"required,gt=0"`
-		Shuffled bool
+		List struct {
+			Ordered  []string `validate:"dive,uri"`
+			Shuffled []string `validate:"dive,uri"`
+		} `validate:"required"`
+		TimeOut time.Duration `validate:"required,gt=0"`
 	} `validate:"required"`
 	DownAction struct {
 		Exec  string
@@ -87,9 +89,20 @@ func isValidTCPPort(fl validator.FieldLevel) bool {
 
 var ErrNoChecks = errors.New("no valid checks found in config")
 
-func (c Configuration) GetChecks() ([]*pkg.Check, error) {
-	checks := make([]*pkg.Check, 0, len(c.Checks.List))
-	for _, check := range c.Checks.List {
+func (c Configuration) GetChecks() (*pkg.CheckList, error) {
+	checkList := &pkg.CheckList{
+		Ordered:  c.GetChecksCat(c.Checks.List.Ordered),
+		Shuffled: c.GetChecksCat(c.Checks.List.Shuffled),
+	}
+	if len(checkList.Ordered) == 0 && len(checkList.Shuffled) == 0 {
+		return nil, ErrNoChecks
+	}
+	return checkList, nil
+}
+
+func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
+	checks := make([]*pkg.Check, 0, len(category))
+	for _, check := range category {
 		url, err := url.Parse(check)
 		if err != nil {
 			logger.L.WithFields(logrus.Fields{
@@ -125,10 +138,7 @@ func (c Configuration) GetChecks() ([]*pkg.Check, error) {
 			Timeout: c.Checks.TimeOut,
 		})
 	}
-	if len(checks) == 0 {
-		return nil, ErrNoChecks
-	}
-	return checks, nil
+	return checks
 }
 
 func (c Configuration) GetDownAction() *logic.DownAction {

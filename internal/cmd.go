@@ -38,14 +38,13 @@ func SetupLoop(loop *logic.Loop, conf *Configuration, configPath string) error {
 		return nil
 	}
 	conf = newConf
-	checks, checkErr := conf.GetChecks()
+	checklist, checkErr := conf.GetChecks()
 	if checkErr != nil {
 		return fmt.Errorf("invalid checks in configuration: %w", checkErr)
 	}
-	loop.Configure(checks,
+	loop.Configure(checklist,
 		conf.GetDelays(),
 		conf.GetDownAction(),
-		conf.Checks.Shuffled,
 		conf.Stats.Retention,
 		&conf.Stats)
 	return nil

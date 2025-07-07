@@ -11,7 +11,7 @@ const TestVersion = "test"
 
 func emptyNewLoop() *Loop {
 	l := NewLoop(TestVersion)
-	l.Configure(nil, nil, nil, false, 0, nil)
+	l.Configure(nil, nil, nil, 0, nil)
 	return l
 }
 

@@ -3,8 +3,9 @@ checks:
     normal: 120s
     down: 20s
   list:
-    - ftp://foo.bar/
-    - foo://bar/
+    shuffled:
+      - ftp://foo.bar/
+      - foo://bar/
   timeout: 2000ms
 downAction:
   exec: cowsay

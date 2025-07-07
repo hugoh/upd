@@ -3,7 +3,6 @@ package logic
 import (
 	"context"
 	"errors"
-	"math/rand/v2"
 	"time"
 
 	"github.com/hugoh/upd/internal/logger"
@@ -12,17 +11,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type (
-	Checks []*pkg.Check
-	Delays map[bool]time.Duration
-)
+type Delays map[bool]time.Duration
 
 type Loop struct {
-	checks           Checks
+	checkList        *pkg.CheckList
 	delays           Delays
 	downAction       *DownAction
 	downActionLoop   *DownActionLoop
-	shuffle          bool
 	statServer       *status.StatServer
 	statServerConfig *status.StatServerConfig
 	status           *status.Status
@@ -34,17 +29,15 @@ func NewLoop(version string) *Loop {
 	}
 }
 
-func (l *Loop) Configure(checks Checks,
+func (l *Loop) Configure(checkList *pkg.CheckList,
 	delays Delays,
 	da *DownAction,
-	shuffle bool,
 	retention time.Duration,
 	statServerConfig *status.StatServerConfig,
 ) {
-	l.checks = checks
+	l.checkList = checkList
 	l.delays = delays
 	l.downAction = da
-	l.shuffle = shuffle
 	l.status.SetRetention(retention)
 	l.statServerConfig = statServerConfig
 }
@@ -91,10 +84,7 @@ func (l *Loop) Run(ctx context.Context) {
 	var checker Checker
 	l.statServer = status.StartStatServer(l.status, l.statServerConfig)
 	for {
-		if l.shuffle {
-			l.shuffleChecks()
-		}
-		status, err := pkg.CheckerRun(ctx, checker, l.checks)
+		status, err := pkg.CheckerRun(ctx, checker, l.checkList.GetIterator())
 		if err == nil {
 			l.ProcessCheck(ctx, status)
 		} else {
@@ -121,12 +111,6 @@ func (l *Loop) Stop(ctx context.Context) {
 
 func (l *Loop) hasDownAction() bool {
 	return l.downAction != nil
-}
-
-func (l *Loop) shuffleChecks() {
-	rand.Shuffle(len(l.checks), func(i, j int) {
-		l.checks[i], l.checks[j] = l.checks[j], l.checks[i]
-	})
 }
 
 type Checker struct{}
