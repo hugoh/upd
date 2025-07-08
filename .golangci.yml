@@ -9,6 +9,7 @@ linters:
     - nlreturn
     - varnamelen
     - wsl
+    - wsl_v5
   settings:
     errcheck:
       check-blank: true
