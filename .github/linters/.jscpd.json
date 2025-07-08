@@ -1,6 +1,6 @@
 {
   "absolute": true,
-  "ignore": ["**/testdata/**"],
+  "ignore": ["**/*_test.go","**/testdata/**"],
   "reporters": ["consoleFull"],
   "threshold": 0
 }
