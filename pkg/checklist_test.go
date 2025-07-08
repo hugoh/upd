@@ -83,6 +83,15 @@ func TestCheckListIterator_Fetch(t *testing.T) {
 	if len(got) != 4 {
 		t.Fatalf("Fetch() got %d checks, want 4", len(got))
 	}
+	// Check that the first two are the same as ordered, in order
+	if !reflect.DeepEqual(got[:2], ordered) {
+		t.Fatalf("First two checks are not the same as ordered: got %v, want %v", got[:2], ordered)
+	}
+	// Check that the last two are the same as shuffled, in any order
+	last := Checks{got[2], got[3]}
+	if !sameElements(last, shuffled) {
+		t.Fatalf("Last two checks are not the same as shuffled (any order): got %v, want %v", last, shuffled)
+	}
 }
 
 func TestCheckListIterator_Empty(t *testing.T) {
