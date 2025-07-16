@@ -5,6 +5,7 @@ checks:
   list:
     ordered: # Sequential list of checks to run first
       # From https://en.wikipedia.org/wiki/Captive_portal
+      - http://10.10.1.4/
       - http://captive.apple.com/hotspot-detect.html
       - http://connectivitycheck.gstatic.com/generate_204
     shuffled: # Random list of checks to run if the sequential ones all failed
