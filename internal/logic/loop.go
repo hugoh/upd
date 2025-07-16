@@ -125,9 +125,9 @@ func (checker Checker) CheckRun(c pkg.Check) {
 }
 
 func (checker Checker) ProbeSuccess(report *pkg.Report) {
-	logger.L.WithField("report", report).Debug("[Check] success")
+	logger.L.WithFields(report.LogrusFields()).Debug("[Check] success")
 }
 
 func (checker Checker) ProbeFailure(report *pkg.Report) {
-	logger.L.WithField("report", report).Warn("[Check] failed")
+	logger.L.WithFields(report.LogrusFields()).Warn("[Check] failed")
 }
