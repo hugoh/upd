@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -25,22 +27,16 @@ var (
 
 func checkError(t *testing.T, report *Report) error {
 	err := report.error
-	if err == nil {
-		t.Fatal("got nil, want an error")
-	}
+	assert.NotNil(t, err, "should have error")
 	got := report.response
-	if got != "" {
-		t.Fatalf("got %q should be zero", got)
-	}
+	assert.Equal(t, "", got, "response should be empty when error is set")
 	return err
 }
 
 func checkTimeout(t *testing.T, report *Report, want string) {
 	checkError(t, report)
 	got := report.error.Error()
-	if !strings.Contains(got, want) {
-		t.Fatalf("got %q, missing %q", got, want)
-	}
+	assert.Contains(t, got, want, "error message should contain expected substring")
 }
 
 func TestHttpProbe(t *testing.T) {
@@ -52,14 +48,10 @@ func TestHttpProbe(t *testing.T) {
 			u := url.URL{Scheme: "http", Host: server.Addr}
 			httpProbe := GetHTTPProbe(u.String())
 			report := httpProbe.Probe(context.Background(), tout)
-			if report.error != nil {
-				t.Fatal(report.error)
-			}
+			assert.NoError(t, report.error)
 			want := "200 OK"
 			got := report.response
-			if got != want {
-				t.Fatalf("got %q, want %q", got, want)
-			}
+			assert.Equal(t, want, got)
 		},
 	)
 	t.Run("returns an error if the request fails", func(t *testing.T) {
@@ -69,9 +61,7 @@ func TestHttpProbe(t *testing.T) {
 		err := checkError(t, report)
 		got := err.Error()
 		prefix := "error making request to http://localhost: Get \"http://localhost\""
-		if !strings.HasPrefix(got, prefix) {
-			t.Fatalf("got %q, want prefix %q", got, prefix)
-		}
+		assert.True(t, strings.HasPrefix(got, prefix), "error should have expected prefix")
 	})
 	t.Run(
 		"returns an error if the request times out",
@@ -124,38 +114,24 @@ func TestTcpProbe(t *testing.T) {
 		func(t *testing.T) {
 			tcpProbe := GetTCPProbe(hostPort)
 			report := tcpProbe.Probe(context.Background(), tout)
-			if report.error != nil {
-				t.Fatal(report.error)
-			}
+			assert.NoError(t, report.error)
 			got := report.response
 			fmt.Println("Got: ", got)
 			localHost, localPort, err := net.SplitHostPort(got)
-			if err != nil {
-				t.Fatalf("invalid host/port %s: %v", got, err)
-			}
-			if localHost != "127.0.0.1" {
-				t.Fatalf("got %q, want %q", localHost, "127.0.0.1")
-			}
-			if localPort < "1024" || localPort > "65535" {
-				t.Fatalf("invalid port %s", localPort)
-			}
+			assert.NoError(t, err, "should split host/port")
+			assert.Equal(t, "127.0.0.1", localHost)
+			assert.True(t, localPort >= "1024" && localPort <= "65535", "port should be valid")
 		},
 	)
 	t.Run("returns an error if the request fails", func(t *testing.T) {
 		tcpProbe := GetTCPProbe("localhost:80")
 		report := tcpProbe.Probe(context.Background(), 1)
-		if report.error == nil {
-			t.Fatal("got nil, want an error")
-		}
+		assert.NotNil(t, report.error, "should have error")
 		got := report.response
-		if got != "" {
-			t.Fatalf("got %q should be zero", got)
-		}
-		got = report.error.Error()
+		assert.Equal(t, "", got, "response should be empty when error is set")
+		gotErr := report.error.Error()
 		want := "error making request to localhost:80: dial tcp: lookup localhost: i/o timeout"
-		if got != want {
-			t.Fatalf("got %q, want %q", got, want)
-		}
+		assert.Equal(t, want, gotErr)
 	})
 	t.Run(
 		"returns an error if the request times out",
@@ -183,20 +159,14 @@ func TestDnsProbe(t *testing.T) {
 		func(t *testing.T) {
 			dnsProbe := GetDNSProbe(dnsResolver, "google.com")
 			report := dnsProbe.Probe(context.Background(), tout)
-			if report.error != nil {
-				t.Fatal(report.error)
-			}
+			assert.NoError(t, report.error)
 			got := report.response
 			var ip, server string
 			// Parse the output string
 			_, err := fmt.Sscanf(got, "%s @ %s", &ip, &server)
-			if err != nil {
-				t.Fatalf("the output is not ip @ service: %s: %v", got, err)
-			}
+			assert.NoError(t, err, "should parse ip @ service")
 			ipAddr := net.ParseIP(ip)
-			if ipAddr == nil {
-				t.Fatalf("invalid IP address %s: %v", got, err)
-			}
+			assert.NotNil(t, ipAddr, "should be valid IP address")
 		},
 	)
 	t.Run("returns an error if the request fails", func(t *testing.T) {
@@ -205,9 +175,7 @@ func TestDnsProbe(t *testing.T) {
 		err := checkError(t, report)
 		got := err.Error()
 		prefix := "error resolving invalid.aa"
-		if !strings.HasPrefix(got, prefix) {
-			t.Fatalf("got %q, want prefix %q", got, prefix)
-		}
+		assert.True(t, strings.HasPrefix(got, prefix), "error should have expected prefix")
 	})
 	t.Run(
 		"returns an error if the request times out",

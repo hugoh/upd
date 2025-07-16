@@ -5,6 +5,8 @@ package pkg
 import (
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type dummyCheck struct {
@@ -22,13 +24,9 @@ func TestChecksIterator_Fetch(t *testing.T) {
 
 	for i := 0; i < len(checks); i++ {
 		got := it.Fetch()
-		if got == nil {
-			t.Fatalf("Fetch() = nil at index %d, want check", i)
-		}
+		assert.NotNil(t, got, "Fetch() = nil at index %d, want check", i)
 	}
-	if it.Fetch() != nil {
-		t.Fatal("Fetch() after end should return nil")
-	}
+	assert.Nil(t, it.Fetch(), "Fetch() after end should return nil")
 }
 
 func TestChecksIterator_ShuffleIfNeeded(t *testing.T) {
@@ -40,18 +38,14 @@ func TestChecksIterator_ShuffleIfNeeded(t *testing.T) {
 	// Should shuffle since index == 0
 	it.ShuffleIfNeeded()
 	// Can't guarantee shuffle, but can check that it's still a permutation
-	if !sameElements(checks, orig) {
-		t.Fatal("Shuffled checks lost elements")
-	}
+	assert.True(t, sameElements(checks, orig), "Shuffled checks lost elements")
 
 	// Should NOT shuffle since index > 0
 	it.index = 1
 	before := make(Checks, len(checks))
 	copy(before, checks)
 	it.ShuffleIfNeeded()
-	if !reflect.DeepEqual(before, checks) {
-		t.Fatal("ShuffleIfNeeded shuffled when index > 0")
-	}
+	assert.True(t, reflect.DeepEqual(before, checks), "ShuffleIfNeeded shuffled when index > 0")
 }
 
 func TestChecks_Shuffle(t *testing.T) {
@@ -59,9 +53,7 @@ func TestChecks_Shuffle(t *testing.T) {
 	checks := make(Checks, len(orig))
 	copy(checks, orig)
 	checks.Shuffle()
-	if !sameElements(checks, orig) {
-		t.Fatal("Shuffle lost elements")
-	}
+	assert.True(t, sameElements(checks, orig), "Shuffle lost elements")
 	// Not guaranteed to change order, but likely
 }
 
@@ -80,26 +72,18 @@ func TestCheckListIterator_Fetch(t *testing.T) {
 		}
 		got = append(got, c)
 	}
-	if len(got) != 4 {
-		t.Fatalf("Fetch() got %d checks, want 4", len(got))
-	}
+	assert.Equal(t, 4, len(got), "Fetch() got %d checks, want 4", len(got))
 	// Check that the first two are the same as ordered, in order
-	if !reflect.DeepEqual(got[:2], ordered) {
-		t.Fatalf("First two checks are not the same as ordered: got %v, want %v", got[:2], ordered)
-	}
+	assert.True(t, reflect.DeepEqual(got[:2], ordered), "First two checks are not the same as ordered: got %v, want %v", got[:2], ordered)
 	// Check that the last two are the same as shuffled, in any order
 	last := Checks{got[2], got[3]}
-	if !sameElements(last, shuffled) {
-		t.Fatalf("Last two checks are not the same as shuffled (any order): got %v, want %v", last, shuffled)
-	}
+	assert.True(t, sameElements(last, shuffled), "Last two checks are not the same as shuffled (any order): got %v, want %v", last, shuffled)
 }
 
 func TestCheckListIterator_Empty(t *testing.T) {
 	cl := &CheckList{}
 	it := cl.GetIterator()
-	if it.Fetch() != nil {
-		t.Fatal("Fetch() on empty iterator should return nil")
-	}
+	assert.Nil(t, it.Fetch(), "Fetch() on empty iterator should return nil")
 }
 
 // Helper: check if two slices have the same elements (ignoring order)
