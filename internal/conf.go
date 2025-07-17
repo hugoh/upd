@@ -89,10 +89,10 @@ func isValidTCPPort(fl validator.FieldLevel) bool {
 
 var ErrNoChecks = errors.New("no valid checks found in config")
 
-func (c Configuration) GetChecks() (*pkg.CheckList, error) {
+func (c Configuration) GetChecks(version string) (*pkg.CheckList, error) {
 	checkList := &pkg.CheckList{
-		Ordered:  c.GetChecksCat(c.Checks.List.Ordered),
-		Shuffled: c.GetChecksCat(c.Checks.List.Shuffled),
+		Ordered:  c.GetChecksCat(c.Checks.List.Ordered, version),
+		Shuffled: c.GetChecksCat(c.Checks.List.Shuffled, version),
 	}
 	if len(checkList.Ordered) == 0 && len(checkList.Shuffled) == 0 {
 		return nil, ErrNoChecks
@@ -100,8 +100,9 @@ func (c Configuration) GetChecks() (*pkg.CheckList, error) {
 	return checkList, nil
 }
 
-func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
+func (c Configuration) GetChecksCat(category []string, version string) []*pkg.Check {
 	checks := make([]*pkg.Check, 0, len(category))
+	httpProbe := pkg.NewHTTPProbe(version)
 	for _, check := range category {
 		url, err := url.Parse(check)
 		if err != nil {
@@ -122,7 +123,7 @@ func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
 			dnsResolver := url.Host + ":" + port
 			probe = pkg.GetDNSProbe(dnsResolver, domain)
 		case pkg.HTTP, pkg.HTTPS:
-			probe = pkg.GetHTTPProbe(url.String())
+			probe = httpProbe.WithURL(url.String())
 		case pkg.TCP:
 			hostPort := fmt.Sprintf("%s:%s", url.Hostname(), url.Port())
 			probe = pkg.GetTCPProbe(hostPort)

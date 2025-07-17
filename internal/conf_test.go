@@ -63,7 +63,7 @@ func (suite *TestSuite) TestGetDelaysFromConf() {
 func TestGetChecksIgnored(t *testing.T) {
 	conf, err := readConf("upd_test_bad.yaml")
 	assert.Nil(t, err, "No error expected")
-	checklist, checkErr := conf.GetChecks()
+	checklist, checkErr := conf.GetChecks("test-version")
 	assert.Nil(t, checkErr, "No error expected")
 	// There should be 2 valid checks in total (Ordered + Shuffled)
 	totalChecks := 0
@@ -78,12 +78,12 @@ func TestGetChecksFromConfFail(t *testing.T) {
 	logger.L.ExitFunc = func(code int) { panic(code) }
 	conf, err := readConf("upd_test_allbad.yaml")
 	assert.Nil(t, err, "No error expected")
-	_, checkErr := conf.GetChecks()
+	_, checkErr := conf.GetChecks("test-version")
 	assert.ErrorIs(t, checkErr, ErrNoChecks, "Error expected: no valid checks")
 }
 
 func (suite *TestSuite) TestGetChecks() {
-	checklist, checkErr := suite.conf.GetChecks()
+	checklist, checkErr := suite.conf.GetChecks("test-version")
 	assert.Nil(suite.T(), checkErr, "No error expected")
 	// Collect all checks from both Ordered and Shuffled
 	allChecks := append([]*pkg.Check{}, checklist.Ordered...)
