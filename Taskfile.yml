@@ -95,3 +95,7 @@ tasks:
   test:
     summary: Run tests
     cmd: go test ./... {{.CLI_ARGS}}
+
+  test-version:
+    summary: Test that the application version is correctly injected at build time
+    cmd: go test -v -tags=integration ./internal

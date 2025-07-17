@@ -25,7 +25,7 @@ func TestTcpProbe(t *testing.T) {
 	t.Run(
 		"returns the local host/port if the request is successful",
 		func(t *testing.T) {
-			tcpProbe := GetTCPProbe(hostPort)
+			tcpProbe := NewTCPProbe(hostPort)
 			report := tcpProbe.Probe(context.Background(), tout)
 			if report.error != nil {
 				t.Fatal(report.error)
@@ -45,7 +45,7 @@ func TestTcpProbe(t *testing.T) {
 		},
 	)
 	t.Run("returns an error if the request fails", func(t *testing.T) {
-		tcpProbe := GetTCPProbe("localhost:80")
+		tcpProbe := NewTCPProbe("localhost:80")
 		report := tcpProbe.Probe(context.Background(), 1)
 		if report.error == nil {
 			t.Fatal("got nil, want an error")
@@ -63,7 +63,7 @@ func TestTcpProbe(t *testing.T) {
 	t.Run(
 		"returns an error if the request times out",
 		func(t *testing.T) {
-			tcpProbe := GetTCPProbe("192.0.2.1:53")
+			tcpProbe := NewTCPProbe("192.0.2.1:53")
 			report := tcpProbe.Probe(context.Background(), toutFail)
 			checkTimeout(t, report, "i/o timeout")
 		},
