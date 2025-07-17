@@ -8,4 +8,4 @@ builds:
     ldflags:
       - -extldflags '-static'
       - -s -w
-      - -X pkg.version={{.Version}}
+      - -X github.com/hugoh/upd/pkg.version={{.Version}}
