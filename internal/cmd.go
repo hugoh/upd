@@ -27,7 +27,7 @@ const (
 	ConfigDump   string = "dump"
 )
 
-func SetupLoop(loop *logic.Loop, conf *Configuration, configPath string) error {
+func SetupLoop(loop *logic.Loop, conf *Configuration, configPath string, version string) error {
 	newConf, err := ReadConf(configPath)
 	if err != nil {
 		if conf == nil {
@@ -38,7 +38,7 @@ func SetupLoop(loop *logic.Loop, conf *Configuration, configPath string) error {
 		return nil
 	}
 	conf = newConf
-	checklist, checkErr := conf.GetChecks()
+	checklist, checkErr := conf.GetChecks(version)
 	if checkErr != nil {
 		return fmt.Errorf("invalid checks in configuration: %w", checkErr)
 	}
@@ -67,7 +67,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 
 		done := make(chan struct{})
 		go func(ctx context.Context) {
-			if err := SetupLoop(loop, conf, cmd.String(ConfigConfig)); err != nil {
+			if err := SetupLoop(loop, conf, cmd.String(ConfigConfig), cmd.Version); err != nil {
 				logger.L.Fatal("cannot configure app")
 			}
 			loop.Run(ctx)
