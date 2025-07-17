@@ -26,6 +26,8 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
       - name: Install Task
         uses: arduino/setup-task@v2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run linters
         run: task lint
       - name: Run tests
@@ -52,6 +54,8 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
       - name: Install Task
         uses: arduino/setup-task@v2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: go-semantic-release/action@v1
         with:
           hooks: goreleaser
