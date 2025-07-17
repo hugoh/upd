@@ -17,7 +17,7 @@ func TestDnsProbe(t *testing.T) {
 	t.Run(
 		"returns the first resolved IP address if the request is successful",
 		func(t *testing.T) {
-			dnsProbe := GetDNSProbe(dnsResolver, "google.com")
+			dnsProbe := NewDNSProbe(dnsResolver, "google.com")
 			report := dnsProbe.Probe(context.Background(), tout)
 			if report.error != nil {
 				t.Fatal(report.error)
@@ -36,7 +36,7 @@ func TestDnsProbe(t *testing.T) {
 		},
 	)
 	t.Run("returns an error if the request fails", func(t *testing.T) {
-		dnsProbe := GetDNSProbe(dnsResolver, "invalid.aa")
+		dnsProbe := NewDNSProbe(dnsResolver, "invalid.aa")
 		report := dnsProbe.Probe(context.Background(), tout)
 		err := checkError(t, report)
 		got := err.Error()
@@ -48,7 +48,7 @@ func TestDnsProbe(t *testing.T) {
 	t.Run(
 		"returns an error if the request times out",
 		func(t *testing.T) {
-			dnsProbe := GetDNSProbe(addressForTimeout, "google.com")
+			dnsProbe := NewDNSProbe(addressForTimeout, "google.com")
 			report := dnsProbe.Probe(context.Background(), toutFail)
 			checkTimeout(t, report, "i/o timeout")
 		},

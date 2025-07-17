@@ -7,10 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const TestVersion = "test"
-
 func emptyNewLoop() *Loop {
-	l := NewLoop(TestVersion)
+	l := NewLoop()
 	l.Configure(nil, nil, nil, 0, nil)
 	return l
 }

@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+var updClient = &http.Client{ //nolint:gochecknoglobals
+	Transport: &updTransport{version: version},
+}
+
 type updTransport struct {
 	version string
 }
@@ -25,19 +29,8 @@ type HTTPProbe struct {
 	client *http.Client
 }
 
-// newHTTPProbe creates a new HTTPProbe with the given URL and a pre-configured client.
-func newHTTPProbe(url string, client *http.Client) *HTTPProbe {
-	return &HTTPProbe{URL: url, client: client}
-}
-
-// NewHTTPProbe creates a base HTTPProbe with a pre-configured transport for the given version.
-// Subsequent probes can be derived from this base probe using the WithURL method.
-func NewHTTPProbe(version string) *HTTPProbe {
-	return &HTTPProbe{client: &http.Client{Transport: &updTransport{version: version}}}
-}
-
-func (p *HTTPProbe) WithURL(url string) *HTTPProbe {
-	return newHTTPProbe(url, p.client)
+func NewHTTPProbe(url string) *HTTPProbe {
+	return &HTTPProbe{URL: url, client: updClient}
 }
 
 func (p *HTTPProbe) Scheme() string {

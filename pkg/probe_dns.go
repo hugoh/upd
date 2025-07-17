@@ -12,7 +12,7 @@ type DNSProbe struct {
 	Domain      string
 }
 
-func GetDNSProbe(dnsResolver string, domain string) *DNSProbe {
+func NewDNSProbe(dnsResolver string, domain string) *DNSProbe {
 	dnsProbe := DNSProbe{
 		DNSResolver: dnsResolver,
 		Domain:      domain,

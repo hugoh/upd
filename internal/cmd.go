@@ -13,6 +13,7 @@ import (
 
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
+	"github.com/hugoh/upd/pkg"
 	"github.com/urfave/cli/v3"
 )
 
@@ -27,7 +28,7 @@ const (
 	ConfigDump   string = "dump"
 )
 
-func SetupLoop(loop *logic.Loop, conf *Configuration, configPath string, version string) error {
+func SetupLoop(loop *logic.Loop, conf *Configuration, configPath string) error {
 	newConf, err := ReadConf(configPath)
 	if err != nil {
 		if conf == nil {
@@ -38,7 +39,7 @@ func SetupLoop(loop *logic.Loop, conf *Configuration, configPath string, version
 		return nil
 	}
 	conf = newConf
-	checklist, checkErr := conf.GetChecks(version)
+	checklist, checkErr := conf.GetChecks()
 	if checkErr != nil {
 		return fmt.Errorf("invalid checks in configuration: %w", checkErr)
 	}
@@ -59,7 +60,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 	sighupCh := make(chan os.Signal, 1)
 	signal.Notify(sighupCh, syscall.SIGHUP)
 
-	loop := logic.NewLoop(cmd.Version)
+	loop := logic.NewLoop()
 
 	var conf *Configuration
 	for {
@@ -67,7 +68,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 
 		done := make(chan struct{})
 		go func(ctx context.Context) {
-			if err := SetupLoop(loop, conf, cmd.String(ConfigConfig), cmd.Version); err != nil {
+			if err := SetupLoop(loop, conf, cmd.String(ConfigConfig)); err != nil {
 				logger.L.Fatal("cannot configure app")
 			}
 			loop.Run(ctx)
@@ -89,7 +90,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 	}
 }
 
-func Cmd(version string) {
+func Cmd() {
 	flags := []cli.Flag{
 		&cli.StringFlag{
 			Name:      ConfigConfig,
@@ -109,7 +110,7 @@ func Cmd(version string) {
 	app := &cli.Command{
 		Name:    AppName,
 		Usage:   AppShort,
-		Version: version,
+		Version: pkg.Version(),
 		Flags:   flags,
 		Action:  Run,
 	}

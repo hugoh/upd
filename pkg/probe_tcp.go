@@ -11,7 +11,7 @@ type TCPProbe struct {
 	HostPort string
 }
 
-func GetTCPProbe(hostPort string) *TCPProbe {
+func NewTCPProbe(hostPort string) *TCPProbe {
 	tcpProbe := TCPProbe{
 		HostPort: hostPort,
 	}

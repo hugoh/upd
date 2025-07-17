@@ -8,4 +8,4 @@ builds:
     ldflags:
       - -extldflags '-static'
       - -s -w
-      - -X main.version={{.Version}}
+      - -X pkg.version={{.Version}}

@@ -8,18 +8,18 @@ import (
 )
 
 func TestNewStatus(t *testing.T) {
-	a := NewStatus(TestVersion)
+	a := NewStatus()
 	a.SetRetention(0)
 	assert.NotNil(t, a)
 	assert.Nil(t, a.stateChangeTracker)
-	a = NewStatus(TestVersion)
+	a = NewStatus()
 	a.SetRetention(1 * time.Hour)
 	assert.NotNil(t, a)
 	assert.NotNil(t, a.stateChangeTracker)
 }
 
 func Test_Status(t *testing.T) {
-	status := NewStatus(TestVersion)
+	status := NewStatus()
 	status.SetRetention(0)
 	assert.False(t, status.initialized)
 	status.set(true)
@@ -28,7 +28,7 @@ func Test_Status(t *testing.T) {
 	status.set(false)
 	assert.True(t, status.initialized)
 	assert.False(t, status.Up)
-	status = NewStatus(TestVersion)
+	status = NewStatus()
 	status.SetRetention(0)
 	assert.False(t, status.initialized)
 	status.set(false)
@@ -42,7 +42,7 @@ func Test_Status(t *testing.T) {
 func Test_Update(t *testing.T) {
 	var s *Status
 	var c bool
-	s = NewStatus(TestVersion)
+	s = NewStatus()
 	s.SetRetention(0)
 	c = s.Update(true)
 	assert.True(t, c)
@@ -50,7 +50,7 @@ func Test_Update(t *testing.T) {
 	assert.False(t, c)
 	c = s.Update(false)
 	assert.True(t, c)
-	s = NewStatus(TestVersion)
+	s = NewStatus()
 	s.SetRetention(0)
 	c = s.Update(false)
 	assert.True(t, c)

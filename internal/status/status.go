@@ -3,6 +3,8 @@ package status
 import (
 	"sync"
 	"time"
+
+	"github.com/hugoh/upd/pkg"
 )
 
 type Status struct {
@@ -10,13 +12,11 @@ type Status struct {
 	initialized        bool
 	mutex              sync.Mutex
 	stateChangeTracker *StateChangeTracker
-	version            string
 }
 
-func NewStatus(version string) *Status {
+func NewStatus() *Status {
 	var stateChangeTracker *StateChangeTracker
 	return &Status{
-		version:            version,
 		stateChangeTracker: stateChangeTracker,
 	}
 }
@@ -57,7 +57,7 @@ func (s *Status) GenStatReport(periods []time.Duration) *Report {
 		Generated:  generated,
 		Uptime:     ReadableDuration(generated.Sub(s.stateChangeTracker.started)),
 		Up:         s.Up,
-		Version:    s.version,
+		Version:    pkg.Version(),
 		Stats:      s.stateChangeTracker.GenReports(s.Up, generated, periods),
 		CheckCount: s.stateChangeTracker.updateCount,
 		LastUpdate: ReadableDuration(generated.Sub(s.stateChangeTracker.lastUpdated)),

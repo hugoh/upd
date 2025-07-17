@@ -23,9 +23,9 @@ type Loop struct {
 	status           *status.Status
 }
 
-func NewLoop(version string) *Loop {
+func NewLoop() *Loop {
 	return &Loop{
-		status: status.NewStatus(version),
+		status: status.NewStatus(),
 	}
 }
 
