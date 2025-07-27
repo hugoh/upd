@@ -1,0 +1,11 @@
+checks:
+  every:
+    normal: 120s
+    down: 20s
+  list:
+    shuffled:
+      - http://captive.apple.com/hotspot-detect.html
+      - https://example.com/
+      - dns://1.1.1.1/www.google.com
+      - tcp://1.0.0.1:53/
+  timeout: ${UPD_TEST_TIMEOUT}

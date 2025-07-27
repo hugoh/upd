@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -120,4 +121,19 @@ func (suite *TestSuite) TestGetChecks() {
 func (suite *TestSuite) TestStatConf() {
 	conf := suite.conf.Stats
 	assert.Equal(suite.T(), ":8080", conf.Port)
+}
+
+func TestReadConf_envsubst(t *testing.T) {
+	os.Setenv("UPD_TEST_TIMEOUT", "3s")
+	defer os.Unsetenv("UPD_TEST_TIMEOUT")
+
+	conf, err := readConf("upd_test_envvar.yaml")
+	assert.NoError(t, err)
+	assert.Equal(t, 3*time.Second, conf.Checks.TimeOut)
+}
+
+func TestReadConf_envsubst_missing(t *testing.T) {
+	_, err := readConf("upd_test_envvar.yaml")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "TimeOut")
 }

@@ -4,17 +4,19 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"reflect"
 	"regexp"
 	"time"
 
+	"github.com/drone/envsubst"
 	"github.com/go-playground/validator"
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
 	"github.com/hugoh/upd/internal/status"
 	"github.com/hugoh/upd/pkg"
 	"github.com/knadh/koanf/parsers/yaml"
-	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/providers/rawbytes"
 	"github.com/knadh/koanf/v2"
 	"github.com/sirupsen/logrus"
 )
@@ -61,7 +63,21 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 	if cfgFile == "" {
 		cfgFile = DefaultConfig
 	}
-	if err := k.Load(file.Provider(cfgFile), yaml.Parser()); err != nil {
+
+	// Read file and substitute environment variables using envsubst
+	content, err := os.ReadFile(cfgFile)
+	if err != nil {
+		return configError("Could not read config", cfgFile, err)
+	}
+
+	// Use envsubst to substitute environment variables
+	substContent, err := envsubst.EvalEnv(string(content))
+	if err != nil {
+		return configError("envsubst failed", cfgFile, err)
+	}
+
+	// Use koanf rawbytes provider to load the substituted config content
+	if err := k.Load(rawbytes.Provider([]byte(substContent)), yaml.Parser()); err != nil {
 		return configError("Could not read config", cfgFile, err)
 	}
 	logger.L.WithField("file", cfgFile).Debug("[Config] config file used")
