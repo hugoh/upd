@@ -65,7 +65,7 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 	}
 
 	// Read file and substitute environment variables using envsubst
-	content, err := os.ReadFile(cfgFile)
+	content, err := os.ReadFile(cfgFile) // #nosec G304
 	if err != nil {
 		return configError("Could not read config", cfgFile, err)
 	}
