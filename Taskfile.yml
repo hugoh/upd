@@ -56,6 +56,7 @@ tasks:
   fmt:
     summary: Format the code
     cmds:
+      - goimports -w .
       - go tool github.com/daixiang0/gci write .
       - go tool mvdan.cc/gofumpt -w .
 
@@ -94,7 +95,12 @@ tasks:
 
   test:
     summary: Run tests
+    deps: [test-version]
     cmd: go test ./... {{.CLI_ARGS}}
+
+  testall:
+    summary: Run all tests
+    deps: [test, lint]
 
   test-version:
     summary: Test that the application version is correctly injected at build time
