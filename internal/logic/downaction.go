@@ -38,7 +38,7 @@ const BackoffFactor = 1.5
 var ErrNoCommand = errors.New("no command to execute")
 
 // Only return an error if the command cannot be run.
-func (dal *DownActionLoop) Execute(execString string) error {
+func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error {
 	if execString == "" {
 		return ErrNoCommand
 	}
@@ -46,7 +46,7 @@ func (dal *DownActionLoop) Execute(execString string) error {
 	if errSh != nil {
 		return fmt.Errorf("failed to parse DownAction definition: %w", errSh)
 	}
-	cmd := exec.Command(command[0], command[1:]...) // #nosec G204
+	cmd := exec.CommandContext(ctx, command[0], command[1:]...) // #nosec G204
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("UPD_ITERATION=%d", dal.it.iteration))
 	logger.L.WithField("exec", cmd.String()).Info("[DownAction] executing command")
@@ -87,8 +87,8 @@ func (da *DownAction) Start(ctx context.Context) *DownActionLoop {
 	return dal
 }
 
-func (dal *DownActionLoop) Stop() {
-	_ = dal.Execute(dal.da.StopExec) //nolint:errcheck
+func (dal *DownActionLoop) Stop(ctx context.Context) {
+	_ = dal.Execute(ctx, dal.da.StopExec) //nolint:errcheck
 	logger.L.Debug("[DownAction] sending shutdown signal")
 	dal.cancelFunc()
 }
@@ -125,7 +125,7 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 			return
 		case <-time.After(dal.it.sleepTime):
 		}
-		err := dal.Execute(dal.da.Exec)
+		err := dal.Execute(ctx, dal.da.Exec)
 		if err != nil {
 			logger.L.WithError(err).Error("[DownAction] failed to execute")
 		}
