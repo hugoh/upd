@@ -4,6 +4,7 @@ linters:
   disable:
     - depguard
     - exhaustruct
+    - godoclint
     - godot
     - godox
     - nlreturn
