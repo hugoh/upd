@@ -22,9 +22,12 @@ func (p TCPProbe) Scheme() string {
 	return TCP
 }
 
-func (p TCPProbe) Probe(_ context.Context, timeout time.Duration) *Report {
+func (p TCPProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
 	start := time.Now()
-	conn, err := net.DialTimeout("tcp", p.HostPort, timeout)
+	dialer := &net.Dialer{
+		Timeout: timeout,
+	}
+	conn, err := dialer.DialContext(ctx, "tcp", p.HostPort)
 	report := BuildReport(p, start)
 	if err != nil {
 		report.error = fmt.Errorf("error making request to %s: %w", p.HostPort, err)

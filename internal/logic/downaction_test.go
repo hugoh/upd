@@ -32,7 +32,7 @@ func Test_ExecuteSucceed(t *testing.T) {
 	}
 	hook := nulllogger.NewNullLoggerHook()
 	dal, _ := da.NewDownActionLoop(context.Background())
-	err := dal.Execute(da.Exec)
+	err := dal.Execute(context.Background(), da.Exec)
 	assert.NoError(t, err)
 	ensureExec(t, hook, "/usr/bin/true", 1)
 }
@@ -43,7 +43,7 @@ func Test_ExecuteFail(t *testing.T) {
 	}
 	hook := nulllogger.NewNullLoggerHook()
 	dal, _ := da.NewDownActionLoop(context.Background())
-	err := dal.Execute(da.Exec)
+	err := dal.Execute(context.Background(), da.Exec)
 	assert.NoError(t, err, "Success in starting a command that fails")
 	ensureExec(t, hook, "/usr/bin/false", 1)
 	time.Sleep(50 * time.Millisecond) // Give it time to fail
@@ -55,7 +55,7 @@ func Test_ExecuteNonExistent(t *testing.T) {
 		Exec: "/DOES-NOT-EXIST",
 	}
 	dal, _ := da.NewDownActionLoop(context.Background())
-	err := dal.Execute(da.Exec)
+	err := dal.Execute(context.Background(), da.Exec)
 	assert.Error(t, err)
 }
 
@@ -91,7 +91,7 @@ func Test_StartAndStop(t *testing.T) {
 	time.Sleep(waitTime) // Give it time to startExec
 	ensureExec(t, hook, "/usr/bin/true", 1)
 	hook.Reset()
-	dal.Stop()
+	dal.Stop(context.Background())
 	time.Sleep(every) // Give it time to stop
 	ensureExec(t, hook, "/usr/bin/false", 2)
 }

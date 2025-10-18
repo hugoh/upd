@@ -52,12 +52,12 @@ func (l *Loop) DownActionStart(ctx context.Context) error {
 	return nil
 }
 
-func (l *Loop) DownActionStop() {
+func (l *Loop) DownActionStop(ctx context.Context) {
 	if l.downActionLoop == nil {
 		// Nothing to stop
 		return
 	}
-	l.downActionLoop.Stop()
+	l.downActionLoop.Stop(ctx)
 	l.downActionLoop = nil
 }
 
@@ -71,7 +71,7 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 		return
 	}
 	if upStatus {
-		l.DownActionStop()
+		l.DownActionStop(ctx)
 	} else {
 		err := l.DownActionStart(ctx)
 		if err != nil {
@@ -103,7 +103,7 @@ func (l *Loop) Run(ctx context.Context) {
 }
 
 func (l *Loop) Stop(ctx context.Context) {
-	l.DownActionStop()
+	l.DownActionStop(ctx)
 	if l.statServer != nil {
 		l.statServer.StopStatServer(ctx)
 	}

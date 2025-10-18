@@ -19,14 +19,14 @@ func Test_DownActionStartStop(t *testing.T) {
 	loop := emptyNewLoop()
 	loop.downAction = da
 	assert.Nil(t, loop.downActionLoop)
-	loop.DownActionStop()
+	loop.DownActionStop(ctx)
 	assert.Nil(t, loop.downActionLoop)
 	err := loop.DownActionStart(ctx)
 	assert.NoError(t, err)
 	assert.NotNil(t, loop.downActionLoop)
 	err = loop.DownActionStart(ctx)
 	assert.Error(t, err)
-	loop.DownActionStop()
+	loop.DownActionStop(ctx)
 	assert.Nil(t, loop.downActionLoop)
 }
 

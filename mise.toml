@@ -1,5 +1,6 @@
 [tools]
 go = "latest"
+golangci-lint = "latest"
 "npm:prettier" = "latest"
 task = "latest"
 zizmor = "latest"
