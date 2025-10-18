@@ -2,3 +2,4 @@
 go = "latest"
 "npm:prettier" = "latest"
 task = "latest"
+zizmor = "latest"
