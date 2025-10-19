@@ -58,14 +58,17 @@ func configError(msg string, path string, err error) (*Configuration, error) {
 }
 
 func ReadConf(cfgFile string) (*Configuration, error) {
-	k := koanf.New(".")
+	var err error
+
+	cfg := koanf.New(".")
 
 	if cfgFile == "" {
 		cfgFile = DefaultConfig
 	}
 
 	// Read file and substitute environment variables using envsubst
-	content, err := os.ReadFile(cfgFile) // #nosec G304
+	var content []byte
+	content, err = os.ReadFile(cfgFile) // #nosec G304
 	if err != nil {
 		return configError("Could not read config", cfgFile, err)
 	}
@@ -77,20 +80,24 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 	}
 
 	// Use koanf rawbytes provider to load the substituted config content
-	if err := k.Load(rawbytes.Provider([]byte(substContent)), yaml.Parser()); err != nil {
+	err = cfg.Load(rawbytes.Provider([]byte(substContent)), yaml.Parser())
+	if err != nil {
 		return configError("Could not read config", cfgFile, err)
 	}
 	logger.L.WithField("file", cfgFile).Debug("[Config] config file used")
 	var conf Configuration
-	if err := k.UnmarshalWithConf("", &conf, koanf.UnmarshalConf{}); err != nil {
+	err = cfg.UnmarshalWithConf("", &conf, koanf.UnmarshalConf{})
+	if err != nil {
 		return configError("Unable to parse the config", cfgFile, err)
 	}
 
 	validate := validator.New()
-	if err := validate.RegisterValidation("validTCPPort", isValidTCPPort); err != nil {
+	err = validate.RegisterValidation("validTCPPort", isValidTCPPort)
+	if err != nil {
 		logrus.WithError(err).Fatal("failed to instantiate config validator")
 	}
-	if err := validate.Struct(&conf); err != nil {
+	err = validate.Struct(&conf)
+	if err != nil {
 		return configError("Missing required attributes", cfgFile, err)
 	}
 

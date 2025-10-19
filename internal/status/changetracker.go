@@ -83,13 +83,13 @@ func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 }
 
 func (tracker *StateChangeTracker) RecordsCount() int {
-	i := 0
+	recordsNumber := 0
 	cur := tracker.head
 	for cur != nil {
-		i++
+		recordsNumber++
 		cur = cur.next
 	}
-	return i
+	return recordsNumber
 }
 
 func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
@@ -100,7 +100,7 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 		return nil
 	}
 	reports := make([]ReportByPeriod, reportCount)
-	for i := range reportCount {
+	for i := range reportCount { //nolint: varnamelen
 		period := periods[i]
 		availability, downtime, err := tracker.CalculateUptime(currentState, period, end)
 		if err != nil {

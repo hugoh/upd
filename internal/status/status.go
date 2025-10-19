@@ -38,14 +38,14 @@ func (s *Status) SetRetention(retention time.Duration) {
 }
 
 // Returns true if it changed
-func (s *Status) Update(up bool) bool {
+func (s *Status) Update(isUp bool) bool {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	s.recordResult(up)
-	if !s.hasChanged(up) {
+	s.recordResult(isUp)
+	if !s.hasChanged(isUp) {
 		return false
 	}
-	s.set(up)
+	s.set(isUp)
 	return true
 }
 

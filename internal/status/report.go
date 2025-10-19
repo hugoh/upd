@@ -41,21 +41,21 @@ func (h *StatHandler) GenStatReport() *Report {
 	return h.statServer.status.GenStatReport(h.statServer.config.Reports)
 }
 
-func (h *StatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, r *http.Request) {
 	logger.L.WithField("requestor", r.RemoteAddr).Info("[Stats] requested")
 
 	stats := h.GenStatReport()
 
-	w.Header().Set("Content-Type", "application/json")
+	writer.Header().Set("Content-Type", "application/json")
 
 	jsonData, err := json.MarshalIndent(stats, "", "  ")
 	if err != nil {
 		logger.L.WithError(err).Error("[Stats] error marshalling JSON stats")
-		http.Error(w, "Failed to generate JSON", http.StatusInternalServerError)
+		http.Error(writer, "Failed to generate JSON", http.StatusInternalServerError)
 		return
 	}
 
-	_, err = w.Write(jsonData)
+	_, err = writer.Write(jsonData)
 	if err != nil {
 		logger.L.WithError(err).Error("[Stats] error returning JSON stats")
 	}

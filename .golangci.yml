@@ -6,10 +6,7 @@ linters:
     - exhaustruct
     - godoclint
     - godot
-    - godox
     - nlreturn
-    - noinlineerr
-    - varnamelen
     - wsl
     - wsl_v5
   settings:
@@ -19,9 +16,6 @@ linters:
     generated: lax
     presets:
       - comments
-      - common-false-positives
-      - legacy
-      - std-error-handling
     paths:
       - _test\.go
       - third_party$

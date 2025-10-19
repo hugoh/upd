@@ -25,7 +25,7 @@ func (p DNSProbe) Scheme() string {
 }
 
 func (p DNSProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
-	r := &net.Resolver{
+	resolver := &net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
 			d := net.Dialer{
@@ -35,7 +35,7 @@ func (p DNSProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
 		},
 	}
 	start := time.Now()
-	addr, err := r.LookupHost(ctx, p.Domain)
+	addr, err := resolver.LookupHost(ctx, p.Domain)
 	report := BuildReport(p, start)
 	if err != nil {
 		report.error = fmt.Errorf("error resolving %s: %w", p.Domain, err)
