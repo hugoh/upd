@@ -68,7 +68,8 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 
 		done := make(chan struct{})
 		go func(ctx context.Context) {
-			if err := SetupLoop(loop, conf, cmd.String(ConfigConfig)); err != nil {
+			err := SetupLoop(loop, conf, cmd.String(ConfigConfig))
+			if err != nil {
 				logger.L.Fatal("cannot configure app")
 			}
 			loop.Run(ctx)
@@ -115,7 +116,8 @@ func Cmd() {
 		Action:  Run,
 	}
 
-	if err := app.Run(context.Background(), os.Args); err != nil {
+	err := app.Run(context.Background(), os.Args)
+	if err != nil {
 		log.Fatal(err)
 	}
 }

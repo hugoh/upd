@@ -51,7 +51,8 @@ func (s *StatServer) Start() {
 	}
 	logger.L.WithField("statserver", fmt.Sprintf("http://localhost%s%s", s.server.Addr, StatRoute)).
 		Info("[Stats] server started")
-	if err := s.server.ListenAndServe(); err != nil {
+	err := s.server.ListenAndServe()
+	if err != nil {
 		if errors.Is(err, http.ErrServerClosed) {
 			return
 		}

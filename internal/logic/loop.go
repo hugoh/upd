@@ -31,13 +31,13 @@ func NewLoop() *Loop {
 
 func (l *Loop) Configure(checkList *pkg.CheckList,
 	delays Delays,
-	da *DownAction,
+	downAction *DownAction,
 	retention time.Duration,
 	statServerConfig *status.StatServerConfig,
 ) {
 	l.checkList = checkList
 	l.delays = delays
-	l.downAction = da
+	l.downAction = downAction
 	l.status.SetRetention(retention)
 	l.statServerConfig = statServerConfig
 }
