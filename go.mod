@@ -11,7 +11,7 @@ require (
 	github.com/knadh/koanf/v2 v2.3.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.11.1
-	github.com/urfave/cli/v3 v3.4.1
+	github.com/urfave/cli/v3 v3.5.0
 )
 
 require (
