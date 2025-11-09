@@ -8,5 +8,17 @@
     "customManagers:githubActionsVersions"
   ],
   "minimumReleaseAge": "7 days",
+  "regexManagers": [
+    {
+      "fileMatch": ["\\.github/workflows/.*\\.ya?ml$"],
+      "matchStrings": [
+        "uses: (?<depName>.+)@(?<currentValue>[^ #\\n]+) # v(?<version>\\d+)"
+      ],
+      "depNameTemplate": "{{depName}}",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver",
+      "extractVersionTemplate": "v{{version}}"
+    }
+  ],
   "postUpdateOptions": ["gomodTidy", "gomodUpdateImportPaths"]
 }
