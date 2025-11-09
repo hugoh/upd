@@ -8,9 +8,10 @@
     "customManagers:githubActionsVersions"
   ],
   "minimumReleaseAge": "7 days",
-  "regexManagers": [
+  "customManagers": [
     {
-      "fileMatch": ["\\.github/workflows/.*\\.ya?ml$"],
+      "customType": "regex",
+      "managerFilePatterns": ["/\\.github/workflows/.*\\.ya?ml$/"],
       "matchStrings": [
         "uses: (?<depName>.+)@(?<currentValue>[^ #\\n]+) # v(?<version>\\d+)"
       ],
