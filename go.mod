@@ -252,7 +252,7 @@ require (
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/tools v0.40.0 // indirect
-	google.golang.org/genai v1.30.0 // indirect
+	google.golang.org/genai v1.37.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250818200422-3122310a409c // indirect
 	google.golang.org/grpc v1.75.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
