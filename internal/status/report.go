@@ -42,7 +42,7 @@ func (h *StatHandler) GenStatReport() *Report {
 }
 
 func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, r *http.Request) {
-	logger.L.WithField("requestor", r.RemoteAddr).Info("[Stats] requested")
+	logger.L.WithField("requester", r.RemoteAddr).Info("[Stats] requested")
 
 	stats := h.GenStatReport()
 
