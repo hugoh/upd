@@ -2,7 +2,7 @@ module github.com/hugoh/upd
 
 go 1.24.0
 
-toolchain go1.25.6
+toolchain go1.25.7
 
 require (
 	github.com/drone/envsubst v1.0.3
