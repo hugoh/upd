@@ -27,7 +27,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Super-linter
-        uses: super-linter/super-linter@ff76a002516303867ea0cc83fa748467362c80eb
+        uses: super-linter/super-linter@f33a1a1d0c58e680afdceb57307a6d022732731f
         env:
           VALIDATE_BIOME_FORMAT: false
           VALIDATE_GO: false
