@@ -27,7 +27,7 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Install Task
-        uses: arduino/setup-task@b91d5d2c96a56797b48ac1e0e89220bf64044611
+        uses: arduino/setup-task@60cc3975942e4749b3f83519046f542db3030970
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run linters
