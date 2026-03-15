@@ -6,7 +6,6 @@ package internal
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -28,27 +27,21 @@ const (
 	ConfigDump   string = "dump"
 )
 
-func SetupLoop(loop *logic.Loop, conf *Configuration, configPath string) error {
+func SetupLoop(loop *logic.Loop, configPath string) (*Configuration, error) {
 	newConf, err := ReadConf(configPath)
 	if err != nil {
-		if conf == nil {
-			logger.L.WithError(err).Error("error reading configuration")
-			return fmt.Errorf("error reading configuration: %w", err)
-		}
-		logger.L.Error("[App] reusing previous configuration")
-		return nil
+		return nil, fmt.Errorf("error reading configuration: %w", err)
 	}
-	conf = newConf
-	checklist, checkErr := conf.GetChecks()
+	checklist, checkErr := newConf.GetChecks()
 	if checkErr != nil {
-		return fmt.Errorf("invalid checks in configuration: %w", checkErr)
+		return nil, fmt.Errorf("invalid checks in configuration: %w", checkErr)
 	}
 	loop.Configure(checklist,
-		conf.GetDelays(),
-		conf.GetDownAction(),
-		conf.Stats.Retention,
-		&conf.Stats)
-	return nil
+		newConf.GetDelays(),
+		newConf.GetDownAction(),
+		newConf.Stats.Retention,
+		&newConf.Stats)
+	return newConf, nil
 }
 
 func Run(appCtx context.Context, cmd *cli.Command) error {
@@ -62,19 +55,22 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 
 	loop := logic.NewLoop()
 
-	var conf *Configuration
 	for {
 		currentWorkerCtx, cancelCurrentWorker := context.WithCancel(rootCtx)
 
+		errCh := make(chan error, 1)
 		done := make(chan struct{})
 		go func(ctx context.Context) {
-			err := SetupLoop(loop, conf, cmd.String(ConfigConfig))
+			defer close(done)
+			var err error
+			_, err = SetupLoop(loop, cmd.String(ConfigConfig))
 			if err != nil {
-				logger.L.Fatal("cannot configure app")
+				errCh <- fmt.Errorf("cannot configure app: %w", err)
+				return
 			}
+			errCh <- nil
 			loop.Run(ctx)
 			loop.Stop(ctx)
-			close(done)
 		}(currentWorkerCtx)
 
 		select {
@@ -83,6 +79,12 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 			cancelCurrentWorker()
 			<-done
 			return nil
+		case err := <-errCh:
+			if err != nil {
+				cancelCurrentWorker()
+				<-done
+				return err
+			}
 		case <-sighupCh:
 			logger.L.Info("[App] SIGHUP received: reloading configuration")
 			cancelCurrentWorker()
@@ -91,7 +93,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 	}
 }
 
-func Cmd() {
+func Cmd() error {
 	flags := []cli.Flag{
 		&cli.StringFlag{
 			Name:      ConfigConfig,
@@ -116,8 +118,5 @@ func Cmd() {
 		Action:  Run,
 	}
 
-	err := app.Run(context.Background(), os.Args)
-	if err != nil {
-		log.Fatal(err)
-	}
+	return fmt.Errorf("failed to run app: %w", app.Run(context.Background(), os.Args))
 }
