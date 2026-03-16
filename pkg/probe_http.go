@@ -38,16 +38,18 @@ func (p *HTTPProbe) Scheme() string {
 }
 
 func (p *HTTPProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
-	client := p.client
-	client.Timeout = timeout
-	req, bErr := http.NewRequestWithContext(ctx, http.MethodGet, p.URL, nil)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	req, bErr := http.NewRequestWithContext(ctxWithTimeout, http.MethodGet, p.URL, nil)
 	if bErr != nil {
-		report := &Report{protocol: p.Scheme()}
+		start := time.Now()
+		report := BuildReport(p, start)
 		report.error = fmt.Errorf("error building request to %s: %w", p.URL, bErr)
 		return report
 	}
 	start := time.Now()
-	resp, err := client.Do(req)
+	resp, err := p.client.Do(req)
 	report := BuildReport(p, start)
 	if err != nil {
 		report.error = fmt.Errorf("error making request to %s: %w", p.URL, err)
