@@ -43,3 +43,33 @@ func (r *Report) LogrusFields() logrus.Fields {
 	}
 	return fields
 }
+
+// Protocol returns the protocol used for the probe (e.g., "http", "tcp", "dns").
+func (r *Report) Protocol() string {
+	return r.protocol
+}
+
+// Response returns the response from the probe.
+// For HTTP requests, this is the HTTP status code.
+// For TCP probes, this is the local address (IP:port).
+// For DNS probes, this is the resolved IP address and DNS resolver.
+// Returns empty string if there was an error.
+func (r *Report) Response() string {
+	return r.response
+}
+
+// Elapsed returns the time taken to complete the probe.
+func (r *Report) Elapsed() time.Duration {
+	return r.elapsed
+}
+
+// Error returns any error that occurred during the probe.
+// Returns nil if the probe was successful.
+func (r *Report) Error() error {
+	return r.error
+}
+
+// IsError returns true if the probe encountered an error.
+func (r *Report) IsError() bool {
+	return r.error != nil
+}
