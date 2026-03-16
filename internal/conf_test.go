@@ -12,6 +12,7 @@ import (
 	"github.com/hugoh/upd/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/yaml.v3"
 )
 
 type TestSuite struct {
@@ -139,4 +140,81 @@ func TestReadConf_envsubst_missing(t *testing.T) {
 	_, err := readTestConfig("upd_test_envvar.yaml")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "TimeOut")
+}
+
+func TestDNSCheckValidation_MissingDomain(t *testing.T) {
+	nulllogger.NewNullLoggerHook()
+	conf, err := readTestConfig("upd_test_bad.yaml")
+	assert.Nil(t, err, "No error expected")
+	checklist, checkErr := conf.GetChecks()
+	assert.Nil(t, checkErr, "No error expected")
+
+	// Check that dns://8.8.4.4/ is ignored due to missing domain
+	dnsChecks := 0
+	for _, check := range checklist.Ordered {
+		_, ok := (*check.Probe).(*pkg.DNSProbe)
+		if ok {
+			dnsChecks++
+		}
+	}
+	for _, check := range checklist.Shuffled {
+		_, ok := (*check.Probe).(*pkg.DNSProbe)
+		if ok {
+			dnsChecks++
+		}
+	}
+	assert.Equal(t, 0, dnsChecks, "DNS check with missing domain should be ignored")
+}
+
+func TestDNSCheckValidation_MissingResolver(t *testing.T) {
+	nulllogger.NewNullLoggerHook()
+	conf := &Configuration{}
+	err := yaml.Unmarshal([]byte(`
+checks:
+  every:
+    normal: 120s
+    down: 20s
+  list:
+    ordered:
+      - http://captive.apple.com/hotspot-detect.html
+      - dns:///google.com  # Missing resolver host
+  timeout: 2000ms
+logLevel: debug
+`), &conf)
+	assert.NoError(t, err)
+
+	checklist, checkErr := conf.GetChecks()
+	assert.Nil(t, checkErr, "No error expected")
+
+	// Check that dns:///google.com is ignored due to missing resolver host
+	dnsChecks := 0
+	for _, check := range checklist.Ordered {
+		_, ok := (*check.Probe).(*pkg.DNSProbe)
+		if ok {
+			dnsChecks++
+		}
+	}
+	for _, check := range checklist.Shuffled {
+		_, ok := (*check.Probe).(*pkg.DNSProbe)
+		if ok {
+			dnsChecks++
+		}
+	}
+	assert.Equal(t, 0, dnsChecks, "DNS check with missing resolver host should be ignored")
+
+	// Verify we still have the HTTP check
+	httpChecks := 0
+	for _, check := range checklist.Ordered {
+		_, ok := (*check.Probe).(*pkg.HTTPProbe)
+		if ok {
+			httpChecks++
+		}
+	}
+	for _, check := range checklist.Shuffled {
+		_, ok := (*check.Probe).(*pkg.HTTPProbe)
+		if ok {
+			httpChecks++
+		}
+	}
+	assert.Equal(t, 1, httpChecks, "HTTP check should still be present")
 }

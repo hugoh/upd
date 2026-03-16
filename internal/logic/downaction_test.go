@@ -128,3 +128,59 @@ func Test_BackoffNoLimit(t *testing.T) {
 func Test_BackoffLimit(t *testing.T) {
 	testBackoff(t, true)
 }
+
+func TestValidateCommand(t *testing.T) {
+	tests := []struct {
+		name        string
+		command     []string
+		expectedErr error
+	}{
+		{
+			name:        "Valid command",
+			command:     []string{"ls", "-la"},
+			expectedErr: nil,
+		},
+		{
+			name:        "Valid single command",
+			command:     []string{"true"},
+			expectedErr: nil,
+		},
+		{
+			name:        "Empty command slice",
+			command:     []string{},
+			expectedErr: ErrNoCommand,
+		},
+		{
+			name:        "Nil command slice",
+			command:     nil,
+			expectedErr: ErrNoCommand,
+		},
+		{
+			name:        "Empty command name",
+			command:     []string{"", "arg"},
+			expectedErr: ErrEmptyCommand,
+		},
+		{
+			name:        "Command with just empty string",
+			command:     []string{""},
+			expectedErr: ErrEmptyCommand,
+		},
+		{
+			name:        "Command with empty first element and args",
+			command:     []string{"", "arg1", "arg2"},
+			expectedErr: ErrEmptyCommand,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateCommand(tt.command)
+			if tt.expectedErr != nil {
+				assert.Error(t, err)
+				assert.Equal(t, tt.expectedErr, err, "Error should match expected")
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
