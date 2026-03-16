@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/drone/envsubst"
@@ -66,25 +68,30 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 		cfgFile = DefaultConfig
 	}
 
-	// Read file and substitute environment variables using envsubst
-	var content []byte
-	content, err = os.ReadFile(cfgFile) // #nosec G304
+	absPath, err := filepath.Abs(filepath.Clean(cfgFile))
 	if err != nil {
-		return configError("Could not read config", cfgFile, err)
+		return configError("could not resolve config path", cfgFile, err)
 	}
 
-	// Use envsubst to substitute environment variables
+	// Read file - cfgFile has been cleaned and resolved to absolute path
+	var content []byte
+	content, err = os.ReadFile(absPath) // #nosec G304 -- path sanitized by filepath.Abs and filepath.Clean
+	if err != nil {
+		return configError("Could not read config", absPath, err)
+	}
+
+	logger.L.WithField("file", absPath).Debug("[Config] config file used")
+
 	substContent, err := envsubst.EvalEnv(string(content))
 	if err != nil {
-		return configError("envsubst failed", cfgFile, err)
+		return configError("envsubst failed", absPath, err)
 	}
 
 	// Use koanf rawbytes provider to load the substituted config content
 	err = cfg.Load(rawbytes.Provider([]byte(substContent)), yaml.Parser())
 	if err != nil {
-		return configError("Could not read config", cfgFile, err)
+		return configError("Could not read config", absPath, err)
 	}
-	logger.L.WithField("file", cfgFile).Debug("[Config] config file used")
 	var conf Configuration
 	err = cfg.UnmarshalWithConf("", &conf, koanf.UnmarshalConf{})
 	if err != nil {
@@ -94,7 +101,7 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 	validate := validator.New()
 	err = validate.RegisterValidation("validTCPPort", isValidTCPPort)
 	if err != nil {
-		logrus.WithError(err).Fatal("failed to instantiate config validator")
+		return configError("failed to instantiate config validator", cfgFile, err)
 	}
 	err = validate.Struct(&conf)
 	if err != nil {
@@ -137,7 +144,19 @@ func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
 		var probe pkg.Probe
 		switch url.Scheme {
 		case pkg.DNS:
-			domain := url.Path[1:]
+			domain := strings.TrimPrefix(url.Path, "/")
+			if domain == "" {
+				logger.L.WithFields(logrus.Fields{
+					"check": check,
+				}).Error("DNS check missing domain")
+				continue
+			}
+			if url.Host == "" {
+				logger.L.WithFields(logrus.Fields{
+					"check": check,
+				}).Error("DNS check missing resolver host")
+				continue
+			}
 			port := url.Port()
 			if port == "" {
 				port = "53"

@@ -66,12 +66,15 @@ func TestGetChecksIgnored(t *testing.T) {
 	assert.Nil(t, err, "No error expected")
 	checklist, checkErr := conf.GetChecks()
 	assert.Nil(t, checkErr, "No error expected")
-	// There should be 2 valid checks in total (Ordered + Shuffled)
+	// There should be 1 valid check in total (Ordered + Shuffled)
+	// - http://captive.apple.com/hotspot-detect.html is valid
+	// - ftp://foo.bar/ is ignored (unknown protocol)
+	// - dns://8.8.4.4/ is ignored (missing domain)
 	totalChecks := 0
 	if checklist != nil {
 		totalChecks = len(checklist.Ordered) + len(checklist.Shuffled)
 	}
-	assert.Equal(t, 2, totalChecks, "1 check is invalid")
+	assert.Equal(t, 1, totalChecks, "2 checks should be invalid")
 }
 
 func TestGetChecksFromConfFail(t *testing.T) {
