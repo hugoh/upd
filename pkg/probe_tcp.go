@@ -12,10 +12,7 @@ type TCPProbe struct {
 }
 
 func NewTCPProbe(hostPort string) *TCPProbe {
-	tcpProbe := TCPProbe{
-		HostPort: hostPort,
-	}
-	return &tcpProbe
+	return &TCPProbe{HostPort: hostPort}
 }
 
 func (p TCPProbe) Scheme() string {

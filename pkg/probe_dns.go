@@ -13,11 +13,10 @@ type DNSProbe struct {
 }
 
 func NewDNSProbe(dnsResolver string, domain string) *DNSProbe {
-	dnsProbe := DNSProbe{
+	return &DNSProbe{
 		DNSResolver: dnsResolver,
 		Domain:      domain,
 	}
-	return &dnsProbe
 }
 
 func (p DNSProbe) Scheme() string {

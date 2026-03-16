@@ -36,9 +36,11 @@ func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 }
 
 func (s *StatServer) Start() {
-	const StatRoute = "/stats.json"
-	const ReqTimeout = 3 * time.Second
-	const IdleTimeout = 3 * time.Second
+	const (
+		StatRoute   = "/stats.json"   // HTTP route for statistics endpoint
+		ReqTimeout  = 3 * time.Second // Maximum time to read request from client
+		IdleTimeout = 3 * time.Second // Maximum time to wait for next request
+	)
 	mux := http.NewServeMux()
 	statHandler := NewStatHandler(s)
 	mux.Handle(StatRoute, statHandler)
