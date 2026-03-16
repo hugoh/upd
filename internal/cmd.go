@@ -17,8 +17,11 @@ import (
 )
 
 const (
-	AppName  = "upd"
-	AppShort = "Tool to monitor if the network connection is up."
+	AppName        = "upd"
+	AppShort       = "Tool to monitor if the network connection is up."
+	ExitCodeError  = 1
+	ErrChanSize    = 1
+	SighupChanSize = 1
 )
 
 const (
@@ -50,7 +53,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 	rootCtx, stopSignalHandlers := signal.NotifyContext(appCtx, syscall.SIGINT, syscall.SIGTERM)
 	defer stopSignalHandlers()
 
-	sighupCh := make(chan os.Signal, 1)
+	sighupCh := make(chan os.Signal, SighupChanSize)
 	signal.Notify(sighupCh, syscall.SIGHUP)
 
 	loop := logic.NewLoop()
@@ -58,7 +61,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 	for {
 		currentWorkerCtx, cancelCurrentWorker := context.WithCancel(rootCtx)
 
-		errCh := make(chan error, 1)
+		errCh := make(chan error, ErrChanSize)
 		done := make(chan struct{})
 		go func(ctx context.Context) {
 			defer close(done)

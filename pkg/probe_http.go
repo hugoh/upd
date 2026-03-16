@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+const (
+	UserAgentPrefix = "upd/"
+)
+
 var updClient = &http.Client{ //nolint:gochecknoglobals
 	Transport: &updTransport{version: version},
 }
@@ -16,7 +20,7 @@ type updTransport struct {
 }
 
 func (t *updTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Add("User-Agent", "upd/"+t.version)
+	req.Header.Add("User-Agent", UserAgentPrefix+t.version)
 	resp, err := http.DefaultTransport.RoundTrip(req)
 	if err != nil {
 		return nil, fmt.Errorf("updTransport RoundTrip error: %w", err)

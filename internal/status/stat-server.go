@@ -10,10 +10,25 @@ import (
 	"github.com/hugoh/upd/internal/logger"
 )
 
+const (
+	// DefaultStatServerReadTimeout is the default read timeout for the stats server
+	DefaultStatServerReadTimeout = 3 * time.Second
+	// DefaultStatServerWriteTimeout is the default write timeout for the stats server
+	DefaultStatServerWriteTimeout = 3 * time.Second
+	// DefaultStatServerIdleTimeout is the default idle timeout for the stats server
+	DefaultStatServerIdleTimeout = 3 * time.Second
+	// StatRoute is the HTTP route for the statistics endpoint
+	StatRoute = "/stats.json"
+)
+
 type StatServerConfig struct {
 	Port      string `validate:"omitempty,validTCPPort"`
 	Reports   []time.Duration
 	Retention time.Duration
+	// Timeouts for the HTTP server
+	ReadTimeout  time.Duration `koanf:"readTimeout"  validate:"omitempty,gte=0"`
+	WriteTimeout time.Duration `koanf:"writeTimeout" validate:"omitempty,gte=0"`
+	IdleTimeout  time.Duration `koanf:"idleTimeout"  validate:"omitempty,gte=0"`
 }
 
 type StatServer struct {
@@ -36,20 +51,31 @@ func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 }
 
 func (s *StatServer) Start() {
-	const (
-		StatRoute   = "/stats.json"   // HTTP route for statistics endpoint
-		ReqTimeout  = 3 * time.Second // Maximum time to read request from client
-		IdleTimeout = 3 * time.Second // Maximum time to wait for next request
-	)
+	// Use configured timeouts or fall back to defaults
+	readTimeout := s.config.ReadTimeout
+	if readTimeout == 0 {
+		readTimeout = DefaultStatServerReadTimeout
+	}
+
+	writeTimeout := s.config.WriteTimeout
+	if writeTimeout == 0 {
+		writeTimeout = DefaultStatServerWriteTimeout
+	}
+
+	idleTimeout := s.config.IdleTimeout
+	if idleTimeout == 0 {
+		idleTimeout = DefaultStatServerIdleTimeout
+	}
+
 	mux := http.NewServeMux()
 	statHandler := NewStatHandler(s)
 	mux.Handle(StatRoute, statHandler)
 	s.server = &http.Server{
 		Addr:         s.config.Port,
 		Handler:      mux,
-		ReadTimeout:  ReqTimeout,
-		WriteTimeout: ReqTimeout,
-		IdleTimeout:  IdleTimeout,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		IdleTimeout:  idleTimeout,
 	}
 	logger.L.WithField("statserver", fmt.Sprintf("http://localhost%s%s", s.server.Addr, StatRoute)).
 		Info("[Stats] server started")

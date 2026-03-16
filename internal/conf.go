@@ -78,11 +78,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var ConfigFileUsed string //nolint:gochecknoglobals
-
 const (
-	DefaultConfig string = ".upd.yaml"
+	DefaultConfig  = ".upd.yaml"
+	DefaultDNSPort = "53"
 )
+
+var ConfigFileUsed string //nolint:gochecknoglobals
 
 type Configuration struct {
 	Checks struct {
@@ -214,7 +215,7 @@ func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
 			}
 			port := url.Port()
 			if port == "" {
-				port = "53"
+				port = DefaultDNSPort
 			}
 			dnsResolver := url.Host + ":" + port
 			probe = pkg.NewDNSProbe(dnsResolver, domain)

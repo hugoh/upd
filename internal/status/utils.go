@@ -12,25 +12,35 @@ type (
 	ReadableDuration time.Duration
 )
 
+const (
+	PercentMultiplier    = 100
+	NotComputedMsg       = "Not computed"
+	PercentFormat        = "%.2f %%"
+	ZeroString           = "0s"
+	TrailingZeroSSuffix  = "0s"
+	TrailingZeroMSuffix  = "m0s"
+	TrailingZeroHSuffix  = "h0m"
+	TrailingZeroHMSuffix = "0m"
+)
+
 func (p ReadablePercent) MarshalJSON() ([]byte, error) {
-	const Hundred = 100
 	if p == -1.0 {
-		return json.Marshal("Not computed") //nolint:wrapcheck
+		return json.Marshal(NotComputedMsg) //nolint:wrapcheck
 	}
-	return json.Marshal(fmt.Sprintf("%.2f %%", p*Hundred)) //nolint:wrapcheck
+	return json.Marshal(fmt.Sprintf(PercentFormat, p*PercentMultiplier)) //nolint:wrapcheck
 }
 
 func formatDuration(d time.Duration) string {
 	str := d.Truncate(time.Second).String()
-	if str == "0s" {
+	if str == ZeroString {
 		return str
 	}
 	// Remove trailing "0s" or "0m0s"
-	if strings.HasSuffix(str, "m0s") {
-		str = strings.TrimSuffix(str, "0s")
+	if strings.HasSuffix(str, TrailingZeroMSuffix) {
+		str = strings.TrimSuffix(str, TrailingZeroSSuffix)
 	}
-	if strings.HasSuffix(str, "h0m") {
-		str = strings.TrimSuffix(str, "0m")
+	if strings.HasSuffix(str, TrailingZeroHSuffix) {
+		str = strings.TrimSuffix(str, TrailingZeroHMSuffix)
 	}
 	return str
 }

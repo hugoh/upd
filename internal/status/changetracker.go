@@ -7,6 +7,10 @@ import (
 	"github.com/hugoh/upd/internal/logger"
 )
 
+const (
+	InvalidRangeMsg = "range greater than the retention period"
+)
+
 type StateChange struct {
 	timestamp time.Time
 	up        bool
@@ -67,7 +71,7 @@ func (tracker *StateChangeTracker) Prune(currentTime time.Time) {
 	}
 }
 
-var ErrInvalidRange = errors.New("range greater than the retention period")
+var ErrInvalidRange = errors.New(InvalidRangeMsg)
 
 func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 	last time.Duration, end time.Time,

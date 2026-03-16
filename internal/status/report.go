@@ -9,6 +9,11 @@ import (
 	"github.com/hugoh/upd/internal/logger"
 )
 
+const (
+	JSONIndentSpaces        = "  "
+	FailedToGenerateJSONMsg = "Failed to generate JSON"
+)
+
 type ReportByPeriod struct {
 	Period       ReadableDuration `json:"period"`
 	Availability ReadablePercent  `json:"availability"`
@@ -48,10 +53,10 @@ func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, r *http.Request) {
 
 	writer.Header().Set("Content-Type", "application/json")
 
-	jsonData, err := json.MarshalIndent(stats, "", "  ")
+	jsonData, err := json.MarshalIndent(stats, "", JSONIndentSpaces)
 	if err != nil {
 		logger.L.WithError(err).Error("[Stats] error marshalling JSON stats")
-		http.Error(writer, "Failed to generate JSON", http.StatusInternalServerError)
+		http.Error(writer, FailedToGenerateJSONMsg, http.StatusInternalServerError)
 		return
 	}
 
