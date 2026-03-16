@@ -121,5 +121,9 @@ func Cmd() error {
 		Action:  Run,
 	}
 
-	return fmt.Errorf("failed to run app: %w", app.Run(context.Background(), os.Args))
+	err := app.Run(context.Background(), os.Args)
+	if err != nil {
+		return fmt.Errorf("failed to run app: %w", err)
+	}
+	return nil
 }
