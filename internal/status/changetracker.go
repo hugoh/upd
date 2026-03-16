@@ -82,6 +82,9 @@ func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 	return availability, downtime, nil
 }
 
+// RecordsCount returns the number of state changes in the tracker.
+// This method is primarily used for testing and debugging.
+// The count includes only records that are within the retention period.
 func (tracker *StateChangeTracker) RecordsCount() int {
 	recordsNumber := 0
 	cur := tracker.head
