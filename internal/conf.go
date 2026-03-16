@@ -1,3 +1,58 @@
+// Package internal provides internal configuration, command, and logic
+// handling for the upd application.
+//
+// Configuration:
+//
+// The Configuration struct is loaded from YAML files and contains all
+// settings for the application including:
+//   - Network connectivity checks (HTTP, TCP, DNS)
+//   - Check intervals (normal and down states)
+//   - Down actions to execute when connection fails
+//   - Statistics server configuration
+//   - Logging configuration
+//
+// Example configuration:
+//
+//	checks:
+//	  every:
+//	    normal: 2m
+//	    down: 30s
+//	  list:
+//	    ordered:
+//	      - http://captive.apple.com/hotspot-detect.html
+//	    shuffled:
+//	      - dns://8.8.8.8/example.com
+//	  timeout: 10s
+//	downAction:
+//	  exec: \"echo 'Connection down'\"
+//	  every:
+//	    after: 60s
+//	    repeat: 300s
+//	stats:
+//	  port: \":8080\"
+//	logLevel: debug
+//
+// The configuration supports environment variable substitution using
+// the ${VAR} or $VAR syntax.
+//
+// Example with environment variables:
+//
+//	checks:
+//	  timeout: ${UPD_TIMEOUT:10s}  // Use UPD_TIMEOUT env var or 10s default
+//
+// Command Handling:
+//
+// The Cmd function provides the main CLI interface using the urfave/cli
+// library. It supports:
+//   - Configuration file specification via `-c` or `--config` flag
+//   - Debug logging via `-d` or `--debug` flag
+//   - SIGHUP signal handling for configuration reload
+//   - Graceful shutdown on SIGINT or SIGTERM
+//
+// Network Security:
+//
+// Configuration paths are sanitized to prevent path traversal attacks.
+// Command execution in DownActions is validated to prevent injection.
 package internal
 
 import (
