@@ -1,3 +1,81 @@
+// Package logic provides the core monitoring loop and down action handling
+// for the upd application.
+//
+// The Loop:
+//
+// The Loop struct manages the periodic execution of network connectivity
+// checks. It runs continuously, executing checks at configurable intervals:
+//   - Normal interval: Used when connection is up
+//   - Down interval: Used when connection is down (typically more frequent)
+//
+// The loop uses a Delays map with boolean keys:
+//   - true: Normal interval (connection up)
+//   - false: Down interval (connection down)
+//
+// Example - Creating and running a loop:
+//
+//	loop := logic.NewLoop()
+//	checks := &pkg.CheckList{
+//		Ordered: pkg.Checks{
+//			{
+//				Probe:   pkg.NewHTTPProbe("https://example.com"),
+//				Timeout: 10 * time.Second,
+//			},
+//		},
+//	}
+//	delays := logic.Delays{
+//		true:  2 * time.Minute,  // Check every 2 minutes when up
+//		false: 30 * time.Second,  // Check every 30 seconds when down
+//	}
+//	loop.Configure(checks, delays, nil, 24*time.Hour, nil)
+//	go loop.Run(ctx)
+//
+// Down Actions:
+//
+// When the connection goes down, the loop can execute commands repeatedly:
+//   - After: Initial delay before first execution
+//   - Every: Interval between executions
+//   - BackoffLimit: Maximum delay before exponential backoff stops
+//   - Exec: Command to execute
+//   - StopExec: Command to execute when connection comes back
+//
+// Example - Configure down action:
+//
+//	downAction := &logic.DownAction{
+//		After:        60 * time.Second,  // Wait 60 seconds after connection drops
+//		Every:        5 * time.Minute,    // Execute every 5 minutes
+//		BackoffLimit: 30 * time.Minute,   // Max backoff of 30 minutes
+//		Exec:         "/usr/local/bin/notify-down",
+//		StopExec:     "/usr/local/bin/notify-up",
+//	}
+//	loop.Configure(checks, delays, downAction, 24*time.Hour, nil)
+//
+// Configuration:
+//
+// The Configure method initializes the loop with:
+//   - checkList: List of probes to execute
+//   - delays: Check intervals for up/down states
+//   - downAction: Optional down action configuration
+//   - retention: How long to keep status history (for statistics)
+//   - statServerConfig: Optional HTTP statistics server configuration
+//
+// Context and Cancellation:
+//
+// The loop respects context cancellation. When the context is canceled,
+// the loop will gracefully:
+//   - Stop running checks
+//   - Stop any down action execution
+//   - Stop the statistics server
+//   - Return from Run()
+//
+// Example - Graceful shutdown:
+//
+//	ctx, cancel := context.WithCancel(context.Background())
+//	go loop.Run(ctx)
+//
+//	// Later, to shutdown:
+//	cancel()  // Context cancelled
+//	loop.Stop(ctx)  // Wait for cleanup
 package logic
 
 import (
