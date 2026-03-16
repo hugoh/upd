@@ -21,7 +21,7 @@ type DownAction struct {
 	StopExec     string
 }
 
-type DaIteration struct {
+type DownActionIteration struct {
 	iteration    int
 	sleepTime    time.Duration
 	limitReached bool
@@ -29,13 +29,30 @@ type DaIteration struct {
 
 type DownActionLoop struct {
 	da         *DownAction
-	it         *DaIteration
+	it         *DownActionIteration
 	cancelFunc context.CancelFunc
 }
 
+// BackoffFactor is the multiplier for exponential backoff.
+// Each iteration beyond the second will increase the delay by this factor.
+// Value of 1.5 results in: 10s -> 15s -> 22.5s -> 33.75s...
 const BackoffFactor = 1.5
 
-var ErrNoCommand = errors.New("no command to execute")
+var (
+	ErrNoCommand      = errors.New("no command to execute")
+	ErrEmptyCommand   = errors.New("command name cannot be empty")
+	ErrInvalidCommand = errors.New("invalid command")
+)
+
+func validateCommand(command []string) error {
+	if len(command) == 0 {
+		return ErrNoCommand
+	}
+	if command[0] == "" {
+		return ErrEmptyCommand
+	}
+	return nil
+}
 
 // Only return an error if the command cannot be run.
 func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error {
@@ -46,11 +63,16 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	if errSh != nil {
 		return fmt.Errorf("failed to parse DownAction definition: %w", errSh)
 	}
+	err := validateCommand(command)
+	if err != nil {
+		return fmt.Errorf("invalid command: %w", err)
+	}
 	cmd := exec.CommandContext(ctx, command[0], command[1:]...) // #nosec G204
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, fmt.Sprintf("UPD_ITERATION=%d", dal.it.iteration))
+	cmdEnv := os.Environ()
+	cmdEnv = append(cmdEnv, fmt.Sprintf("UPD_ITERATION=%d", dal.it.iteration))
+	cmd.Env = cmdEnv
 	logger.L.WithField("exec", cmd.String()).Info("[DownAction] executing command")
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		logger.L.WithField("exec", cmd.String()).WithError(err).Error("[DownAction] failed to run")
 		return fmt.Errorf("failed to execute DownAction: %w", err)
@@ -64,8 +86,8 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	return nil
 }
 
-func NewDaIteration() *DaIteration {
-	return &DaIteration{
+func NewDownActionIteration() *DownActionIteration {
+	return &DownActionIteration{
 		iteration: -1,
 	}
 }
@@ -74,7 +96,7 @@ func (da *DownAction) NewDownActionLoop(ctx context.Context) (*DownActionLoop, c
 	ctx, cancelFunc := context.WithCancel(ctx)
 	dal := &DownActionLoop{
 		da:         da,
-		it:         NewDaIteration(),
+		it:         NewDownActionIteration(),
 		cancelFunc: cancelFunc,
 	}
 	return dal, ctx
@@ -88,7 +110,12 @@ func (da *DownAction) Start(ctx context.Context) *DownActionLoop {
 }
 
 func (dal *DownActionLoop) Stop(ctx context.Context) {
-	_ = dal.Execute(ctx, dal.da.StopExec) //nolint:errcheck
+	if dal.da.StopExec != "" {
+		err := dal.Execute(ctx, dal.da.StopExec)
+		if err != nil && !errors.Is(err, ErrNoCommand) {
+			logger.L.WithError(err).Warn("[DownAction] failed to execute stop command")
+		}
+	}
 	logger.L.Debug("[DownAction] sending shutdown signal")
 	dal.cancelFunc()
 }

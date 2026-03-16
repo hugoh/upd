@@ -104,21 +104,21 @@ func testBackoff(t *testing.T, hasLimit bool) {
 	}
 	assert.Equal(t, 1.5, BackoffFactor, "Ensuring we have the right values")
 	dal, _ := da.NewDownActionLoop(context.Background())
-	assert.Equal(t, DaIteration{iteration: -1, sleepTime: 0}, *dal.it)
+	assert.Equal(t, DownActionIteration{iteration: -1, sleepTime: 0}, *dal.it)
 	dal.iterate()
-	assert.Equal(t, DaIteration{iteration: 0, sleepTime: da.After}, *dal.it)
+	assert.Equal(t, DownActionIteration{iteration: 0, sleepTime: da.After}, *dal.it)
 	dal.iterate()
-	assert.Equal(t, DaIteration{iteration: 1, sleepTime: da.Every}, *dal.it)
+	assert.Equal(t, DownActionIteration{iteration: 1, sleepTime: da.Every}, *dal.it)
 	dal.iterate()
 	current := time.Duration(1.5 * float64(time.Second))
-	assert.Equal(t, DaIteration{iteration: 2, sleepTime: current}, *dal.it)
+	assert.Equal(t, DownActionIteration{iteration: 2, sleepTime: current}, *dal.it)
 	dal.iterate()
 	if hasLimit {
 		current = da.BackoffLimit
 	} else {
 		current = time.Duration(2.25 * float64(time.Second))
 	}
-	assert.Equal(t, DaIteration{iteration: 3, sleepTime: current, limitReached: hasLimit}, *dal.it)
+	assert.Equal(t, DownActionIteration{iteration: 3, sleepTime: current, limitReached: hasLimit}, *dal.it)
 }
 
 func Test_BackoffNoLimit(t *testing.T) {
