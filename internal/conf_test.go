@@ -21,14 +21,14 @@ type TestSuite struct {
 
 const testConfigDir = "../testdata"
 
-func readConf(cfgFile string) (*Configuration, error) {
+func readTestConfig(cfgFile string) (*Configuration, error) {
 	return ReadConf(fmt.Sprintf("%s/%s", testConfigDir, cfgFile))
 }
 
 func (suite *TestSuite) SetupTest() {
 	nulllogger.NewNullLoggerHook()
 	var err error
-	suite.conf, err = readConf("upd_test_good.yaml")
+	suite.conf, err = readTestConfig("upd_test_good.yaml")
 	assert.Nil(suite.T(), err, "No error expected")
 }
 
@@ -47,7 +47,7 @@ func (suite *TestSuite) TestGetDownActionFromConf() {
 }
 
 func TestNoDownAction(t *testing.T) {
-	conf, err := readConf("upd_test_noda.yaml")
+	conf, err := readTestConfig("upd_test_noda.yaml")
 	assert.Nil(t, err, "No error expected")
 	da := conf.GetDownAction()
 	assert.Nil(t, da, "DownAction not found")
@@ -62,7 +62,7 @@ func (suite *TestSuite) TestGetDelaysFromConf() {
 }
 
 func TestGetChecksIgnored(t *testing.T) {
-	conf, err := readConf("upd_test_bad.yaml")
+	conf, err := readTestConfig("upd_test_bad.yaml")
 	assert.Nil(t, err, "No error expected")
 	checklist, checkErr := conf.GetChecks()
 	assert.Nil(t, checkErr, "No error expected")
@@ -80,7 +80,7 @@ func TestGetChecksIgnored(t *testing.T) {
 func TestGetChecksFromConfFail(t *testing.T) {
 	nulllogger.NewNullLoggerHook()
 	logger.L.ExitFunc = func(code int) { panic(code) }
-	conf, err := readConf("upd_test_allbad.yaml")
+	conf, err := readTestConfig("upd_test_allbad.yaml")
 	assert.Nil(t, err, "No error expected")
 	_, checkErr := conf.GetChecks()
 	assert.ErrorIs(t, checkErr, ErrNoChecks, "Error expected: no valid checks")
@@ -130,13 +130,13 @@ func TestReadConf_envsubst(t *testing.T) {
 	os.Setenv("UPD_TEST_TIMEOUT", "3s")
 	defer os.Unsetenv("UPD_TEST_TIMEOUT")
 
-	conf, err := readConf("upd_test_envvar.yaml")
+	conf, err := readTestConfig("upd_test_envvar.yaml")
 	assert.NoError(t, err)
 	assert.Equal(t, 3*time.Second, conf.Checks.TimeOut)
 }
 
 func TestReadConf_envsubst_missing(t *testing.T) {
-	_, err := readConf("upd_test_envvar.yaml")
+	_, err := readTestConfig("upd_test_envvar.yaml")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "TimeOut")
 }
