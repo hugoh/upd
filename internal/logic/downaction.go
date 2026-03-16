@@ -67,7 +67,8 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	if err != nil {
 		return fmt.Errorf("invalid command: %w", err)
 	}
-	cmd := exec.CommandContext(ctx, command[0], command[1:]...) // #nosec G204
+	// #nosec G204 // Command is validated by shlex.Split() and validateCommand() before execution
+	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
 	cmdEnv := os.Environ()
 	cmdEnv = append(cmdEnv, fmt.Sprintf("UPD_ITERATION=%d", dal.it.iteration))
 	cmd.Env = cmdEnv

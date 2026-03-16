@@ -83,7 +83,10 @@ const (
 	DefaultDNSPort = "53"
 )
 
-var ConfigFileUsed string //nolint:gochecknoglobals
+// ConfigFileUsed stores the path of the active configuration file for debugging purposes.
+//
+//nolint:gochecknoglobals // Package-level state for debugging and diagnostics
+var ConfigFileUsed string
 
 type Configuration struct {
 	Checks struct {
@@ -130,8 +133,9 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 	}
 
 	// Read file - cfgFile has been cleaned and resolved to absolute path
+	// #nosec G304 // Path is sanitized by filepath.Abs() and filepath.Clean(), and only reads admin-configured files
 	var content []byte
-	content, err = os.ReadFile(absPath) // #nosec G304 -- path sanitized by filepath.Abs and filepath.Clean
+	content, err = os.ReadFile(absPath) // #nosec G304
 	if err != nil {
 		return configError("Could not read config", absPath, err)
 	}

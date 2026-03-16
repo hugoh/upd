@@ -107,13 +107,13 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 		return nil
 	}
 	reports := make([]ReportByPeriod, reportCount)
-	for i := range reportCount { //nolint: varnamelen
-		period := periods[i]
+	for idx := range reportCount {
+		period := periods[idx]
 		availability, downtime, err := tracker.CalculateUptime(currentState, period, end)
 		if err != nil {
 			logger.L.WithError(err).WithField("period", period).Debug("[Stats] invalid range for stat report")
 		}
-		reports[i] = ReportByPeriod{
+		reports[idx] = ReportByPeriod{
 			Period:       ReadableDuration(period),
 			Availability: ReadablePercent(availability),
 			Downtime:     ReadableDuration(downtime),

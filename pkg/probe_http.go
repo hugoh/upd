@@ -11,7 +11,11 @@ const (
 	UserAgentPrefix = "upd/"
 )
 
-var updClient = &http.Client{ //nolint:gochecknoglobals
+// updClient is a shared HTTP client for all HTTP probes.
+// Using a single client enables connection pooling and improves performance.
+//
+//nolint:gochecknoglobals // Intentional singleton for connection pooling
+var updClient = &http.Client{
 	Transport: &updTransport{version: version},
 }
 
