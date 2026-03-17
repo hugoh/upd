@@ -39,7 +39,7 @@ jobs:
       - name: Generate test coverage
         run: task coverage
       - name: Check test coverage
-        uses: vladopajic/go-test-coverage@9bdfb184d81fbbc3d16dca9732c7c92851080777
+        uses: vladopajic/go-test-coverage@934c19c7e76ef91251b6467ce2f482ff68417ef7
         with:
           config: ./.testcoverage.yml
 
