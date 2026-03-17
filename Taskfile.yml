@@ -51,14 +51,12 @@ tasks:
   fixlint:
     summary: Fix lint issues
     cmds:
-      - go tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --fix
+      - go tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --fix ./...
 
   fmt:
     summary: Format the code
     cmds:
-      - goimports -w .
-      - go tool github.com/daixiang0/gci write .
-      - go tool mvdan.cc/gofumpt -w .
+      - go tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --fix ./...
 
   tidy:
     summary: Tidy the module
@@ -73,34 +71,21 @@ tasks:
 
   lint:
     summary: Lint code
-    deps:
-      - task: runlinter
-        vars:
-          RUN: vet
-      - task: runlinter
-        vars:
-          RUN: tool honnef.co/go/tools/cmd/staticcheck
-      - task: runlinter
-        vars:
-          RUN: tool github.com/securego/gosec/v2/cmd/gosec -fmt=golint -quiet
-      - task: runlinter
-        vars:
-          RUN: tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint run
+    cmds:
+      - go mod tidy -diff
+      - go tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint run ./...
 
-  runlinter:
-    summary: Run specific linter
-    requires:
-      vars: [RUN]
-    cmd: go {{.RUN}} ./...
+  ci:
+    summary: Run CI checks (lint, test, coverage)
+    cmds:
+      - task: lint
+      - task: test
+      - task: covercheck
 
   test:
     summary: Run tests
     deps: [test-version]
     cmd: go test ./... {{.CLI_ARGS}}
-
-  testall:
-    summary: Run all tests
-    deps: [test, lint]
 
   test-version:
     summary: Test that the application version is correctly injected at build time
