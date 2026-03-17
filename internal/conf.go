@@ -79,7 +79,9 @@ import (
 )
 
 const (
-	DefaultConfig  = ".upd.yaml"
+	// DefaultConfig is the default configuration file name.
+	DefaultConfig = ".upd.yaml"
+	// DefaultDNSPort is the default DNS port.
 	DefaultDNSPort = "53"
 )
 
@@ -88,6 +90,7 @@ const (
 //nolint:gochecknoglobals // Package-level state for debugging and diagnostics
 var ConfigFileUsed string
 
+// Configuration holds all application settings.
 type Configuration struct {
 	Checks struct {
 		Every struct {
@@ -115,9 +118,11 @@ type Configuration struct {
 
 func configError(msg string, path string, err error) (*Configuration, error) {
 	logrus.WithField("file", path).WithError(err).Error(msg)
+
 	return nil, fmt.Errorf("%s: %w", msg, err)
 }
 
+// ReadConf loads and validates configuration from the given file.
 func ReadConf(cfgFile string) (*Configuration, error) {
 	var err error
 
@@ -169,16 +174,20 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 	}
 
 	conf.logSetup()
+
 	return &conf, nil
 }
 
 func isValidTCPPort(fl validator.FieldLevel) bool {
 	re := regexp.MustCompile(`^:(6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[0-9]{1,4})$`)
+
 	return re.MatchString(fl.Field().String())
 }
 
+// ErrNoChecks is returned when no valid checks are found in configuration.
 var ErrNoChecks = errors.New("no valid checks found in config")
 
+// GetChecks builds a CheckList from the configuration.
 func (c Configuration) GetChecks() (*pkg.CheckList, error) {
 	checkList := &pkg.CheckList{
 		Ordered:  c.GetChecksCat(c.Checks.List.Ordered),
@@ -187,9 +196,11 @@ func (c Configuration) GetChecks() (*pkg.CheckList, error) {
 	if len(checkList.Ordered) == 0 && len(checkList.Shuffled) == 0 {
 		return nil, ErrNoChecks
 	}
+
 	return checkList, nil
 }
 
+// GetChecksCat creates checks from a list of check URIs.
 func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
 	checks := make([]*pkg.Check, 0, len(category))
 	for _, check := range category {
@@ -199,6 +210,7 @@ func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
 				"check": check,
 				"err":   err,
 			}).Error("could not parse check in config")
+
 			continue
 		}
 		var probe pkg.Probe
@@ -209,12 +221,14 @@ func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
 				logger.L.WithFields(logrus.Fields{
 					"check": check,
 				}).Error("DNS check missing domain")
+
 				continue
 			}
 			if url.Host == "" {
 				logger.L.WithFields(logrus.Fields{
 					"check": check,
 				}).Error("DNS check missing resolver host")
+
 				continue
 			}
 			port := url.Port()
@@ -233,6 +247,7 @@ func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
 				"check":    check,
 				"protocol": url.Scheme,
 			}).Error("unknown protocol in config")
+
 			continue
 		}
 		checks = append(checks, &pkg.Check{
@@ -240,13 +255,16 @@ func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
 			Timeout: c.Checks.TimeOut,
 		})
 	}
+
 	return checks
 }
 
+// GetDownAction creates a DownAction from the configuration.
 func (c Configuration) GetDownAction() *logic.DownAction {
 	if reflect.ValueOf(c.DownAction).IsZero() {
 		return nil
 	}
+
 	return &logic.DownAction{
 		After:        c.DownAction.Every.After,
 		Every:        c.DownAction.Every.Repeat,
@@ -256,10 +274,12 @@ func (c Configuration) GetDownAction() *logic.DownAction {
 	}
 }
 
+// GetDelays returns the check intervals for up and down states.
 func (c Configuration) GetDelays() map[bool]time.Duration {
 	delays := make(map[bool]time.Duration)
 	delays[true] = c.Checks.Every.Normal
 	delays[false] = c.Checks.Every.Down
+
 	return delays
 }
 

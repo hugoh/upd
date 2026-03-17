@@ -1,3 +1,4 @@
+// Package pkg provides network connectivity checking functionality.
 package pkg
 
 import (
@@ -56,10 +57,11 @@ type Checker interface {
 	ProbeFailure(report *Report)
 }
 
-// Run specific connection check and return report
+// RunProbe executes the check and returns a report.
 func (c *Check) RunProbe(ctx context.Context, checker Checker) *Report {
 	checker.CheckRun(*c)
 	p := *c.Probe
+
 	return p.Probe(ctx, c.Timeout)
 }
 
@@ -74,8 +76,13 @@ func (c *Check) RunProbe(ctx context.Context, checker Checker) *Report {
 //	report := check.RunProbe(ctx, checker)
 type NullChecker struct{}
 
-func (c NullChecker) CheckRun(_ Check)       {}
+// CheckRun is a no-op implementation of Checker.CheckRun.
+func (c NullChecker) CheckRun(_ Check) {}
+
+// ProbeSuccess is a no-op implementation of Checker.ProbeSuccess.
 func (c NullChecker) ProbeSuccess(_ *Report) {}
+
+// ProbeFailure is a no-op implementation of Checker.ProbeFailure.
 func (c NullChecker) ProbeFailure(_ *Report) {}
 
 // RunChecks executes a series of checks using a NullChecker.
@@ -95,6 +102,7 @@ func (c NullChecker) ProbeFailure(_ *Report) {}
 //	}
 func RunChecks(ctx context.Context, checkListIterator CheckListIterator) (bool, error) {
 	var nc NullChecker
+
 	return CheckerRun(ctx, nc, checkListIterator)
 }
 
@@ -133,9 +141,11 @@ func CheckerRun(ctx context.Context, checker Checker, checkListIterator CheckLis
 		report := check.RunProbe(ctx, checker)
 		if report.error != nil {
 			checker.ProbeFailure(report)
+
 			continue
 		}
 		checker.ProbeSuccess(report)
+
 		return true, nil
 	}
 }

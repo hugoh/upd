@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// DownAction holds configuration for actions executed when connection is down.
 type DownAction struct {
 	After        time.Duration
 	Every        time.Duration
@@ -21,12 +22,14 @@ type DownAction struct {
 	StopExec     string
 }
 
+// DownActionIteration tracks the current iteration state for exponential backoff.
 type DownActionIteration struct {
 	iteration    int
 	sleepTime    time.Duration
 	limitReached bool
 }
 
+// DownActionLoop manages execution of down action commands.
 type DownActionLoop struct {
 	da         *DownAction
 	it         *DownActionIteration
@@ -39,8 +42,11 @@ type DownActionLoop struct {
 const BackoffFactor = 1.5
 
 var (
-	ErrNoCommand      = errors.New("no command to execute")
-	ErrEmptyCommand   = errors.New("command name cannot be empty")
+	// ErrNoCommand is returned when no command is provided for execution.
+	ErrNoCommand = errors.New("no command to execute")
+	// ErrEmptyCommand is returned when the command name is empty.
+	ErrEmptyCommand = errors.New("command name cannot be empty")
+	// ErrInvalidCommand is returned when the command is invalid.
 	ErrInvalidCommand = errors.New("invalid command")
 )
 
@@ -51,10 +57,11 @@ func validateCommand(command []string) error {
 	if command[0] == "" {
 		return ErrEmptyCommand
 	}
+
 	return nil
 }
 
-// Only return an error if the command cannot be run.
+// Execute runs the specified command string with the iteration context.
 func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error {
 	if execString == "" {
 		return ErrNoCommand
@@ -76,6 +83,7 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	err = cmd.Start()
 	if err != nil {
 		logger.L.WithField("exec", cmd.String()).WithError(err).Error("[DownAction] failed to run")
+
 		return fmt.Errorf("failed to execute DownAction: %w", err)
 	}
 	go func() {
@@ -84,15 +92,18 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 			logger.L.WithField("exec", cmd.String()).WithError(err).Warn("[DownAction] error executing command")
 		}
 	}()
+
 	return nil
 }
 
+// NewDownActionIteration creates a new iteration tracker.
 func NewDownActionIteration() *DownActionIteration {
 	return &DownActionIteration{
 		iteration: -1,
 	}
 }
 
+// NewDownActionLoop creates a new loop context for the down action.
 func (da *DownAction) NewDownActionLoop(ctx context.Context) (*DownActionLoop, context.Context) {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	dal := &DownActionLoop{
@@ -100,16 +111,20 @@ func (da *DownAction) NewDownActionLoop(ctx context.Context) (*DownActionLoop, c
 		it:         NewDownActionIteration(),
 		cancelFunc: cancelFunc,
 	}
+
 	return dal, ctx
 }
 
+// Start begins the down action loop in a goroutine.
 func (da *DownAction) Start(ctx context.Context) *DownActionLoop {
 	dal, ctx := da.NewDownActionLoop(ctx)
 	logger.L.Debug("[DownAction] kicking off run loop")
 	go dal.run(ctx)
+
 	return dal
 }
 
+// Stop cancels the down action loop and executes the stop command.
 func (dal *DownActionLoop) Stop(ctx context.Context) {
 	if dal.da.StopExec != "" {
 		err := dal.Execute(ctx, dal.da.StopExec)
@@ -150,6 +165,7 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			logger.L.Debug("[DownAction] canceled")
+
 			return
 		case <-time.After(dal.it.sleepTime):
 		}

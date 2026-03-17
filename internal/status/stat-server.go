@@ -11,16 +11,17 @@ import (
 )
 
 const (
-	// DefaultStatServerReadTimeout is the default read timeout for the stats server
+	// DefaultStatServerReadTimeout is the default read timeout for the stats server.
 	DefaultStatServerReadTimeout = 3 * time.Second
-	// DefaultStatServerWriteTimeout is the default write timeout for the stats server
+	// DefaultStatServerWriteTimeout is the default write timeout for the stats server.
 	DefaultStatServerWriteTimeout = 3 * time.Second
-	// DefaultStatServerIdleTimeout is the default idle timeout for the stats server
+	// DefaultStatServerIdleTimeout is the default idle timeout for the stats server.
 	DefaultStatServerIdleTimeout = 3 * time.Second
-	// StatRoute is the HTTP route for the statistics endpoint
+	// StatRoute is the HTTP route for the statistics endpoint.
 	StatRoute = "/stats.json"
 )
 
+// StatServerConfig holds configuration for the statistics HTTP server.
 type StatServerConfig struct {
 	Port      string `validate:"omitempty,validTCPPort"`
 	Reports   []time.Duration
@@ -31,15 +32,18 @@ type StatServerConfig struct {
 	IdleTimeout  time.Duration `koanf:"idleTimeout"  validate:"omitempty,gte=0"`
 }
 
+// StatServer provides an HTTP endpoint for status statistics.
 type StatServer struct {
 	config *StatServerConfig
 	server *http.Server
 	status *Status
 }
 
+// StartStatServer starts a new statistics server in a goroutine.
 func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 	if config.Port == "" {
 		logger.L.Debug("no stat server specified")
+
 		return nil
 	}
 	server := StatServer{
@@ -47,9 +51,11 @@ func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 		config: config,
 	}
 	go server.Start()
+
 	return &server
 }
 
+// Start initializes and runs the HTTP server.
 func (s *StatServer) Start() {
 	// Use configured timeouts or fall back to defaults
 	readTimeout := s.config.ReadTimeout
@@ -88,6 +94,7 @@ func (s *StatServer) Start() {
 	}
 }
 
+// StopStatServer gracefully shuts down the statistics server.
 func (s *StatServer) StopStatServer(ctx context.Context) {
 	if s.server == nil {
 		return

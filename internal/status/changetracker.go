@@ -8,9 +8,11 @@ import (
 )
 
 const (
+	// InvalidRangeMsg is the error message returned when the requested range exceeds retention.
 	InvalidRangeMsg = "range greater than the retention period"
 )
 
+// StateChange represents a single state transition in the tracker.
 type StateChange struct {
 	timestamp time.Time
 	up        bool
@@ -18,6 +20,7 @@ type StateChange struct {
 	next      *StateChange
 }
 
+// StateChangeTracker manages a doubly-linked list of state changes for uptime calculations.
 type StateChangeTracker struct {
 	head        *StateChange
 	tail        *StateChange
@@ -27,6 +30,7 @@ type StateChangeTracker struct {
 	started     time.Time
 }
 
+// RecordChange adds a new state change to the tracker and prunes old entries.
 func (tracker *StateChangeTracker) RecordChange(timestamp time.Time, state bool) {
 	tracker.updateCount++
 	tracker.lastUpdated = timestamp
@@ -54,6 +58,7 @@ func (tracker *StateChangeTracker) RecordChange(timestamp time.Time, state bool)
 	tracker.Prune(timestamp)
 }
 
+// Prune removes state changes older than the retention period.
 func (tracker *StateChangeTracker) Prune(currentTime time.Time) {
 	retentionLimit := currentTime.Add(-tracker.retention)
 
@@ -71,8 +76,10 @@ func (tracker *StateChangeTracker) Prune(currentTime time.Time) {
 	}
 }
 
+// ErrInvalidRange is returned when the requested duration exceeds retention.
 var ErrInvalidRange = errors.New(InvalidRangeMsg)
 
+// CalculateUptime computes availability percentage and downtime for a given period.
 func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 	last time.Duration, end time.Time,
 ) (float64, time.Duration, error) {
@@ -83,6 +90,7 @@ func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 		return -1, 0, ErrInvalidRange
 	}
 	availability, downtime := tracker.uptimeCalculation(currentState, last, end)
+
 	return availability, downtime, nil
 }
 
@@ -96,9 +104,11 @@ func (tracker *StateChangeTracker) RecordsCount() int {
 		recordsNumber++
 		cur = cur.next
 	}
+
 	return recordsNumber
 }
 
+// GenReports generates uptime reports for multiple time periods.
 func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 	periods []time.Duration,
 ) []ReportByPeriod {
@@ -119,6 +129,7 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 			Downtime:     ReadableDuration(downtime),
 		}
 	}
+
 	return reports
 }
 
@@ -130,6 +141,7 @@ func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
 		if currentState {
 			return 1.0, 0
 		}
+
 		return 0.0, last
 	}
 

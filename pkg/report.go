@@ -24,6 +24,7 @@ type Report struct {
 	error error
 }
 
+// BuildReport creates a new report for the given probe.
 func BuildReport(p Probe, startTime time.Time) *Report {
 	return &Report{
 		protocol: p.Scheme(),
@@ -31,6 +32,7 @@ func BuildReport(p Probe, startTime time.Time) *Report {
 	}
 }
 
+// LogrusFields returns logrus fields for logging the report.
 func (r *Report) LogrusFields() logrus.Fields {
 	fields := logrus.Fields{
 		"protocol": r.protocol,
@@ -41,6 +43,7 @@ func (r *Report) LogrusFields() logrus.Fields {
 	} else if r.error != nil {
 		fields["error"] = r.error.Error()
 	}
+
 	return fields
 }
 

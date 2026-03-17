@@ -1,3 +1,4 @@
+// Package internal provides internal configuration, command, and logic handling.
 /*
 Copyright © 2024 Hugo Haas <hugoh@hugoh.net>
 */
@@ -17,19 +18,28 @@ import (
 )
 
 const (
-	AppName        = "upd"
-	AppShort       = "Tool to monitor if the network connection is up."
-	ExitCodeError  = 1
-	ErrChanSize    = 1
+	// AppName is the application name.
+	AppName = "upd"
+	// AppShort is the application short description.
+	AppShort = "Tool to monitor if the network connection is up."
+	// ExitCodeError is the exit code for errors.
+	ExitCodeError = 1
+	// ErrChanSize is the buffer size for error channels.
+	ErrChanSize = 1
+	// SighupChanSize is the buffer size for SIGHUP channels.
 	SighupChanSize = 1
 )
 
 const (
+	// ConfigConfig is the config file flag name.
 	ConfigConfig string = "config"
-	ConfigDebug  string = "debug"
-	ConfigDump   string = "dump"
+	// ConfigDebug is the debug flag name.
+	ConfigDebug string = "debug"
+	// ConfigDump is the dump flag name.
+	ConfigDump string = "dump"
 )
 
+// SetupLoop initializes the loop with configuration from the given file.
 func SetupLoop(loop *logic.Loop, configPath string) (*Configuration, error) {
 	newConf, err := ReadConf(configPath)
 	if err != nil {
@@ -44,9 +54,11 @@ func SetupLoop(loop *logic.Loop, configPath string) (*Configuration, error) {
 		newConf.GetDownAction(),
 		newConf.Stats.Retention,
 		&newConf.Stats)
+
 	return newConf, nil
 }
 
+// Run is the main application entry point handling signals and configuration reload.
 func Run(appCtx context.Context, cmd *cli.Command) error {
 	logger.LogSetup(cmd.Bool(ConfigDebug))
 
@@ -69,6 +81,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 			_, err = SetupLoop(loop, cmd.String(ConfigConfig))
 			if err != nil {
 				errCh <- fmt.Errorf("cannot configure app: %w", err)
+
 				return
 			}
 			errCh <- nil
@@ -81,11 +94,13 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 			logger.L.Info("[App] shutting down")
 			cancelCurrentWorker()
 			<-done
+
 			return nil
 		case err := <-errCh:
 			if err != nil {
 				cancelCurrentWorker()
 				<-done
+
 				return err
 			}
 		case <-sighupCh:
@@ -96,6 +111,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 	}
 }
 
+// Cmd creates and runs the CLI application.
 func Cmd() error {
 	flags := []cli.Flag{
 		&cli.StringFlag{
@@ -125,5 +141,6 @@ func Cmd() error {
 	if err != nil {
 		return fmt.Errorf("failed to run app: %w", err)
 	}
+
 	return nil
 }

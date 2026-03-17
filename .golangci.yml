@@ -2,20 +2,15 @@ version: "2"
 linters:
   default: all
   disable:
-    - depguard
-    - exhaustruct
-    - godoclint
-    - godot
-    - nlreturn
-    - wsl
-    - wsl_v5
+  - depguard
+  - exhaustruct
+  - godoclint
+  - wsl
+  - wsl_v5
   settings:
     errcheck:
       check-blank: true
   exclusions:
-    generated: lax
-    presets:
-      - comments
     paths:
       - _test\.go
       - third_party$

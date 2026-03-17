@@ -88,6 +88,7 @@ import (
 	"github.com/hugoh/upd/pkg"
 )
 
+// Status tracks the current network connectivity state and history.
 type Status struct {
 	Up                 bool
 	initialized        bool
@@ -95,16 +96,20 @@ type Status struct {
 	stateChangeTracker *StateChangeTracker
 }
 
+// NewStatus creates a new Status instance.
 func NewStatus() *Status {
 	var stateChangeTracker *StateChangeTracker
+
 	return &Status{
 		stateChangeTracker: stateChangeTracker,
 	}
 }
 
+// SetRetention configures the retention period for state change history.
 func (s *Status) SetRetention(retention time.Duration) {
 	if retention <= 0 {
 		s.stateChangeTracker = nil
+
 		return
 	}
 	if s.stateChangeTracker == nil {
@@ -145,13 +150,16 @@ func (s *Status) Update(isUp bool) bool {
 		return false
 	}
 	s.set(isUp)
+
 	return true
 }
 
+// GenStatReport generates a statistics report for the specified time periods.
 func (s *Status) GenStatReport(periods []time.Duration) *Report {
 	generated := time.Now()
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
 	return &Report{
 		Generated:  generated,
 		Uptime:     ReadableDuration(generated.Sub(s.stateChangeTracker.started)),

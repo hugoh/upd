@@ -89,8 +89,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Delays maps connection state to check interval durations.
 type Delays map[bool]time.Duration
 
+// Loop manages periodic network connectivity checks.
 type Loop struct {
 	checkList        *pkg.CheckList
 	delays           Delays
@@ -101,12 +103,14 @@ type Loop struct {
 	status           *status.Status
 }
 
+// NewLoop creates a new monitoring loop.
 func NewLoop() *Loop {
 	return &Loop{
 		status: status.NewStatus(),
 	}
 }
 
+// Configure initializes the loop with checks, delays, and optional down action.
 func (l *Loop) Configure(checkList *pkg.CheckList,
 	delays Delays,
 	downAction *DownAction,
@@ -120,16 +124,20 @@ func (l *Loop) Configure(checkList *pkg.CheckList,
 	l.statServerConfig = statServerConfig
 }
 
+// ErrDownActionRunning is returned when trying to start a down action while one is active.
 var ErrDownActionRunning = errors.New("cannot start new DownAction when one is already running")
 
+// DownActionStart initiates the down action execution loop.
 func (l *Loop) DownActionStart(ctx context.Context) error {
 	if l.downActionLoop != nil {
 		return ErrDownActionRunning
 	}
 	l.downActionLoop = l.downAction.Start(ctx)
+
 	return nil
 }
 
+// DownActionStop halts the current down action loop.
 func (l *Loop) DownActionStop(ctx context.Context) {
 	if l.downActionLoop == nil {
 		// Nothing to stop
@@ -139,6 +147,7 @@ func (l *Loop) DownActionStop(ctx context.Context) {
 	l.downActionLoop = nil
 }
 
+// ProcessCheck handles state changes and triggers down actions.
 func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 	changed := l.status.Update(upStatus)
 	if !changed {
@@ -158,6 +167,7 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 	}
 }
 
+// Run starts the monitoring loop.
 func (l *Loop) Run(ctx context.Context) {
 	var checker Checker
 	l.statServer = status.StartStatServer(l.status, l.statServerConfig)
@@ -174,12 +184,14 @@ func (l *Loop) Run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			logger.L.Debug("[Loop] context canceled during sleep, exiting Run()")
+
 			return
 		case <-time.After(sleepTime):
 		}
 	}
 }
 
+// Stop gracefully shuts down the loop and its components.
 func (l *Loop) Stop(ctx context.Context) {
 	l.DownActionStop(ctx)
 	if l.statServer != nil {
@@ -191,8 +203,10 @@ func (l *Loop) hasDownAction() bool {
 	return l.downAction != nil
 }
 
+// Checker implements pkg.Checker for logging check lifecycle events.
 type Checker struct{}
 
+// CheckRun logs the start of a check.
 func (checker Checker) CheckRun(c pkg.Check) {
 	probe := *c.Probe
 	logger.L.WithFields(logrus.Fields{
@@ -202,10 +216,12 @@ func (checker Checker) CheckRun(c pkg.Check) {
 	}).Trace("[Check] running")
 }
 
+// ProbeSuccess logs successful probe results.
 func (checker Checker) ProbeSuccess(report *pkg.Report) {
 	logger.L.WithFields(report.LogrusFields()).Debug("[Check] success")
 }
 
+// ProbeFailure logs failed probe results.
 func (checker Checker) ProbeFailure(report *pkg.Report) {
 	logger.L.WithFields(report.LogrusFields()).Warn("[Check] failed")
 }

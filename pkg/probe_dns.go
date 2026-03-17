@@ -7,11 +7,13 @@ import (
 	"time"
 )
 
+// DNSProbe performs DNS resolution connectivity checks.
 type DNSProbe struct {
 	DNSResolver string
 	Domain      string
 }
 
+// NewDNSProbe creates a new DNS probe for the given resolver and domain.
 func NewDNSProbe(dnsResolver string, domain string) *DNSProbe {
 	return &DNSProbe{
 		DNSResolver: dnsResolver,
@@ -19,10 +21,12 @@ func NewDNSProbe(dnsResolver string, domain string) *DNSProbe {
 	}
 }
 
+// Scheme returns the protocol scheme (dns).
 func (p DNSProbe) Scheme() string {
 	return DNS
 }
 
+// Probe executes the DNS resolution and returns a report.
 func (p DNSProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
 	resolver := &net.Resolver{
 		PreferGo: true,
@@ -30,6 +34,7 @@ func (p DNSProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
 			d := net.Dialer{
 				Timeout: timeout,
 			}
+
 			return d.DialContext(ctx, network, p.DNSResolver)
 		},
 	}
@@ -38,8 +43,10 @@ func (p DNSProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
 	report := BuildReport(p, start)
 	if err != nil {
 		report.error = fmt.Errorf("error resolving %s: %w", p.Domain, err)
+
 		return report
 	}
 	report.response = fmt.Sprintf("%s @ %s", addr[0], p.DNSResolver)
+
 	return report
 }
