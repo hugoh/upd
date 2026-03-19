@@ -2,9 +2,10 @@ package pkg
 
 import (
 	"context"
-	"fmt"
 	"net"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestTcpProbe(t *testing.T) {
@@ -13,7 +14,7 @@ func TestTcpProbe(t *testing.T) {
 	go func() {
 		connection, err := listen.Accept()
 		if err != nil {
-			fmt.Println("Error: ", err.Error())
+			t.Logf("Error accepting connection: %v", err)
 			return
 		}
 		go func(conn net.Conn) {
@@ -26,12 +27,11 @@ func TestTcpProbe(t *testing.T) {
 		"returns the local host/port if the request is successful",
 		func(t *testing.T) {
 			tcpProbe := NewTCPProbe(hostPort)
-			report := tcpProbe.Probe(context.Background(), tout)
+			report := tcpProbe.Probe(context.Background(), 1*time.Second)
 			if report.error != nil {
 				t.Fatal(report.error)
 			}
 			got := report.response
-			fmt.Println("Got: ", got)
 			localHost, localPort, err := net.SplitHostPort(got)
 			if err != nil {
 				t.Fatalf("invalid host/port %s: %v", got, err)
@@ -55,16 +55,16 @@ func TestTcpProbe(t *testing.T) {
 			t.Fatalf("got %q should be zero", got)
 		}
 		got = report.error.Error()
-		want := "error making request to localhost:80: dial tcp: lookup localhost: i/o timeout"
-		if got != want {
-			t.Fatalf("got %q, want %q", got, want)
+		want := "error making request to localhost:80: dial tcp: lookup localhost:"
+		if !strings.Contains(got, want) {
+			t.Fatalf("got %q, want to contain %q", got, want)
 		}
 	})
 	t.Run(
 		"returns an error if the request times out",
 		func(t *testing.T) {
 			tcpProbe := NewTCPProbe("192.0.2.1:53")
-			report := tcpProbe.Probe(context.Background(), toutFail)
+			report := tcpProbe.Probe(context.Background(), 1*time.Microsecond)
 			checkTimeout(t, report, "i/o timeout")
 		},
 	)

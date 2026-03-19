@@ -1,8 +1,12 @@
 package pkg
 
 const (
-	DNS   string = "dns"
-	HTTP  string = "http"
+	// DNS protocol constant.
+	DNS string = "dns"
+	// HTTP protocol constant.
+	HTTP string = "http"
+	// HTTPS protocol constant.
 	HTTPS string = "https"
-	TCP   string = "tcp"
+	// TCP protocol constant.
+	TCP string = "tcp"
 )

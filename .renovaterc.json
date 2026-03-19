@@ -4,20 +4,29 @@
     "config:recommended",
     ":automergeLinters",
     ":automergeMinor",
-    "customManagers:githubActionsVersions"
+    ":automergeDigest",
+    "schedule:monthly"
   ],
   "minimumReleaseAge": "7 days",
-  "customManagers": [
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "automerge": true,
+    "schedule": ["at any time"]
+  },
+  "packageRules": [
     {
-      "customType": "regex",
-      "managerFilePatterns": ["/\\.github/workflows/.*\\.ya?ml$/"],
-      "matchStrings": [
-        "uses: (?<depName>.+)@(?<currentValue>[^ #\\n]+) # v(?<version>\\d+)"
-      ],
-      "depNameTemplate": "{{depName}}",
-      "datasourceTemplate": "github-releases",
-      "versioningTemplate": "semver",
-      "extractVersionTemplate": "v{{version}}"
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Go dependencies"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "groupName": "Major updates",
+      "automerge": false
     }
   ],
   "postUpdateOptions": ["gomodTidy", "gomodUpdateImportPaths"]

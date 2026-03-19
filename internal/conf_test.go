@@ -12,6 +12,7 @@ import (
 	"github.com/hugoh/upd/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/yaml.v3"
 )
 
 type TestSuite struct {
@@ -21,14 +22,14 @@ type TestSuite struct {
 
 const testConfigDir = "../testdata"
 
-func readConf(cfgFile string) (*Configuration, error) {
+func readTestConfig(cfgFile string) (*Configuration, error) {
 	return ReadConf(fmt.Sprintf("%s/%s", testConfigDir, cfgFile))
 }
 
 func (suite *TestSuite) SetupTest() {
 	nulllogger.NewNullLoggerHook()
 	var err error
-	suite.conf, err = readConf("upd_test_good.yaml")
+	suite.conf, err = readTestConfig("upd_test_good.yaml")
 	assert.Nil(suite.T(), err, "No error expected")
 }
 
@@ -47,7 +48,7 @@ func (suite *TestSuite) TestGetDownActionFromConf() {
 }
 
 func TestNoDownAction(t *testing.T) {
-	conf, err := readConf("upd_test_noda.yaml")
+	conf, err := readTestConfig("upd_test_noda.yaml")
 	assert.Nil(t, err, "No error expected")
 	da := conf.GetDownAction()
 	assert.Nil(t, da, "DownAction not found")
@@ -62,22 +63,25 @@ func (suite *TestSuite) TestGetDelaysFromConf() {
 }
 
 func TestGetChecksIgnored(t *testing.T) {
-	conf, err := readConf("upd_test_bad.yaml")
+	conf, err := readTestConfig("upd_test_bad.yaml")
 	assert.Nil(t, err, "No error expected")
 	checklist, checkErr := conf.GetChecks()
 	assert.Nil(t, checkErr, "No error expected")
-	// There should be 2 valid checks in total (Ordered + Shuffled)
+	// There should be 1 valid check in total (Ordered + Shuffled)
+	// - http://captive.apple.com/hotspot-detect.html is valid
+	// - ftp://foo.bar/ is ignored (unknown protocol)
+	// - dns://8.8.4.4/ is ignored (missing domain)
 	totalChecks := 0
 	if checklist != nil {
 		totalChecks = len(checklist.Ordered) + len(checklist.Shuffled)
 	}
-	assert.Equal(t, 2, totalChecks, "1 check is invalid")
+	assert.Equal(t, 1, totalChecks, "2 checks should be invalid")
 }
 
 func TestGetChecksFromConfFail(t *testing.T) {
 	nulllogger.NewNullLoggerHook()
 	logger.L.ExitFunc = func(code int) { panic(code) }
-	conf, err := readConf("upd_test_allbad.yaml")
+	conf, err := readTestConfig("upd_test_allbad.yaml")
 	assert.Nil(t, err, "No error expected")
 	_, checkErr := conf.GetChecks()
 	assert.ErrorIs(t, checkErr, ErrNoChecks, "Error expected: no valid checks")
@@ -127,13 +131,90 @@ func TestReadConf_envsubst(t *testing.T) {
 	os.Setenv("UPD_TEST_TIMEOUT", "3s")
 	defer os.Unsetenv("UPD_TEST_TIMEOUT")
 
-	conf, err := readConf("upd_test_envvar.yaml")
+	conf, err := readTestConfig("upd_test_envvar.yaml")
 	assert.NoError(t, err)
 	assert.Equal(t, 3*time.Second, conf.Checks.TimeOut)
 }
 
 func TestReadConf_envsubst_missing(t *testing.T) {
-	_, err := readConf("upd_test_envvar.yaml")
+	_, err := readTestConfig("upd_test_envvar.yaml")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "TimeOut")
+}
+
+func TestDNSCheckValidation_MissingDomain(t *testing.T) {
+	nulllogger.NewNullLoggerHook()
+	conf, err := readTestConfig("upd_test_bad.yaml")
+	assert.Nil(t, err, "No error expected")
+	checklist, checkErr := conf.GetChecks()
+	assert.Nil(t, checkErr, "No error expected")
+
+	// Check that dns://8.8.4.4/ is ignored due to missing domain
+	dnsChecks := 0
+	for _, check := range checklist.Ordered {
+		_, ok := (*check.Probe).(*pkg.DNSProbe)
+		if ok {
+			dnsChecks++
+		}
+	}
+	for _, check := range checklist.Shuffled {
+		_, ok := (*check.Probe).(*pkg.DNSProbe)
+		if ok {
+			dnsChecks++
+		}
+	}
+	assert.Equal(t, 0, dnsChecks, "DNS check with missing domain should be ignored")
+}
+
+func TestDNSCheckValidation_MissingResolver(t *testing.T) {
+	nulllogger.NewNullLoggerHook()
+	conf := &Configuration{}
+	err := yaml.Unmarshal([]byte(`
+checks:
+  every:
+    normal: 120s
+    down: 20s
+  list:
+    ordered:
+      - http://captive.apple.com/hotspot-detect.html
+      - dns:///google.com  # Missing resolver host
+  timeout: 2000ms
+logLevel: debug
+`), &conf)
+	assert.NoError(t, err)
+
+	checklist, checkErr := conf.GetChecks()
+	assert.Nil(t, checkErr, "No error expected")
+
+	// Check that dns:///google.com is ignored due to missing resolver host
+	dnsChecks := 0
+	for _, check := range checklist.Ordered {
+		_, ok := (*check.Probe).(*pkg.DNSProbe)
+		if ok {
+			dnsChecks++
+		}
+	}
+	for _, check := range checklist.Shuffled {
+		_, ok := (*check.Probe).(*pkg.DNSProbe)
+		if ok {
+			dnsChecks++
+		}
+	}
+	assert.Equal(t, 0, dnsChecks, "DNS check with missing resolver host should be ignored")
+
+	// Verify we still have the HTTP check
+	httpChecks := 0
+	for _, check := range checklist.Ordered {
+		_, ok := (*check.Probe).(*pkg.HTTPProbe)
+		if ok {
+			httpChecks++
+		}
+	}
+	for _, check := range checklist.Shuffled {
+		_, ok := (*check.Probe).(*pkg.HTTPProbe)
+		if ok {
+			httpChecks++
+		}
+	}
+	assert.Equal(t, 1, httpChecks, "HTTP check should still be present")
 }

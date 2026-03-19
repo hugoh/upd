@@ -1,7 +1,15 @@
+// Package main is the entry point for the upd application.
 package main
 
-import "github.com/hugoh/upd/internal"
+import (
+	"os"
+
+	"github.com/hugoh/upd/internal"
+)
 
 func main() {
-	internal.Cmd()
+	err := internal.Cmd()
+	if err != nil {
+		os.Exit(1)
+	}
 }

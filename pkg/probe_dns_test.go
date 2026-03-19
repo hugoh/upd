@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"testing"
+	"time"
 )
 
 var (
@@ -18,7 +19,7 @@ func TestDnsProbe(t *testing.T) {
 		"returns the first resolved IP address if the request is successful",
 		func(t *testing.T) {
 			dnsProbe := NewDNSProbe(dnsResolver, "google.com")
-			report := dnsProbe.Probe(context.Background(), tout)
+			report := dnsProbe.Probe(context.Background(), 1*time.Second)
 			if report.error != nil {
 				t.Fatal(report.error)
 			}
@@ -37,7 +38,7 @@ func TestDnsProbe(t *testing.T) {
 	)
 	t.Run("returns an error if the request fails", func(t *testing.T) {
 		dnsProbe := NewDNSProbe(dnsResolver, "invalid.aa")
-		report := dnsProbe.Probe(context.Background(), tout)
+		report := dnsProbe.Probe(context.Background(), 1*time.Second)
 		err := checkError(t, report)
 		got := err.Error()
 		prefix := "error resolving invalid.aa"
@@ -49,7 +50,7 @@ func TestDnsProbe(t *testing.T) {
 		"returns an error if the request times out",
 		func(t *testing.T) {
 			dnsProbe := NewDNSProbe(addressForTimeout, "google.com")
-			report := dnsProbe.Probe(context.Background(), toutFail)
+			report := dnsProbe.Probe(context.Background(), 1*time.Microsecond)
 			checkTimeout(t, report, "i/o timeout")
 		},
 	)

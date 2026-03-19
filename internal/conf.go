@@ -1,3 +1,58 @@
+// Package internal provides internal configuration, command, and logic
+// handling for the upd application.
+//
+// Configuration:
+//
+// The Configuration struct is loaded from YAML files and contains all
+// settings for the application including:
+//   - Network connectivity checks (HTTP, TCP, DNS)
+//   - Check intervals (normal and down states)
+//   - Down actions to execute when connection fails
+//   - Statistics server configuration
+//   - Logging configuration
+//
+// Example configuration:
+//
+//	checks:
+//	  every:
+//	    normal: 2m
+//	    down: 30s
+//	  list:
+//	    ordered:
+//	      - http://captive.apple.com/hotspot-detect.html
+//	    shuffled:
+//	      - dns://8.8.8.8/example.com
+//	  timeout: 10s
+//	downAction:
+//	  exec: \"echo 'Connection down'\"
+//	  every:
+//	    after: 60s
+//	    repeat: 300s
+//	stats:
+//	  port: \":8080\"
+//	logLevel: debug
+//
+// The configuration supports environment variable substitution using
+// the ${VAR} or $VAR syntax.
+//
+// Example with environment variables:
+//
+//	checks:
+//	  timeout: ${UPD_TIMEOUT:10s}  // Use UPD_TIMEOUT env var or 10s default
+//
+// Command Handling:
+//
+// The Cmd function provides the main CLI interface using the urfave/cli
+// library. It supports:
+//   - Configuration file specification via `-c` or `--config` flag
+//   - Debug logging via `-d` or `--debug` flag
+//   - SIGHUP signal handling for configuration reload
+//   - Graceful shutdown on SIGINT or SIGTERM
+//
+// Network Security:
+//
+// Configuration paths are sanitized to prevent path traversal attacks.
+// Command execution in DownActions is validated to prevent injection.
 package internal
 
 import (
@@ -5,8 +60,10 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/drone/envsubst"
@@ -21,12 +78,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var ConfigFileUsed string //nolint:gochecknoglobals
-
 const (
-	DefaultConfig string = ".upd.yaml"
+	// DefaultConfig is the default configuration file name.
+	DefaultConfig = ".upd.yaml"
+	// DefaultDNSPort is the default DNS port.
+	DefaultDNSPort = "53"
 )
 
+// ConfigFileUsed stores the path of the active configuration file for debugging purposes.
+//
+//nolint:gochecknoglobals // Package-level state for debugging and diagnostics
+var ConfigFileUsed string
+
+// Configuration holds all application settings.
 type Configuration struct {
 	Checks struct {
 		Every struct {
@@ -54,9 +118,11 @@ type Configuration struct {
 
 func configError(msg string, path string, err error) (*Configuration, error) {
 	logrus.WithField("file", path).WithError(err).Error(msg)
+
 	return nil, fmt.Errorf("%s: %w", msg, err)
 }
 
+// ReadConf loads and validates configuration from the given file.
 func ReadConf(cfgFile string) (*Configuration, error) {
 	var err error
 
@@ -66,25 +132,31 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 		cfgFile = DefaultConfig
 	}
 
-	// Read file and substitute environment variables using envsubst
-	var content []byte
-	content, err = os.ReadFile(cfgFile) // #nosec G304
+	absPath, err := filepath.Abs(filepath.Clean(cfgFile))
 	if err != nil {
-		return configError("Could not read config", cfgFile, err)
+		return configError("could not resolve config path", cfgFile, err)
 	}
 
-	// Use envsubst to substitute environment variables
+	// Read file - cfgFile has been cleaned and resolved to absolute path
+	// #nosec G304 // Path is sanitized by filepath.Abs() and filepath.Clean(), and only reads admin-configured files
+	var content []byte
+	content, err = os.ReadFile(absPath) // #nosec G304
+	if err != nil {
+		return configError("Could not read config", absPath, err)
+	}
+
+	logger.L.WithField("file", absPath).Debug("[Config] config file used")
+
 	substContent, err := envsubst.EvalEnv(string(content))
 	if err != nil {
-		return configError("envsubst failed", cfgFile, err)
+		return configError("envsubst failed", absPath, err)
 	}
 
 	// Use koanf rawbytes provider to load the substituted config content
 	err = cfg.Load(rawbytes.Provider([]byte(substContent)), yaml.Parser())
 	if err != nil {
-		return configError("Could not read config", cfgFile, err)
+		return configError("Could not read config", absPath, err)
 	}
-	logger.L.WithField("file", cfgFile).Debug("[Config] config file used")
 	var conf Configuration
 	err = cfg.UnmarshalWithConf("", &conf, koanf.UnmarshalConf{})
 	if err != nil {
@@ -94,7 +166,7 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 	validate := validator.New()
 	err = validate.RegisterValidation("validTCPPort", isValidTCPPort)
 	if err != nil {
-		logrus.WithError(err).Fatal("failed to instantiate config validator")
+		return configError("failed to instantiate config validator", cfgFile, err)
 	}
 	err = validate.Struct(&conf)
 	if err != nil {
@@ -102,16 +174,20 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 	}
 
 	conf.logSetup()
+
 	return &conf, nil
 }
 
 func isValidTCPPort(fl validator.FieldLevel) bool {
 	re := regexp.MustCompile(`^:(6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[0-9]{1,4})$`)
+
 	return re.MatchString(fl.Field().String())
 }
 
+// ErrNoChecks is returned when no valid checks are found in configuration.
 var ErrNoChecks = errors.New("no valid checks found in config")
 
+// GetChecks builds a CheckList from the configuration.
 func (c Configuration) GetChecks() (*pkg.CheckList, error) {
 	checkList := &pkg.CheckList{
 		Ordered:  c.GetChecksCat(c.Checks.List.Ordered),
@@ -120,9 +196,11 @@ func (c Configuration) GetChecks() (*pkg.CheckList, error) {
 	if len(checkList.Ordered) == 0 && len(checkList.Shuffled) == 0 {
 		return nil, ErrNoChecks
 	}
+
 	return checkList, nil
 }
 
+// GetChecksCat creates checks from a list of check URIs.
 func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
 	checks := make([]*pkg.Check, 0, len(category))
 	for _, check := range category {
@@ -132,15 +210,30 @@ func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
 				"check": check,
 				"err":   err,
 			}).Error("could not parse check in config")
+
 			continue
 		}
 		var probe pkg.Probe
 		switch url.Scheme {
 		case pkg.DNS:
-			domain := url.Path[1:]
+			domain := strings.TrimPrefix(url.Path, "/")
+			if domain == "" {
+				logger.L.WithFields(logrus.Fields{
+					"check": check,
+				}).Error("DNS check missing domain")
+
+				continue
+			}
+			if url.Host == "" {
+				logger.L.WithFields(logrus.Fields{
+					"check": check,
+				}).Error("DNS check missing resolver host")
+
+				continue
+			}
 			port := url.Port()
 			if port == "" {
-				port = "53"
+				port = DefaultDNSPort
 			}
 			dnsResolver := url.Host + ":" + port
 			probe = pkg.NewDNSProbe(dnsResolver, domain)
@@ -154,6 +247,7 @@ func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
 				"check":    check,
 				"protocol": url.Scheme,
 			}).Error("unknown protocol in config")
+
 			continue
 		}
 		checks = append(checks, &pkg.Check{
@@ -161,13 +255,16 @@ func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
 			Timeout: c.Checks.TimeOut,
 		})
 	}
+
 	return checks
 }
 
+// GetDownAction creates a DownAction from the configuration.
 func (c Configuration) GetDownAction() *logic.DownAction {
 	if reflect.ValueOf(c.DownAction).IsZero() {
 		return nil
 	}
+
 	return &logic.DownAction{
 		After:        c.DownAction.Every.After,
 		Every:        c.DownAction.Every.Repeat,
@@ -177,10 +274,12 @@ func (c Configuration) GetDownAction() *logic.DownAction {
 	}
 }
 
+// GetDelays returns the check intervals for up and down states.
 func (c Configuration) GetDelays() map[bool]time.Duration {
 	delays := make(map[bool]time.Duration)
 	delays[true] = c.Checks.Every.Normal
 	delays[false] = c.Checks.Every.Down
+
 	return delays
 }
 

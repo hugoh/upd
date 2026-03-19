@@ -104,21 +104,21 @@ func testBackoff(t *testing.T, hasLimit bool) {
 	}
 	assert.Equal(t, 1.5, BackoffFactor, "Ensuring we have the right values")
 	dal, _ := da.NewDownActionLoop(context.Background())
-	assert.Equal(t, DaIteration{iteration: -1, sleepTime: 0}, *dal.it)
+	assert.Equal(t, DownActionIteration{iteration: -1, sleepTime: 0}, *dal.it)
 	dal.iterate()
-	assert.Equal(t, DaIteration{iteration: 0, sleepTime: da.After}, *dal.it)
+	assert.Equal(t, DownActionIteration{iteration: 0, sleepTime: da.After}, *dal.it)
 	dal.iterate()
-	assert.Equal(t, DaIteration{iteration: 1, sleepTime: da.Every}, *dal.it)
+	assert.Equal(t, DownActionIteration{iteration: 1, sleepTime: da.Every}, *dal.it)
 	dal.iterate()
 	current := time.Duration(1.5 * float64(time.Second))
-	assert.Equal(t, DaIteration{iteration: 2, sleepTime: current}, *dal.it)
+	assert.Equal(t, DownActionIteration{iteration: 2, sleepTime: current}, *dal.it)
 	dal.iterate()
 	if hasLimit {
 		current = da.BackoffLimit
 	} else {
 		current = time.Duration(2.25 * float64(time.Second))
 	}
-	assert.Equal(t, DaIteration{iteration: 3, sleepTime: current, limitReached: hasLimit}, *dal.it)
+	assert.Equal(t, DownActionIteration{iteration: 3, sleepTime: current, limitReached: hasLimit}, *dal.it)
 }
 
 func Test_BackoffNoLimit(t *testing.T) {
@@ -127,4 +127,60 @@ func Test_BackoffNoLimit(t *testing.T) {
 
 func Test_BackoffLimit(t *testing.T) {
 	testBackoff(t, true)
+}
+
+func TestValidateCommand(t *testing.T) {
+	tests := []struct {
+		name        string
+		command     []string
+		expectedErr error
+	}{
+		{
+			name:        "Valid command",
+			command:     []string{"ls", "-la"},
+			expectedErr: nil,
+		},
+		{
+			name:        "Valid single command",
+			command:     []string{"true"},
+			expectedErr: nil,
+		},
+		{
+			name:        "Empty command slice",
+			command:     []string{},
+			expectedErr: ErrNoCommand,
+		},
+		{
+			name:        "Nil command slice",
+			command:     nil,
+			expectedErr: ErrNoCommand,
+		},
+		{
+			name:        "Empty command name",
+			command:     []string{"", "arg"},
+			expectedErr: ErrEmptyCommand,
+		},
+		{
+			name:        "Command with just empty string",
+			command:     []string{""},
+			expectedErr: ErrEmptyCommand,
+		},
+		{
+			name:        "Command with empty first element and args",
+			command:     []string{"", "arg1", "arg2"},
+			expectedErr: ErrEmptyCommand,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateCommand(tt.command)
+			if tt.expectedErr != nil {
+				assert.Error(t, err)
+				assert.Equal(t, tt.expectedErr, err, "Error should match expected")
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
