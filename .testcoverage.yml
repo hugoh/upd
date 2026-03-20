@@ -1,9 +1,4 @@
 profile: cover.out
 
 threshold:
-  total: 60
-
-exclude:
-  paths:
-    - ^main\.go$
-    - ^internal/logger
+  total: 55
