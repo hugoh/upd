@@ -1,5 +1,3 @@
-//go:build unit
-
 package pkg
 
 import (
@@ -24,7 +22,7 @@ func TestHttpProbe(t *testing.T) {
 		func(t *testing.T) {
 			u := url.URL{Scheme: "http", Host: server.Addr}
 			httpProbe := NewHTTPProbe(u.String())
-			report := httpProbe.Probe(context.Background(), tout)
+			report := httpProbe.Probe(context.Background(), testTimeout)
 			if report.error != nil {
 				t.Fatal(report.error)
 			}
@@ -57,7 +55,7 @@ func TestHttpProbe(t *testing.T) {
 		defer server.Close()
 		u := url.URL{Scheme: "http", Host: hostPort, Path: "/ua"}
 		httpProbe := NewHTTPProbe(u.String())
-		report := httpProbe.Probe(context.Background(), tout)
+		report := httpProbe.Probe(context.Background(), testTimeout)
 		if report.error != nil {
 			t.Fatal(report.error)
 		}
@@ -74,7 +72,7 @@ func TestHttpProbe(t *testing.T) {
 	t.Run("returns an error if the request fails", func(t *testing.T) {
 		u := url.URL{Scheme: "http", Host: "localhost"}
 		httpProbe := NewHTTPProbe(u.String())
-		report := httpProbe.Probe(context.Background(), tout)
+		report := httpProbe.Probe(context.Background(), testTimeout)
 		err := checkError(t, report)
 		got := err.Error()
 		prefix := "error making request to http://localhost: Get \"http://localhost\""
@@ -87,13 +85,12 @@ func TestHttpProbe(t *testing.T) {
 		func(t *testing.T) {
 			u := url.URL{Scheme: "http", Host: "192.0.2.1:53"}
 			httpProbe := NewHTTPProbe(u.String())
-			report := httpProbe.Probe(context.Background(), toutFail)
+			report := httpProbe.Probe(context.Background(), testTimeoutFail)
 			checkTimeout(t, report, "context deadline exceeded")
 		},
 	)
 }
 
-// Creates an HTTP server for testing.
 func newTestHTTPServer(t *testing.T) *http.Server {
 	hostPort := net.JoinHostPort("127.0.0.1", "8080")
 	server := &http.Server{Addr: hostPort}

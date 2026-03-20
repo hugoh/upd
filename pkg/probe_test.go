@@ -2,8 +2,14 @@ package pkg
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+)
+
+const (
+	testTimeout     = 1 * time.Second
+	testTimeoutFail = 1 * time.Microsecond
 )
 
 func checkError(t *testing.T, report *Report) error {

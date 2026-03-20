@@ -5,7 +5,6 @@ import (
 	"net"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestTcpProbe(t *testing.T) {
@@ -27,7 +26,7 @@ func TestTcpProbe(t *testing.T) {
 		"returns the local host/port if the request is successful",
 		func(t *testing.T) {
 			tcpProbe := NewTCPProbe(hostPort)
-			report := tcpProbe.Probe(context.Background(), 1*time.Second)
+			report := tcpProbe.Probe(context.Background(), testTimeout)
 			if report.error != nil {
 				t.Fatal(report.error)
 			}
@@ -64,13 +63,12 @@ func TestTcpProbe(t *testing.T) {
 		"returns an error if the request times out",
 		func(t *testing.T) {
 			tcpProbe := NewTCPProbe("192.0.2.1:53")
-			report := tcpProbe.Probe(context.Background(), 1*time.Microsecond)
+			report := tcpProbe.Probe(context.Background(), testTimeoutFail)
 			checkTimeout(t, report, "i/o timeout")
 		},
 	)
 }
 
-// Creates a TCP server for testing.
 func newTestTCPServer(t *testing.T) net.Listener {
 	hostPort := net.JoinHostPort("127.0.0.1", "8081")
 	listen, err := net.Listen("tcp", hostPort)
