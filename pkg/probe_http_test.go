@@ -7,9 +7,13 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHttpProbe(t *testing.T) {
@@ -107,4 +111,62 @@ func newTestHTTPServer(t *testing.T) *http.Server {
 		}
 	}()
 	return server
+}
+
+func TestHTTPProbe_RoundTrip(t *testing.T) {
+	t.Run("adds User-Agent header", func(t *testing.T) {
+		uaCh := make(chan string, 1)
+		hostPort := net.JoinHostPort("127.0.0.1", "8082")
+		server := &http.Server{Addr: hostPort}
+		http.HandleFunc("/rt", func(w http.ResponseWriter, r *http.Request) {
+			uaCh <- r.Header.Get("User-Agent")
+			io.WriteString(w, "ok")
+		})
+		l, err := net.Listen("tcp", hostPort)
+		if err != nil {
+			t.Fatalf("create listener %v", err)
+		}
+		go func() {
+			err := server.Serve(l)
+			if err != nil && err != http.ErrServerClosed {
+				t.Errorf("starting http server: %v", err)
+			}
+		}()
+		defer server.Close()
+
+		trans := &updTransport{version: "test"}
+		req := httptest.NewRequest(http.MethodGet, "http://"+hostPort+"/rt", nil)
+		resp, err := trans.RoundTrip(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 200, resp.StatusCode)
+		resp.Body.Close()
+
+		select {
+		case ua := <-uaCh:
+			assert.Equal(t, "upd/test", ua)
+		default:
+			t.Fatal("User-Agent header not received")
+		}
+	})
+
+	t.Run("returns error on network failure", func(t *testing.T) {
+		trans := &updTransport{version: "test"}
+		req := httptest.NewRequest(http.MethodGet, "http://192.0.2.1:9999/test", nil)
+		_, err := trans.RoundTrip(req)
+		assert.Error(t, err)
+	})
+}
+
+func TestHTTPProbe_ProbeWithTimeout(t *testing.T) {
+	t.Run("handles request building error with invalid URL", func(t *testing.T) {
+		httpProbe := &HTTPProbe{URL: "://invalid", client: http.DefaultClient}
+		report := httpProbe.Probe(context.Background(), time.Second)
+		assert.Error(t, report.error)
+		assert.Contains(t, report.error.Error(), "error building request")
+	})
+}
+
+func TestHTTPProbe_Scheme(t *testing.T) {
+	probe := NewHTTPProbe("http://example.com")
+	assert.Equal(t, "http", probe.Scheme())
 }
