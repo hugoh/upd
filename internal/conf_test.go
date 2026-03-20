@@ -218,3 +218,26 @@ logLevel: debug
 	}
 	assert.Equal(t, 1, httpChecks, "HTTP check should still be present")
 }
+
+func TestLogSetup(t *testing.T) {
+	tests := []struct {
+		name      string
+		logLevel  string
+		wantLevel string
+	}{
+		{"trace level", "trace", "trace"},
+		{"debug level", "debug", "debug"},
+		{"info level", "info", "info"},
+		{"warn level", "warn", "warning"},
+		{"empty defaults to warn", "", "warning"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			nulllogger.NewNullLoggerHook()
+			conf := &Configuration{LogLevel: tt.logLevel}
+			conf.logSetup()
+			assert.Equal(t, tt.wantLevel, logger.L.Level.String())
+		})
+	}
+}
