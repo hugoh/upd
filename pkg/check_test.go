@@ -85,6 +85,35 @@ func TestCheckerRun_Empty(t *testing.T) {
 	assert.Len(t, checker.fail, 0)
 }
 
+func TestNullChecker(t *testing.T) {
+	var c NullChecker
+	c.CheckRun(Check{})
+	c.ProbeSuccess(&Report{})
+	c.ProbeFailure(&Report{})
+}
+
+func TestRunChecks(t *testing.T) {
+	t.Run("returns true on success", func(t *testing.T) {
+		probe := &fakeProbe{ret: &Report{}}
+		probeIface := Probe(probe)
+		check := &Check{Probe: &probeIface, Timeout: time.Second}
+		cl := &CheckList{Ordered: Checks{check}}
+		ok, err := RunChecks(context.Background(), cl.GetIterator())
+		assert.True(t, ok)
+		assert.NoError(t, err)
+	})
+
+	t.Run("returns false on all failures", func(t *testing.T) {
+		probe := &fakeProbe{ret: &Report{error: errors.New("fail")}}
+		probeIface := Probe(probe)
+		check := &Check{Probe: &probeIface, Timeout: time.Second}
+		cl := &CheckList{Ordered: Checks{check}}
+		ok, err := RunChecks(context.Background(), cl.GetIterator())
+		assert.False(t, ok)
+		assert.NoError(t, err)
+	})
+}
+
 func TestCheckerRun_WithCheckListIterator(t *testing.T) {
 	probe := &fakeProbe{ret: &Report{}}
 	probeIface := Probe(probe)
