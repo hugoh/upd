@@ -170,7 +170,9 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 // Run starts the monitoring loop.
 func (l *Loop) Run(ctx context.Context) {
 	var checker Checker
-	l.statServer = status.StartStatServer(l.status, l.statServerConfig)
+	if l.statServer == nil {
+		l.statServer = status.StartStatServer(l.status, l.statServerConfig)
+	}
 	for {
 		status, err := pkg.CheckerRun(ctx, checker, l.checkList.GetIterator())
 		if err == nil {
