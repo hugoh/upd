@@ -12,7 +12,6 @@ import (
 	"github.com/hugoh/upd/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/yaml.v3"
 )
 
 type TestSuite struct {
@@ -168,19 +167,7 @@ func TestDNSCheckValidation_MissingDomain(t *testing.T) {
 
 func TestDNSCheckValidation_MissingResolver(t *testing.T) {
 	nulllogger.NewNullLoggerHook()
-	conf := &Configuration{}
-	err := yaml.Unmarshal([]byte(`
-checks:
-  every:
-    normal: 120s
-    down: 20s
-  list:
-    ordered:
-      - http://captive.apple.com/hotspot-detect.html
-      - dns:///google.com  # Missing resolver host
-  timeout: 2000ms
-logLevel: debug
-`), &conf)
+	conf, err := readTestConfig("upd_test_dns_missing_resolver.yaml")
 	assert.NoError(t, err)
 
 	checklist, checkErr := conf.GetChecks()

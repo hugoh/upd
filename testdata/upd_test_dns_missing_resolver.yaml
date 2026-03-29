@@ -1,0 +1,10 @@
+checks:
+  every:
+    normal: 120s
+    down: 20s
+  list:
+    ordered:
+      - http://captive.apple.com/hotspot-detect.html
+      - dns:///google.com
+  timeout: 2000ms
+logLevel: debug

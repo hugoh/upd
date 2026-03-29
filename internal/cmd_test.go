@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -11,9 +10,6 @@ import (
 )
 
 func TestRun_NoMultipleRestartsOnSuccess(t *testing.T) {
-	tmpFile := createTempConfigFileHelper(t)
-	defer os.Remove(tmpFile.Name())
-
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 
@@ -21,7 +17,7 @@ func TestRun_NoMultipleRestartsOnSuccess(t *testing.T) {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  ConfigConfig,
-				Value: tmpFile.Name(),
+				Value: testConfigDir + "/upd_test_minimal.yaml",
 			},
 			&cli.BoolFlag{
 				Name: ConfigDebug,
@@ -37,16 +33,13 @@ func TestRun_NoMultipleRestartsOnSuccess(t *testing.T) {
 }
 
 func TestRun_WaitsForWorkerCompletion(t *testing.T) {
-	tmpFile := createTempConfigFileHelper(t)
-	defer os.Remove(tmpFile.Name())
-
 	ctx, cancel := context.WithCancel(context.Background())
 
 	cmd := &cli.Command{
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  ConfigConfig,
-				Value: tmpFile.Name(),
+				Value: testConfigDir + "/upd_test_minimal.yaml",
 			},
 			&cli.BoolFlag{
 				Name: ConfigDebug,
@@ -70,24 +63,4 @@ func TestRun_WaitsForWorkerCompletion(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("Run did not exit after context cancellation")
 	}
-}
-
-func createTempConfigFileHelper(t *testing.T) *os.File {
-	tmpFile, err := os.CreateTemp("", "upd-test-*.yaml")
-	assert.NoError(t, err)
-
-	configContent := `checks:
-  every:
-    normal: 5s
-    down: 5s
-  list:
-    ordered:
-      - http://captive.apple.com/hotspot-detect.html
-  timeout: 2s
-`
-	_, err = tmpFile.WriteString(configContent)
-	assert.NoError(t, err)
-	tmpFile.Close()
-
-	return tmpFile
 }

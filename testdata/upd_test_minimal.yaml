@@ -1,0 +1,8 @@
+checks:
+  every:
+    normal: 5s
+    down: 5s
+  list:
+    ordered:
+      - http://captive.apple.com/hotspot-detect.html
+  timeout: 2s
