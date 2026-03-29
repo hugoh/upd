@@ -149,6 +149,9 @@ func TestHTTPProbe_RoundTrip(t *testing.T) {
 	t.Run("returns error on network failure", func(t *testing.T) {
 		trans := &updTransport{version: "test"}
 		req := httptest.NewRequest(http.MethodGet, "http://192.0.2.1:9999/test", nil)
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
+		req = req.WithContext(ctx)
 		_, err := trans.RoundTrip(req)
 		assert.Error(t, err)
 	})
