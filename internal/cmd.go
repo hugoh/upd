@@ -103,6 +103,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 
 				return err
 			}
+			<-done
 		case <-sighupCh:
 			logger.L.Info("[App] SIGHUP received: reloading configuration")
 			cancelCurrentWorker()
