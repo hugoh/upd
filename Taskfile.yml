@@ -71,7 +71,7 @@ tasks:
     summary: Upgrades dependencies
     cmds:
       - go get -u -t ./...
-      - task tidy
+      - task: tidy
 
   lint:
     summary: Lint code
