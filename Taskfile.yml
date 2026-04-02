@@ -3,7 +3,9 @@ version: "3"
 vars:
   STATICDIR: internal/status/static
   COVEROUT: cover.out
+  FUNCSOUT: funcs-{{.COVEROUT}}
   GOBIN: $(go env GOPATH)/bin
+  TEST_COVERAGE: 80
 
 tasks:
   default:
@@ -15,8 +17,10 @@ tasks:
       - task: test
         vars:
           CLI_ARGS: -coverprofile={{.COVEROUT}} -covermode=atomic -coverpkg=./...
-    sources:
+    sources: &SOURCES
       - "**/*.go"
+      - go.mod
+      - go.sum
     generates:
       - "{{.COVEROUT}}"
 
@@ -24,15 +28,20 @@ tasks:
     summary: Generate test coverage function
     deps:
       - coverage
-    cmds:
-      - go tool cover -func={{.COVEROUT}}
+    cmd: go tool cover -func={{.COVEROUT}} > {{.FUNCSOUT}}
+    sources:
+      - "{{.COVEROUT}}"
+    generates:
+      - "{{.FUNCSOUT}}"
 
   covercheck:
     summary: Check test coverage
     deps:
-      - coverage
+      - coverfunc
     cmds:
-      - go tool github.com/vladopajic/go-test-coverage/v2 --config=./.testcoverage.yml
+      - cat {{.FUNCSOUT}}
+      - |
+        awk '/total/{gsub(/%/,"",$3); print "Coverage: " $3 "% (Minimum: {{.TEST_COVERAGE}}%)"; if ($3 < {{.TEST_COVERAGE}}) exit 1}' < "{{.FUNCSOUT}}"
 
   dev:
     summary: Development mode
@@ -46,31 +55,33 @@ tasks:
     summary: Clean the project
     cmds:
       - go clean
-      - rm -f {{.COVEROUT}}
+      - rm -f {{.COVEROUT}} {{.FUNCSOUT}}
 
   fixlint:
     summary: Fix lint issues
-    cmds:
-      - go tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --fix ./...
+    sources: *SOURCES
+    cmd: go tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --fix ./...
 
   fmt:
     summary: Format the code
-    cmds:
-      - go tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --fix ./...
+    sources: *SOURCES
+    cmd: go tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --fix ./...
 
   tidy:
     summary: Tidy the module
-    cmds:
-      - go mod tidy -v
+    sources: *SOURCES
+    cmd: go mod tidy -v
 
   depup:
     summary: Upgrades dependencies
+    sources: *SOURCES
     cmds:
       - go get -u -t ./...
-      - task tidy
+      - task: tidy
 
   lint:
     summary: Lint code
+    sources: *SOURCES
     cmds:
       - go mod tidy -diff
       - go tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint run ./...
@@ -89,4 +100,5 @@ tasks:
 
   test-version:
     summary: Test that the application version is correctly injected at build time
+    sources: *SOURCES
     cmd: go test -v -tags=integration ./internal

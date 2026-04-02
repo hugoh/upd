@@ -38,12 +38,8 @@ jobs:
         run: |
           task test
           task test-version
-      - name: Generate test coverage
-        run: task coverage
       - name: Check test coverage
-        uses: vladopajic/go-test-coverage@9bdfb184d81fbbc3d16dca9732c7c92851080777
-        with:
-          config: ./.testcoverage.yml
+        run: task covercheck
 
   release:
     name: Semantic Release
