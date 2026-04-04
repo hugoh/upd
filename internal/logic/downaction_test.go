@@ -10,20 +10,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// FIXME: waiting for commands with time.Sleep() to run is error-prone
-
 func ensureExec(t *testing.T, hook *test.Hook, expectedValue string, foundCount int) {
-	count := 0
-	for _, e := range hook.AllEntries() {
-		if val, ok := e.Data["exec"]; ok {
-			count++
-			assert.Equal(t, expectedValue, val, "exec doesn't match")
-			if count == foundCount {
-				return
+	assert.Eventually(t, func() bool {
+		count := 0
+		for _, e := range hook.AllEntries() {
+			if val, ok := e.Data["exec"]; ok {
+				count++
+				if val != expectedValue {
+					return false
+				}
+				if count == foundCount {
+					return true
+				}
 			}
 		}
-	}
-	assert.Equal(t, foundCount, count, "Could not find enough entries")
+		return false
+	}, 2*time.Second, 20*time.Millisecond, "Expected to find %d entries with exec=%s", foundCount, expectedValue)
 }
 
 func Test_ExecuteSucceed(t *testing.T) {
@@ -45,8 +47,6 @@ func Test_ExecuteFail(t *testing.T) {
 	dal, _ := da.NewDownActionLoop(context.Background())
 	err := dal.Execute(context.Background(), da.Exec)
 	assert.NoError(t, err, "Success in starting a command that fails")
-	ensureExec(t, hook, "/usr/bin/false", 1)
-	time.Sleep(50 * time.Millisecond) // Give it time to fail
 	ensureExec(t, hook, "/usr/bin/false", 1)
 }
 
@@ -74,13 +74,14 @@ func Test_Start(t *testing.T) {
 	dal := da.Start(context.Background())
 	assert.Equal(t, da, dal.da)
 	assert.NotNil(t, dal.cancelFunc)
+	dal.cancelFunc()
 }
 
 func Test_StartAndStop(t *testing.T) {
-	waitTime := 50 * time.Millisecond
+	time.Sleep(50 * time.Millisecond)
 	every := 100 * time.Millisecond
 	da := &DownAction{
-		After:    1 * time.Millisecond,
+		After:    10 * time.Millisecond,
 		Every:    every,
 		Exec:     "true",
 		StopExec: "false",
@@ -88,11 +89,10 @@ func Test_StartAndStop(t *testing.T) {
 	hook := nulllogger.NewNullLoggerHook()
 	dal := da.Start(context.Background())
 	assert.NotNil(t, dal, "DownAction loop is running")
-	time.Sleep(waitTime) // Give it time to startExec
+	time.Sleep(50 * time.Millisecond)
 	ensureExec(t, hook, "/usr/bin/true", 1)
 	hook.Reset()
 	dal.Stop(context.Background())
-	time.Sleep(every) // Give it time to stop
 	ensureExec(t, hook, "/usr/bin/false", 2)
 }
 
