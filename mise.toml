@@ -1,6 +1,6 @@
 [tools]
-go = "latest"
-golangci-lint = "latest"
-"npm:prettier" = "latest"
-task = "latest"
-zizmor = "latest"
+go = "1.26.1"
+golangci-lint = "2.11.4"
+goreleaser = "2.15.2"
+prettier = "3.8.1"
+task = "3.44.1"
