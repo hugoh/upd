@@ -54,8 +54,14 @@ func (h *StatHandler) GenStatReport() *Report {
 	return h.statServer.status.GenStatReport(h.statServer.config.Reports)
 }
 
-func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, r *http.Request) {
-	logger.L.WithField("requester", r.RemoteAddr).Info("[Stats] requested")
+func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet && req.Method != http.MethodHead {
+		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
+
+		return
+	}
+
+	logger.L.WithField("requester", req.RemoteAddr).Info("[Stats] requested")
 
 	stats := h.GenStatReport()
 
