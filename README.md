@@ -1,5 +1,9 @@
 # upd: monitoring of network connection
 
+[![CI](https://github.com/hugoh/upd/actions/workflows/ci.yml/badge.svg)](https://github.com/hugoh/upd/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/github/hugoh/upd/graph/badge.svg?token=UFSZDFKCTR)](https://codecov.io/github/hugoh/upd)
+[![Go Report Card](https://goreportcard.com/badge/github.com/hugoh/upd)](https://goreportcard.com/report/github.com/hugoh/upd)
+
 This is a small utility built as a single binary for easy deployment to monitor internet connections and reboot appropriate networking equipment if the connection is down.
 
 It works by:
