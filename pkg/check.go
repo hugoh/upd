@@ -132,7 +132,11 @@ func RunChecks(ctx context.Context, checkListIterator CheckListIterator) (bool, 
 // Returns:
 //   - bool: true if any check succeeded, false if all failed
 //   - error: any error that occurred during iteration (not individual probe failures)
-func CheckerRun(ctx context.Context, checker Checker, checkListIterator CheckListIterator) (bool, error) {
+func CheckerRun(
+	ctx context.Context,
+	checker Checker,
+	checkListIterator CheckListIterator,
+) (bool, error) {
 	for {
 		check := checkListIterator.Fetch()
 		if check == nil {
