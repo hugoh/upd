@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeProbe struct {
 	ret *Report
 }
 
-func (f *fakeProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
+func (f *fakeProbe) Probe(_ context.Context, _ time.Duration) *Report {
 	return f.ret
 }
 func (f *fakeProbe) Scheme() string { return "fake" }
@@ -29,6 +30,7 @@ func (it *fakeCheckListIterator) Fetch() *Check {
 	}
 	c := it.checks[it.idx]
 	it.idx++
+
 	return c
 }
 
@@ -51,10 +53,10 @@ func TestCheckerRun_SuccessFirst(t *testing.T) {
 	ctx := context.Background()
 	ok, err := CheckerRun(ctx, checker, it)
 	assert.True(t, ok)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, checker.run, 1)
 	assert.Len(t, checker.succ, 1)
-	assert.Len(t, checker.fail, 0)
+	assert.Empty(t, checker.fail)
 }
 
 func TestCheckerRun_AllFail(t *testing.T) {
@@ -67,9 +69,9 @@ func TestCheckerRun_AllFail(t *testing.T) {
 	ctx := context.Background()
 	ok, err := CheckerRun(ctx, checker, it)
 	assert.False(t, ok)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, checker.run, 2)
-	assert.Len(t, checker.succ, 0)
+	assert.Empty(t, checker.succ)
 	assert.Len(t, checker.fail, 2)
 }
 
@@ -79,13 +81,13 @@ func TestCheckerRun_Empty(t *testing.T) {
 	ctx := context.Background()
 	ok, err := CheckerRun(ctx, checker, it)
 	assert.False(t, ok)
-	assert.NoError(t, err)
-	assert.Len(t, checker.run, 0)
-	assert.Len(t, checker.succ, 0)
-	assert.Len(t, checker.fail, 0)
+	require.NoError(t, err)
+	assert.Empty(t, checker.run)
+	assert.Empty(t, checker.succ)
+	assert.Empty(t, checker.fail)
 }
 
-func TestNullChecker(t *testing.T) {
+func TestNullChecker(_ *testing.T) {
 	var c NullChecker
 	c.CheckRun(Check{})
 	c.ProbeSuccess(&Report{})
@@ -124,8 +126,8 @@ func TestCheckerRun_WithCheckListIterator(t *testing.T) {
 	ctx := context.Background()
 	ok, err := CheckerRun(ctx, checker, it)
 	assert.True(t, ok)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, checker.run, 1)
 	assert.Len(t, checker.succ, 1)
-	assert.Len(t, checker.fail, 0)
+	assert.Empty(t, checker.fail)
 }

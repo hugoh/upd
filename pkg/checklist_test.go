@@ -7,11 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type dummyCheck struct {
-	id int
-}
-
-func newCheck(id int) *Check {
+func newCheck(_ int) *Check {
 	// Replace with actual Check struct if needed
 	return &Check{}
 }
@@ -20,7 +16,7 @@ func TestChecksIterator_Fetch(t *testing.T) {
 	checks := Checks{newCheck(1), newCheck(2), newCheck(3)}
 	it := NewChecksIterator(checks)
 
-	for i := 0; i < len(checks); i++ {
+	for i := range checks {
 		got := it.Fetch()
 		assert.NotNil(t, got, "Fetch() = nil at index %d, want check", i)
 	}
@@ -69,7 +65,7 @@ func TestCheckListIterator_Fetch(t *testing.T) {
 		}
 		got = append(got, c)
 	}
-	assert.Equal(t, 4, len(got), "Fetch() got %d checks, want 4", len(got))
+	assert.Len(t, got, 4, "Fetch() got %d checks, want 4", len(got))
 
 	assert.Same(t, got[0], ordered[0], "first check should be from ordered")
 	assert.Same(t, got[1], ordered[1], "second check should be from ordered")
@@ -81,7 +77,7 @@ func TestCheckListIterator_Empty(t *testing.T) {
 	assert.Nil(t, it.Fetch(), "Fetch() on empty iterator should return nil")
 }
 
-// Helper: check if two slices have the same elements (ignoring order)
+// Helper: check if two slices have the same elements (ignoring order).
 func sameElements(a, b Checks) bool {
 	if len(a) != len(b) {
 		return false
@@ -94,5 +90,6 @@ func sameElements(a, b Checks) bool {
 	for _, x := range b {
 		mb[x]++
 	}
+
 	return reflect.DeepEqual(ma, mb)
 }

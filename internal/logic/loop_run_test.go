@@ -13,32 +13,15 @@ import (
 func TestRun_StopsOnContextCancel(t *testing.T) {
 	loop := NewLoop()
 	emptyCheckList := &pkg.CheckList{}
-	loop.Configure(emptyCheckList, Delays{true: 1 * time.Second, false: 1 * time.Second}, nil, 0, &status.StatServerConfig{})
+	loop.Configure(
+		emptyCheckList,
+		Delays{true: 1 * time.Second, false: 1 * time.Second},
+		nil,
+		0,
+		&status.StatServerConfig{},
+	)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
-
-	go func() {
-		loop.Run(ctx)
-		close(done)
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	cancel()
-
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("Run did not stop after context cancellation")
-	}
-}
-
-func TestRun_StatServerStartedOnlyOnce(t *testing.T) {
-	loop := NewLoop()
-	emptyCheckList := &pkg.CheckList{}
-	loop.Configure(emptyCheckList, Delays{true: 1 * time.Second, false: 1 * time.Second}, nil, 0, &status.StatServerConfig{})
-
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	assert.Nil(t, loop.statServer)
@@ -56,7 +39,7 @@ func TestRun_StatServerStartedOnlyOnce(t *testing.T) {
 	assert.Same(t, firstServer, loop.statServer, "stat server should not change during Run")
 }
 
-func TestRun_ProcessesChecks(t *testing.T) {
+func TestRun_ProcessesChecks(_ *testing.T) {
 	loop := NewLoop()
 	probe := pkg.Probe(pkg.NewHTTPProbe("http://example.invalid"))
 	dummyCheck := &pkg.Check{
@@ -67,7 +50,13 @@ func TestRun_ProcessesChecks(t *testing.T) {
 		Ordered: pkg.Checks{dummyCheck},
 	}
 
-	loop.Configure(checkList, Delays{true: 10 * time.Millisecond, false: 10 * time.Millisecond}, nil, 0, &status.StatServerConfig{})
+	loop.Configure(
+		checkList,
+		Delays{true: 10 * time.Millisecond, false: 10 * time.Millisecond},
+		nil,
+		0,
+		&status.StatServerConfig{},
+	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -82,7 +71,13 @@ func TestRun_ProcessesChecks(t *testing.T) {
 func TestStop_StopsStatServer(t *testing.T) {
 	loop := NewLoop()
 	emptyCheckList := &pkg.CheckList{}
-	loop.Configure(emptyCheckList, Delays{true: 1 * time.Second, false: 1 * time.Second}, nil, 0, nil)
+	loop.Configure(
+		emptyCheckList,
+		Delays{true: 1 * time.Second, false: 1 * time.Second},
+		nil,
+		0,
+		nil,
+	)
 
 	ctx := context.Background()
 

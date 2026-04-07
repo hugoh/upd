@@ -89,7 +89,9 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	go func() {
 		err := cmd.Wait()
 		if err != nil {
-			logger.L.WithField("exec", cmd.String()).WithError(err).Warn("[DownAction] error executing command")
+			logger.L.WithField("exec", cmd.String()).
+				WithError(err).
+				Warn("[DownAction] error executing command")
 		}
 	}()
 

@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-var (
+const (
 	dnsResolver       = "1.1.1.1:53"
 	addressForTimeout = "192.0.2.1:53"
 )
