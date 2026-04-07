@@ -2,7 +2,6 @@ package internal
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -11,11 +10,13 @@ import (
 	"github.com/hugoh/upd/internal/nulllogger"
 	"github.com/hugoh/upd/pkg"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 type TestSuite struct {
 	suite.Suite
+
 	conf *Configuration
 }
 
@@ -29,7 +30,7 @@ func (suite *TestSuite) SetupTest() {
 	nulllogger.NewNullLoggerHook()
 	var err error
 	suite.conf, err = readTestConfig("upd_test_good.yaml")
-	assert.Nil(suite.T(), err, "No error expected")
+	suite.NoError(err)
 }
 
 func TestSuiteRun(t *testing.T) {
@@ -38,8 +39,8 @@ func TestSuiteRun(t *testing.T) {
 
 func (suite *TestSuite) TestGetDownActionFromConf() {
 	da := suite.conf.GetDownAction()
-	assert.NotNil(suite.T(), da, "DownAction parsed")
-	assert.Equal(suite.T(), &logic.DownAction{
+	suite.NotNil(da, "DownAction parsed")
+	suite.Equal(&logic.DownAction{
 		After: 120 * time.Second,
 		Every: 300 * time.Second,
 		Exec:  "cowsay",
@@ -48,7 +49,7 @@ func (suite *TestSuite) TestGetDownActionFromConf() {
 
 func TestNoDownAction(t *testing.T) {
 	conf, err := readTestConfig("upd_test_noda.yaml")
-	assert.Nil(t, err, "No error expected")
+	require.NoError(t, err)
 	da := conf.GetDownAction()
 	assert.Nil(t, da, "DownAction not found")
 }
@@ -58,14 +59,14 @@ func (suite *TestSuite) TestGetDelaysFromConf() {
 	delays[true] = 120 * time.Second
 	delays[false] = 20 * time.Second
 	conf := suite.conf.GetDelays()
-	assert.Equal(suite.T(), delays, conf)
+	suite.Equal(delays, conf)
 }
 
 func TestGetChecksIgnored(t *testing.T) {
 	conf, err := readTestConfig("upd_test_bad.yaml")
-	assert.Nil(t, err, "No error expected")
+	require.NoError(t, err)
 	checklist, checkErr := conf.GetChecks()
-	assert.Nil(t, checkErr, "No error expected")
+	require.NoError(t, checkErr)
 	// There should be 1 valid check in total (Ordered + Shuffled)
 	// - http://captive.apple.com/hotspot-detect.html is valid
 	// - ftp://foo.bar/ is ignored (unknown protocol)
@@ -81,72 +82,71 @@ func TestGetChecksFromConfFail(t *testing.T) {
 	nulllogger.NewNullLoggerHook()
 	logger.L.ExitFunc = func(code int) { panic(code) }
 	conf, err := readTestConfig("upd_test_allbad.yaml")
-	assert.Nil(t, err, "No error expected")
+	require.NoError(t, err)
 	_, checkErr := conf.GetChecks()
 	assert.ErrorIs(t, checkErr, ErrNoChecks, "Error expected: no valid checks")
 }
 
 func (suite *TestSuite) TestGetChecks() {
-	checklist, checkErr := suite.conf.GetChecks()
-	assert.Nil(suite.T(), checkErr, "No error expected")
+	checklist, err := suite.conf.GetChecks()
+	suite.Require().NoError(err)
 	// Collect all checks from both Ordered and Shuffled
 	allChecks := append([]*pkg.Check{}, checklist.Ordered...)
 	allChecks = append(allChecks, checklist.Shuffled...)
 	var probe pkg.Probe
-	var http *pkg.HTTPProbe
+	var httpProbe *pkg.HTTPProbe
 	var dns *pkg.DNSProbe
 	var tcp *pkg.TCPProbe
 	var ok bool
-	assert.Equal(suite.T(), 4, len(allChecks))
+	suite.Len(allChecks, 4)
 	probe = *allChecks[0].Probe
-	http, ok = probe.(*pkg.HTTPProbe)
-	assert.True(suite.T(), ok)
-	assert.Equal(suite.T(), "http", http.Scheme())
-	assert.Equal(suite.T(), "http://captive.apple.com/hotspot-detect.html", http.URL)
+	httpProbe, ok = probe.(*pkg.HTTPProbe)
+	suite.True(ok)
+	suite.Equal("http", httpProbe.Scheme())
+	suite.Equal("http://captive.apple.com/hotspot-detect.html", httpProbe.URL)
 	probe = *allChecks[1].Probe
-	http, ok = probe.(*pkg.HTTPProbe)
-	assert.True(suite.T(), ok)
-	assert.Equal(suite.T(), "http", http.Scheme())
-	assert.Equal(suite.T(), "https://example.com/", http.URL)
+	httpProbe, ok = probe.(*pkg.HTTPProbe)
+	suite.True(ok)
+	suite.Equal("http", httpProbe.Scheme())
+	suite.Equal("https://example.com/", httpProbe.URL)
 	probe = *allChecks[2].Probe
 	dns, ok = probe.(*pkg.DNSProbe)
-	assert.True(suite.T(), ok)
-	assert.Equal(suite.T(), "dns", dns.Scheme())
-	assert.Equal(suite.T(), "1.1.1.1:53", dns.DNSResolver)
-	assert.Equal(suite.T(), "www.google.com", dns.Domain)
+	suite.True(ok)
+	suite.Equal("dns", dns.Scheme())
+	suite.Equal("1.1.1.1:53", dns.DNSResolver)
+	suite.Equal("www.google.com", dns.Domain)
 	probe = *allChecks[3].Probe
 	tcp, ok = probe.(*pkg.TCPProbe)
-	assert.True(suite.T(), ok)
-	assert.Equal(suite.T(), "tcp", tcp.Scheme())
-	assert.Equal(suite.T(), "1.0.0.1:53", tcp.HostPort)
+	suite.True(ok)
+	suite.Equal("tcp", tcp.Scheme())
+	suite.Equal("1.0.0.1:53", tcp.HostPort)
 }
 
 func (suite *TestSuite) TestStatConf() {
 	conf := suite.conf.Stats
-	assert.Equal(suite.T(), ":8080", conf.Port)
+	suite.Equal(":8080", conf.Port)
 }
 
 func TestReadConf_envsubst(t *testing.T) {
-	os.Setenv("UPD_TEST_TIMEOUT", "3s")
-	defer os.Unsetenv("UPD_TEST_TIMEOUT")
+	t.Setenv("UPD_TEST_TIMEOUT", "3s")
 
 	conf, err := readTestConfig("upd_test_envvar.yaml")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 3*time.Second, conf.Checks.TimeOut)
 }
 
 func TestReadConf_envsubst_missing(t *testing.T) {
 	_, err := readTestConfig("upd_test_envvar.yaml")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "TimeOut")
 }
 
 func TestDNSCheckValidation_MissingDomain(t *testing.T) {
 	nulllogger.NewNullLoggerHook()
 	conf, err := readTestConfig("upd_test_bad.yaml")
-	assert.Nil(t, err, "No error expected")
+	require.NoError(t, err)
 	checklist, checkErr := conf.GetChecks()
-	assert.Nil(t, checkErr, "No error expected")
+	require.NoError(t, checkErr)
 
 	// Check that dns://8.8.4.4/ is ignored due to missing domain
 	dnsChecks := 0
@@ -168,10 +168,10 @@ func TestDNSCheckValidation_MissingDomain(t *testing.T) {
 func TestDNSCheckValidation_MissingResolver(t *testing.T) {
 	nulllogger.NewNullLoggerHook()
 	conf, err := readTestConfig("upd_test_dns_missing_resolver.yaml")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	checklist, checkErr := conf.GetChecks()
-	assert.Nil(t, checkErr, "No error expected")
+	require.NoError(t, checkErr)
 
 	// Check that dns:///google.com is ignored due to missing resolver host
 	dnsChecks := 0

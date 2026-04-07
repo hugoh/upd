@@ -5,11 +5,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func emptyNewLoop() *Loop {
 	l := NewLoop()
 	l.Configure(nil, nil, nil, 0, nil)
+
 	return l
 }
 
@@ -22,10 +24,10 @@ func Test_DownActionStartStop(t *testing.T) {
 	loop.DownActionStop(ctx)
 	assert.Nil(t, loop.downActionLoop)
 	err := loop.DownActionStart(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, loop.downActionLoop)
 	err = loop.DownActionStart(ctx)
-	assert.Error(t, err)
+	require.Error(t, err)
 	loop.DownActionStop(ctx)
 	assert.Nil(t, loop.downActionLoop)
 }

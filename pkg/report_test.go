@@ -93,7 +93,7 @@ func TestResponse_WithErrors(t *testing.T) {
 	err := errors.New("network error")
 	report := &Report{error: err}
 	resp := report.Response()
-	assert.Equal(t, "", resp, "Response should be empty when there's an error")
+	assert.Empty(t, resp, "Response should be empty when there's an error")
 }
 
 func TestElapsed(t *testing.T) {

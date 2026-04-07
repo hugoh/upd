@@ -107,7 +107,7 @@ func TestStatServer_Start_UsesDefaultTimeouts(t *testing.T) {
 	server.StopStatServer(ctx)
 }
 
-func TestStopStatServer_NilServer(t *testing.T) {
+func TestStopStatServer_NilServer(_ *testing.T) {
 	server := &StatServer{
 		server: nil,
 	}
@@ -168,7 +168,10 @@ func TestStatServer_Route(t *testing.T) {
 	client := &http.Client{Timeout: 1 * time.Second}
 	resp, err := client.Get(url)
 	if err == nil {
-		resp.Body.Close()
+		err = resp.Body.Close()
+		if err != nil {
+			t.Error(err)
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

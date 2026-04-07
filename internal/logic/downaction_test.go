@@ -8,9 +8,11 @@ import (
 	"github.com/hugoh/upd/internal/nulllogger"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func ensureExec(t *testing.T, hook *test.Hook, expectedValue string, foundCount int) {
+	t.Helper()
 	assert.Eventually(t, func() bool {
 		count := 0
 		for _, e := range hook.AllEntries() {
@@ -24,6 +26,7 @@ func ensureExec(t *testing.T, hook *test.Hook, expectedValue string, foundCount 
 				}
 			}
 		}
+
 		return false
 	}, 2*time.Second, 20*time.Millisecond, "Expected to find %d entries with exec=%s", foundCount, expectedValue)
 }
@@ -35,7 +38,7 @@ func Test_ExecuteSucceed(t *testing.T) {
 	hook := nulllogger.NewNullLoggerHook()
 	dal, _ := da.NewDownActionLoop(context.Background())
 	err := dal.Execute(context.Background(), da.Exec)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	ensureExec(t, hook, "/usr/bin/true", 1)
 }
 
@@ -46,7 +49,7 @@ func Test_ExecuteFail(t *testing.T) {
 	hook := nulllogger.NewNullLoggerHook()
 	dal, _ := da.NewDownActionLoop(context.Background())
 	err := dal.Execute(context.Background(), da.Exec)
-	assert.NoError(t, err, "Success in starting a command that fails")
+	require.NoError(t, err, "Success in starting a command that fails")
 	ensureExec(t, hook, "/usr/bin/false", 1)
 }
 
@@ -56,12 +59,13 @@ func Test_ExecuteNonExistent(t *testing.T) {
 	}
 	dal, _ := da.NewDownActionLoop(context.Background())
 	err := dal.Execute(context.Background(), da.Exec)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func getTestDA() *DownAction {
 	const after = 42 * time.Second
 	const every = 1 * time.Second
+
 	return &DownAction{
 		After: after,
 		Every: every,
@@ -97,12 +101,13 @@ func Test_StartAndStop(t *testing.T) {
 }
 
 func testBackoff(t *testing.T, hasLimit bool) {
+	t.Helper()
 	da := getTestDA()
 	const backoffLimit = 2 * time.Second
 	if hasLimit {
 		da.BackoffLimit = backoffLimit
 	}
-	assert.Equal(t, 1.5, BackoffFactor, "Ensuring we have the right values")
+	assert.InEpsilon(t, 1.5, BackoffFactor, 0.01, "Ensuring we have the right values")
 	dal, _ := da.NewDownActionLoop(context.Background())
 	assert.Equal(t, DownActionIteration{iteration: -1, sleepTime: 0}, *dal.it)
 	dal.iterate()
@@ -118,7 +123,11 @@ func testBackoff(t *testing.T, hasLimit bool) {
 	} else {
 		current = time.Duration(2.25 * float64(time.Second))
 	}
-	assert.Equal(t, DownActionIteration{iteration: 3, sleepTime: current, limitReached: hasLimit}, *dal.it)
+	assert.Equal(
+		t,
+		DownActionIteration{iteration: 3, sleepTime: current, limitReached: hasLimit},
+		*dal.it,
+	)
 }
 
 func Test_BackoffNoLimit(t *testing.T) {
@@ -176,10 +185,10 @@ func TestValidateCommand(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateCommand(tt.command)
 			if tt.expectedErr != nil {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, tt.expectedErr, err, "Error should match expected")
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

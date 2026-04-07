@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -53,7 +52,7 @@ func TestStatHandler_GenStatReport(t *testing.T) {
 	report := handler.GenStatReport()
 	require.NotNil(t, report)
 	assert.True(t, report.Up)
-	assert.Equal(t, 2, len(report.Stats))
+	assert.Len(t, report.Stats, 2)
 	assert.NotEmpty(t, report.Version)
 	assert.False(t, report.Generated.IsZero())
 }
@@ -112,7 +111,7 @@ func TestStatHandler_ServeHTTP(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 
-	var raw map[string]interface{}
+	var raw map[string]any
 	err := json.Unmarshal(rec.Body.Bytes(), &raw)
 	require.NoError(t, err)
 	assert.Equal(t, true, raw["isUp"])
@@ -195,10 +194,10 @@ func TestStatHandler_ServeHTTP_JSONFormat(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	body := rec.Body.String()
-	assert.True(t, strings.Contains(body, `"isUp": true`))
-	assert.True(t, strings.Contains(body, `"reports"`))
-	assert.True(t, strings.Contains(body, `"totalChecksRun"`))
-	assert.True(t, strings.Contains(body, `"updVersion"`))
+	assert.Contains(t, body, `"isUp": true`)
+	assert.Contains(t, body, `"reports"`)
+	assert.Contains(t, body, `"totalChecksRun"`)
+	assert.Contains(t, body, `"updVersion"`)
 }
 
 func TestReportByPeriod_JSON_Marshal(t *testing.T) {
@@ -211,9 +210,9 @@ func TestReportByPeriod_JSON_Marshal(t *testing.T) {
 	data, err := json.Marshal(report)
 	require.NoError(t, err)
 
-	assert.True(t, strings.Contains(string(data), `"period":`))
-	assert.True(t, strings.Contains(string(data), `"availability":`))
-	assert.True(t, strings.Contains(string(data), `"downTime":`))
+	assert.Contains(t, string(data), `"period":`)
+	assert.Contains(t, string(data), `"availability":`)
+	assert.Contains(t, string(data), `"downTime":`)
 }
 
 func TestReport_JSON_Marshal(t *testing.T) {
@@ -230,12 +229,12 @@ func TestReport_JSON_Marshal(t *testing.T) {
 	data, err := json.MarshalIndent(report, "", JSONIndentSpaces)
 	require.NoError(t, err)
 
-	var raw map[string]interface{}
+	var raw map[string]any
 	err = json.Unmarshal(data, &raw)
 	require.NoError(t, err)
 
 	assert.Equal(t, true, raw["isUp"])
-	assert.Equal(t, float64(100), raw["totalChecksRun"])
+	assert.InEpsilon(t, float64(100), raw["totalChecksRun"], 0.01)
 	assert.Equal(t, "1.0.0", raw["updVersion"])
 }
 
@@ -253,7 +252,7 @@ func TestReport_JSONFieldNames(t *testing.T) {
 	data, err := json.Marshal(report)
 	require.NoError(t, err)
 
-	var raw map[string]interface{}
+	var raw map[string]any
 	err = json.Unmarshal(data, &raw)
 	require.NoError(t, err)
 

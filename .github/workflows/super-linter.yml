@@ -11,7 +11,7 @@ permissions: {}
 jobs:
   build:
     name: Super Linter
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
 
     permissions:
       contents: read

@@ -12,90 +12,44 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestHttpProbe(t *testing.T) {
+func TestHttpProbe_Success(t *testing.T) {
 	server := newTestHTTPServer(t)
-	defer server.Close()
-	t.Run(
-		"returns the status code if the request is successful",
-		func(t *testing.T) {
-			u := url.URL{Scheme: "http", Host: server.Addr}
-			httpProbe := NewHTTPProbe(u.String())
-			report := httpProbe.Probe(context.Background(), testTimeout)
-			if report.error != nil {
-				t.Fatal(report.error)
-			}
-			want := "200 OK"
-			got := report.response
-			if got != want {
-				t.Fatalf("got %q, want %q", got, want)
-			}
-		},
-	)
-
-	t.Run("sets the correct User-Agent header", func(t *testing.T) {
-		uaCh := make(chan string, 1)
-		hostPort := net.JoinHostPort("127.0.0.1", "8081")
-		server := &http.Server{Addr: hostPort}
-		http.HandleFunc("/ua", func(w http.ResponseWriter, r *http.Request) {
-			uaCh <- r.Header.Get("User-Agent")
-			io.WriteString(w, "pong")
-		})
-		l, err := net.Listen("tcp", hostPort)
+	defer func() {
+		err := server.Close()
 		if err != nil {
-			t.Fatalf("create listener %v", err)
+			t.Error(err)
 		}
-		go func() {
-			err := server.Serve(l)
-			if err != nil && err != http.ErrServerClosed {
-				t.Errorf("starting http server: %v", err)
-			}
-		}()
-		defer server.Close()
-		u := url.URL{Scheme: "http", Host: hostPort, Path: "/ua"}
-		httpProbe := NewHTTPProbe(u.String())
-		report := httpProbe.Probe(context.Background(), testTimeout)
-		if report.error != nil {
-			t.Fatal(report.error)
-		}
-		select {
-		case ua := <-uaCh:
-			wantUA := "upd/dev"
-			if ua != wantUA {
-				t.Fatalf("User-Agent header = %q, want %q", ua, wantUA)
-			}
-		default:
-			t.Fatal("User-Agent header not received")
-		}
-	})
-	t.Run("returns an error if the request fails", func(t *testing.T) {
-		u := url.URL{Scheme: "http", Host: "localhost"}
-		httpProbe := NewHTTPProbe(u.String())
-		report := httpProbe.Probe(context.Background(), testTimeout)
-		err := checkError(t, report)
-		got := err.Error()
-		prefix := "error making request to http://localhost: Get \"http://localhost\""
-		if !strings.HasPrefix(got, prefix) {
-			t.Fatalf("got %q, want prefix %q", got, prefix)
-		}
-	})
-	t.Run(
-		"returns an error if the request times out",
-		func(t *testing.T) {
-			u := url.URL{Scheme: "http", Host: "192.0.2.1:53"}
-			httpProbe := NewHTTPProbe(u.String())
-			report := httpProbe.Probe(context.Background(), testTimeoutFail)
-			checkTimeout(t, report, "context deadline exceeded")
-		},
-	)
+	}()
+
+	u := url.URL{Scheme: "http", Host: server.Addr}
+	httpProbe := NewHTTPProbe(u.String())
+	report := httpProbe.Probe(context.Background(), testTimeout)
+	if report.error != nil {
+		t.Fatal(report.error)
+	}
+	want := "200 OK"
+	got := report.response
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
 }
 
-func newTestHTTPServer(t *testing.T) *http.Server {
-	hostPort := net.JoinHostPort("127.0.0.1", "8080")
-	server := &http.Server{Addr: hostPort}
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, "pong ")
+func TestHttpProbe_UserAgentHeader(t *testing.T) {
+	uaCh := make(chan string, 1)
+	hostPort := net.JoinHostPort("127.0.0.1", "8081")
+	server := &http.Server{
+		Addr:              hostPort,
+		ReadHeaderTimeout: 1 * time.Second,
+	}
+	http.HandleFunc("/ua", func(w http.ResponseWriter, r *http.Request) {
+		uaCh <- r.Header.Get("User-Agent")
+		_, err := io.WriteString(w, "pong")
+		if err != nil {
+			t.Error(err)
+		}
 	})
 	l, err := net.Listen("tcp", hostPort)
 	if err != nil {
@@ -107,63 +61,137 @@ func newTestHTTPServer(t *testing.T) *http.Server {
 			t.Errorf("starting http server: %v", err)
 		}
 	}()
+	defer func() {
+		if err := server.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	u := url.URL{Scheme: "http", Host: hostPort, Path: "/ua"}
+	httpProbe := NewHTTPProbe(u.String())
+	report := httpProbe.Probe(context.Background(), testTimeout)
+	if report.error != nil {
+		t.Fatal(report.error)
+	}
+	select {
+	case ua := <-uaCh:
+		wantUA := "upd/dev"
+		if ua != wantUA {
+			t.Fatalf("User-Agent header = %q, want %q", ua, wantUA)
+		}
+	default:
+		t.Fatal("User-Agent header not received")
+	}
+}
+
+func TestHttpProbe_RequestFails(t *testing.T) {
+	u := url.URL{Scheme: "http", Host: "localhost"}
+	httpProbe := NewHTTPProbe(u.String())
+	report := httpProbe.Probe(context.Background(), testTimeout)
+	err := checkError(t, report)
+	got := err.Error()
+	prefix := "error making request to http://localhost: Get \"http://localhost\""
+	if !strings.HasPrefix(got, prefix) {
+		t.Fatalf("got %q, want prefix %q", got, prefix)
+	}
+}
+
+func TestHttpProbe_Timeout(t *testing.T) {
+	u := url.URL{Scheme: "http", Host: "192.0.2.1:53"}
+	httpProbe := NewHTTPProbe(u.String())
+	report := httpProbe.Probe(context.Background(), testTimeoutFail)
+	checkTimeout(t, report, "context deadline exceeded")
+}
+
+func newTestHTTPServer(t *testing.T) *http.Server {
+	t.Helper()
+	hostPort := net.JoinHostPort("127.0.0.1", "8080")
+	server := &http.Server{
+		Addr:              hostPort,
+		ReadHeaderTimeout: 1 * time.Second,
+	}
+	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+		_, err := io.WriteString(w, "pong ")
+		if err != nil {
+			t.Error(err)
+		}
+	})
+	l, err := net.Listen("tcp", hostPort)
+	if err != nil {
+		t.Fatalf("create listener %v", err)
+	}
+	go func() {
+		err := server.Serve(l)
+		if err != nil && err != http.ErrServerClosed {
+			t.Errorf("starting http server: %v", err)
+		}
+	}()
+
 	return server
 }
 
 func TestHTTPProbe_RoundTrip(t *testing.T) {
-	t.Run("adds User-Agent header", func(t *testing.T) {
-		uaCh := make(chan string, 1)
-		hostPort := net.JoinHostPort("127.0.0.1", "8082")
-		server := &http.Server{Addr: hostPort}
-		http.HandleFunc("/rt", func(w http.ResponseWriter, r *http.Request) {
-			uaCh <- r.Header.Get("User-Agent")
-			io.WriteString(w, "ok")
-		})
-		l, err := net.Listen("tcp", hostPort)
+	uaCh := make(chan string, 1)
+	hostPort := net.JoinHostPort("127.0.0.1", "8082")
+	server := &http.Server{
+		Addr:              hostPort,
+		ReadHeaderTimeout: 1 * time.Second,
+	}
+	http.HandleFunc("/rt", func(w http.ResponseWriter, r *http.Request) {
+		uaCh <- r.Header.Get("User-Agent")
+		_, err := io.WriteString(w, "ok")
 		if err != nil {
-			t.Fatalf("create listener %v", err)
-		}
-		go func() {
-			err := server.Serve(l)
-			if err != nil && err != http.ErrServerClosed {
-				t.Errorf("starting http server: %v", err)
-			}
-		}()
-		defer server.Close()
-
-		trans := &updTransport{version: "test"}
-		req := httptest.NewRequest(http.MethodGet, "http://"+hostPort+"/rt", nil)
-		resp, err := trans.RoundTrip(req)
-		assert.NoError(t, err)
-		assert.Equal(t, 200, resp.StatusCode)
-		resp.Body.Close()
-
-		select {
-		case ua := <-uaCh:
-			assert.Equal(t, "upd/test", ua)
-		default:
-			t.Fatal("User-Agent header not received")
+			t.Error(err)
 		}
 	})
+	l, err := net.Listen("tcp", hostPort)
+	if err != nil {
+		t.Fatalf("create listener %v", err)
+	}
+	go func() {
+		err := server.Serve(l)
+		if err != nil && err != http.ErrServerClosed {
+			t.Errorf("starting http server: %v", err)
+		}
+	}()
+	defer func() {
+		if err := server.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 
-	t.Run("returns error on network failure", func(t *testing.T) {
-		trans := &updTransport{version: "test"}
-		req := httptest.NewRequest(http.MethodGet, "http://192.0.2.1:9999/test", nil)
-		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-		defer cancel()
-		req = req.WithContext(ctx)
-		_, err := trans.RoundTrip(req)
-		assert.Error(t, err)
-	})
+	trans := &updTransport{version: "test"}
+	req := httptest.NewRequest(http.MethodGet, "http://"+hostPort+"/rt", nil)
+	resp, err := trans.RoundTrip(req)
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	_ = resp.Body.Close()
+
+	select {
+	case ua := <-uaCh:
+		assert.Equal(t, "upd/test", ua)
+	default:
+		t.Fatal("User-Agent header not received")
+	}
+}
+
+func TestHTTPProbe_RoundTrip_NetworkFailure(t *testing.T) {
+	trans := &updTransport{version: "test"}
+	req := httptest.NewRequest(http.MethodGet, "http://192.0.2.1:9999/test", nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	req = req.WithContext(ctx)
+	resp, err := trans.RoundTrip(req)
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+	assert.Error(t, err)
 }
 
 func TestHTTPProbe_ProbeWithTimeout(t *testing.T) {
-	t.Run("handles request building error with invalid URL", func(t *testing.T) {
-		httpProbe := &HTTPProbe{URL: "://invalid", client: http.DefaultClient}
-		report := httpProbe.Probe(context.Background(), time.Second)
-		assert.Error(t, report.error)
-		assert.Contains(t, report.error.Error(), "error building request")
-	})
+	httpProbe := &HTTPProbe{URL: "://invalid", client: http.DefaultClient}
+	report := httpProbe.Probe(context.Background(), time.Second)
+	require.Error(t, report.error)
+	assert.Contains(t, report.error.Error(), "error building request")
 }
 
 func TestHTTPProbe_Scheme(t *testing.T) {
