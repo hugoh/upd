@@ -112,6 +112,7 @@ func (s *Status) SetRetention(retention time.Duration) {
 
 		return
 	}
+
 	if s.stateChangeTracker == nil {
 		s.stateChangeTracker = &StateChangeTracker{
 			retention: retention,
@@ -145,10 +146,13 @@ func (s *Status) SetRetention(retention time.Duration) {
 func (s *Status) Update(isUp bool) bool {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
 	s.recordResult(isUp)
+
 	if !s.hasChanged(isUp) {
 		return false
 	}
+
 	s.set(isUp)
 
 	return true
@@ -157,6 +161,7 @@ func (s *Status) Update(isUp bool) bool {
 // GenStatReport generates a statistics report for the specified time periods.
 func (s *Status) GenStatReport(periods []time.Duration) *Report {
 	generated := time.Now()
+
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -175,6 +180,7 @@ func (s *Status) set(up bool) {
 	if !s.initialized {
 		s.initialized = true
 	}
+
 	s.Up = up
 }
 
@@ -186,5 +192,6 @@ func (s *Status) recordResult(up bool) {
 	if s.stateChangeTracker == nil {
 		return
 	}
+
 	s.stateChangeTracker.RecordChange(time.Now(), up)
 }

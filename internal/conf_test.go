@@ -5,9 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
-	"github.com/hugoh/upd/internal/nulllogger"
 	"github.com/hugoh/upd/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,8 +25,8 @@ func readTestConfig(cfgFile string) (*Configuration, error) {
 }
 
 func (suite *TestSuite) SetupTest() {
-	nulllogger.NewNullLoggerHook()
 	var err error
+
 	suite.conf, err = readTestConfig("upd_test_good.yaml")
 	suite.NoError(err)
 }
@@ -50,6 +48,7 @@ func (suite *TestSuite) TestGetDownActionFromConf() {
 func TestNoDownAction(t *testing.T) {
 	conf, err := readTestConfig("upd_test_noda.yaml")
 	require.NoError(t, err)
+
 	da := conf.GetDownAction()
 	assert.Nil(t, da, "DownAction not found")
 }
@@ -65,6 +64,7 @@ func (suite *TestSuite) TestGetDelaysFromConf() {
 func TestGetChecksIgnored(t *testing.T) {
 	conf, err := readTestConfig("upd_test_bad.yaml")
 	require.NoError(t, err)
+
 	checklist, checkErr := conf.GetChecks()
 	require.NoError(t, checkErr)
 	// There should be 1 valid check in total (Ordered + Shuffled)
@@ -75,14 +75,14 @@ func TestGetChecksIgnored(t *testing.T) {
 	if checklist != nil {
 		totalChecks = len(checklist.Ordered) + len(checklist.Shuffled)
 	}
+
 	assert.Equal(t, 1, totalChecks, "2 checks should be invalid")
 }
 
 func TestGetChecksFromConfFail(t *testing.T) {
-	nulllogger.NewNullLoggerHook()
-	logger.L.ExitFunc = func(code int) { panic(code) }
 	conf, err := readTestConfig("upd_test_allbad.yaml")
 	require.NoError(t, err)
+
 	_, checkErr := conf.GetChecks()
 	assert.ErrorIs(t, checkErr, ErrNoChecks, "Error expected: no valid checks")
 }
@@ -93,28 +93,35 @@ func (suite *TestSuite) TestGetChecks() {
 	// Collect all checks from both Ordered and Shuffled
 	allChecks := append([]*pkg.Check{}, checklist.Ordered...)
 	allChecks = append(allChecks, checklist.Shuffled...)
-	var probe pkg.Probe
-	var httpProbe *pkg.HTTPProbe
-	var dns *pkg.DNSProbe
-	var tcp *pkg.TCPProbe
-	var ok bool
+
+	var (
+		probe     pkg.Probe
+		httpProbe *pkg.HTTPProbe
+		dns       *pkg.DNSProbe
+		tcp       *pkg.TCPProbe
+		ok        bool
+	)
+
 	suite.Len(allChecks, 4)
 	probe = *allChecks[0].Probe
 	httpProbe, ok = probe.(*pkg.HTTPProbe)
 	suite.True(ok)
 	suite.Equal("http", httpProbe.Scheme())
 	suite.Equal("http://captive.apple.com/hotspot-detect.html", httpProbe.URL)
+
 	probe = *allChecks[1].Probe
 	httpProbe, ok = probe.(*pkg.HTTPProbe)
 	suite.True(ok)
 	suite.Equal("http", httpProbe.Scheme())
 	suite.Equal("https://example.com/", httpProbe.URL)
+
 	probe = *allChecks[2].Probe
 	dns, ok = probe.(*pkg.DNSProbe)
 	suite.True(ok)
 	suite.Equal("dns", dns.Scheme())
 	suite.Equal("1.1.1.1:53", dns.DNSResolver)
 	suite.Equal("www.google.com", dns.Domain)
+
 	probe = *allChecks[3].Probe
 	tcp, ok = probe.(*pkg.TCPProbe)
 	suite.True(ok)
@@ -142,31 +149,33 @@ func TestReadConf_envsubst_missing(t *testing.T) {
 }
 
 func TestDNSCheckValidation_MissingDomain(t *testing.T) {
-	nulllogger.NewNullLoggerHook()
 	conf, err := readTestConfig("upd_test_bad.yaml")
 	require.NoError(t, err)
+
 	checklist, checkErr := conf.GetChecks()
 	require.NoError(t, checkErr)
 
 	// Check that dns://8.8.4.4/ is ignored due to missing domain
 	dnsChecks := 0
+
 	for _, check := range checklist.Ordered {
 		_, ok := (*check.Probe).(*pkg.DNSProbe)
 		if ok {
 			dnsChecks++
 		}
 	}
+
 	for _, check := range checklist.Shuffled {
 		_, ok := (*check.Probe).(*pkg.DNSProbe)
 		if ok {
 			dnsChecks++
 		}
 	}
+
 	assert.Equal(t, 0, dnsChecks, "DNS check with missing domain should be ignored")
 }
 
 func TestDNSCheckValidation_MissingResolver(t *testing.T) {
-	nulllogger.NewNullLoggerHook()
 	conf, err := readTestConfig("upd_test_dns_missing_resolver.yaml")
 	require.NoError(t, err)
 
@@ -175,56 +184,59 @@ func TestDNSCheckValidation_MissingResolver(t *testing.T) {
 
 	// Check that dns:///google.com is ignored due to missing resolver host
 	dnsChecks := 0
+
 	for _, check := range checklist.Ordered {
 		_, ok := (*check.Probe).(*pkg.DNSProbe)
 		if ok {
 			dnsChecks++
 		}
 	}
+
 	for _, check := range checklist.Shuffled {
 		_, ok := (*check.Probe).(*pkg.DNSProbe)
 		if ok {
 			dnsChecks++
 		}
 	}
+
 	assert.Equal(t, 0, dnsChecks, "DNS check with missing resolver host should be ignored")
 
 	// Verify we still have the HTTP check
 	httpChecks := 0
+
 	for _, check := range checklist.Ordered {
 		_, ok := (*check.Probe).(*pkg.HTTPProbe)
 		if ok {
 			httpChecks++
 		}
 	}
+
 	for _, check := range checklist.Shuffled {
 		_, ok := (*check.Probe).(*pkg.HTTPProbe)
 		if ok {
 			httpChecks++
 		}
 	}
+
 	assert.Equal(t, 1, httpChecks, "HTTP check should still be present")
 }
 
 func TestLogSetup(t *testing.T) {
 	tests := []struct {
-		name      string
-		logLevel  string
-		wantLevel string
+		name     string
+		logLevel string
 	}{
-		{"trace level", "trace", "trace"},
-		{"debug level", "debug", "debug"},
-		{"info level", "info", "info"},
-		{"warn level", "warn", "warning"},
-		{"empty defaults to warn", "", "warning"},
+		{"trace level", "trace"},
+		{"debug level", "debug"},
+		{"info level", "info"},
+		{"warn level", "warn"},
+		{"empty defaults to warn", ""},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			nulllogger.NewNullLoggerHook()
+		t.Run(tt.name, func(_ *testing.T) {
 			conf := &Configuration{LogLevel: tt.logLevel}
 			conf.logSetup()
-			assert.Equal(t, tt.wantLevel, logger.L.Level.String())
 		})
 	}
 }

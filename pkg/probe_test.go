@@ -15,8 +15,10 @@ const (
 
 func checkError(t *testing.T, report *Report) error {
 	t.Helper()
+
 	err := report.error
 	require.Error(t, err, "should have error")
+
 	got := report.response
 	assert.Empty(t, got, "response should be empty when error is set")
 

@@ -9,7 +9,6 @@ linters:
     - paralleltest
     - testpackage
     - wsl
-    - wsl_v5
   exclusions:
     rules:
       - path: _test\.go$

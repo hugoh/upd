@@ -40,8 +40,11 @@ func Test_Status(t *testing.T) {
 }
 
 func Test_Update(t *testing.T) {
-	var s *Status
-	var c bool
+	var (
+		s *Status
+		c bool
+	)
+
 	s = NewStatus()
 	s.SetRetention(0)
 	c = s.Update(true)
@@ -50,6 +53,7 @@ func Test_Update(t *testing.T) {
 	assert.False(t, c)
 	c = s.Update(false)
 	assert.True(t, c)
+
 	s = NewStatus()
 	s.SetRetention(0)
 	c = s.Update(false)

@@ -26,6 +26,7 @@ type updTransport struct {
 
 func (t *updTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Add("User-Agent", UserAgentPrefix+t.version)
+
 	resp, err := http.DefaultTransport.RoundTrip(req)
 	if err != nil {
 		return nil, fmt.Errorf("updTransport RoundTrip error: %w", err)
@@ -63,20 +64,24 @@ func (p *HTTPProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
 
 		return report
 	}
+
 	start := time.Now()
 	resp, err := p.client.Do(req)
+
 	report := BuildReport(p, start)
 	if err != nil {
 		report.error = fmt.Errorf("error making request to %s: %w", p.URL, err)
 
 		return report
 	}
+
 	err = resp.Body.Close()
 	if err != nil {
 		report.error = fmt.Errorf("error closing response body: %w", err)
 
 		return report
 	}
+
 	report.response = resp.Status
 
 	return report

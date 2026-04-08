@@ -28,6 +28,7 @@ func (it *fakeCheckListIterator) Fetch() *Check {
 	if it.idx >= len(it.checks) {
 		return nil
 	}
+
 	c := it.checks[it.idx]
 	it.idx++
 

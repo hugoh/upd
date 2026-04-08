@@ -1,6 +1,68 @@
 [tools]
-go = "1.26.1"
+go = "1.26.2"
 golangci-lint = "2.11.4"
 goreleaser = "2.15.2"
+gotestsum = "1.13.0"
 prettier = "3.8.1"
-task = "3.44.1"
+
+[env]
+COVEROUT = "cover.out"
+TEST_COVERAGE = "80"
+
+[tasks.lint]
+description = "Lint code"
+run = [
+        "go mod tidy -diff",
+        "golangci-lint run ./...",
+        "prettier --check .",
+        "goreleaser check",
+]
+
+[tasks.test]
+description = "Run tests"
+run = ["gotestsum"]
+
+[tasks.test-int]
+description = "Run integration tests"
+run = ["gotestsum -- -tags=integration ./internal"]
+
+[tasks.coverage]
+description = "Generate test coverage"
+run = "go test ./... -coverprofile=${COVEROUT} -covermode=atomic -coverpkg=./..."
+
+[tasks.covercheck]
+description = "Check test coverage"
+depends = ["coverage"]
+run = "go tool cover -func=${COVEROUT} | awk -v min=${TEST_COVERAGE} '/total/{gsub(/%/,\"\",$3); print \"Coverage: \"$3\"% (Minimum: \"min\"%)\"; exit ($3<min)?1:0}'"
+
+[tasks.ci]
+description = "Run CI checks (lint, test, coverage)"
+depends = ["lint", "test", "test-int", "covercheck"]
+
+[tasks.clean]
+description = "Clean the project"
+run = ["go clean", "rm -f ${COVEROUT}"]
+
+[tasks.fix]
+description = "Fix lint issues"
+run = "golangci-lint run --fix ./..."
+
+[tasks.fmt]
+description = "Format the code"
+run = ["golangci-lint fmt ./...", "prettier --write ."]
+
+[tasks.tidy]
+description = "Tidy the module"
+run = "go mod tidy -v"
+
+[tasks.build]
+description = "Build application"
+run = "go build -o dist/upd ."
+
+[tasks.dev]
+description = "Development mode"
+run = "go run ."
+
+[tasks.depup]
+description = "Upgrade dependencies"
+run = ["go get -u -t ./...", "go mod tidy -v"]

@@ -1,11 +1,14 @@
 package internal
 
 import (
+	"bytes"
 	"context"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
 )
 
@@ -48,6 +51,7 @@ func TestRun_WaitsForWorkerCompletion(t *testing.T) {
 	}
 
 	done := make(chan struct{})
+
 	go func() {
 		err := Run(ctx, cmd)
 		assert.NoError(t, err)
@@ -63,4 +67,36 @@ func TestRun_WaitsForWorkerCompletion(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("Run did not exit after context cancellation")
 	}
+}
+
+func TestCmd_Version(t *testing.T) {
+	oldArgs := os.Args
+
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{"upd", "--version"}
+
+	buf := &bytes.Buffer{}
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := Cmd()
+	require.NoError(t, err)
+
+	_ = w.Close()
+	os.Stdout = oldStdout
+
+	_, _ = buf.ReadFrom(r)
+}
+
+func TestCmd_Help(t *testing.T) {
+	oldArgs := os.Args
+
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{"upd", "--help"}
+
+	err := Cmd()
+	require.NoError(t, err)
 }

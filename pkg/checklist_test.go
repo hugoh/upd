@@ -20,6 +20,7 @@ func TestChecksIterator_Fetch(t *testing.T) {
 		got := it.Fetch()
 		assert.NotNil(t, got, "Fetch() = nil at index %d, want check", i)
 	}
+
 	assert.Nil(t, it.Fetch(), "Fetch() after end should return nil")
 }
 
@@ -58,13 +59,16 @@ func TestCheckListIterator_Fetch(t *testing.T) {
 	it := cl.GetIterator()
 
 	got := []*Check{}
+
 	for {
 		c := it.Fetch()
 		if c == nil {
 			break
 		}
+
 		got = append(got, c)
 	}
+
 	assert.Len(t, got, 4, "Fetch() got %d checks, want 4", len(got))
 
 	assert.Same(t, got[0], ordered[0], "first check should be from ordered")
@@ -82,11 +86,14 @@ func sameElements(a, b Checks) bool {
 	if len(a) != len(b) {
 		return false
 	}
+
 	ma := make(map[*Check]int)
 	mb := make(map[*Check]int)
+
 	for _, x := range a {
 		ma[x]++
 	}
+
 	for _, x := range b {
 		mb[x]++
 	}

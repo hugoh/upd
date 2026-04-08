@@ -49,6 +49,7 @@ func (tracker *StateChangeTracker) RecordChange(timestamp time.Time, state bool)
 	if tracker.tail != nil {
 		tracker.tail.next = newChange
 	}
+
 	tracker.tail = newChange
 
 	if tracker.head == nil {
@@ -86,9 +87,11 @@ func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 	if last > tracker.retention {
 		return -1, 0, ErrInvalidRange
 	}
+
 	if end.Sub(tracker.started) < last {
 		return -1, 0, ErrInvalidRange
 	}
+
 	availability, downtime := tracker.uptimeCalculation(currentState, last, end)
 
 	return availability, downtime, nil
@@ -99,6 +102,7 @@ func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 // The count includes only records that are within the retention period.
 func (tracker *StateChangeTracker) RecordsCount() int {
 	recordsNumber := 0
+
 	cur := tracker.head
 	for cur != nil {
 		recordsNumber++
@@ -116,15 +120,16 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 	if reportCount == 0 {
 		return nil
 	}
+
 	reports := make([]ReportByPeriod, reportCount)
 	for idx := range reportCount {
 		period := periods[idx]
+
 		availability, downtime, err := tracker.CalculateUptime(currentState, period, end)
 		if err != nil {
-			logger.L.WithError(err).
-				WithField("period", period).
-				Debug("[Stats] invalid range for stat report")
+			logger.L.Debug("[Stats] invalid range for stat report", "error", err, "period", period)
 		}
+
 		reports[idx] = ReportByPeriod{
 			Period:       ReadableDuration(period),
 			Availability: ReadablePercent(availability),
@@ -152,11 +157,15 @@ func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
 
 	current := tracker.tail
 	endOfPeriod := end
-	var lastTimestampSeen time.Time
-	var lastStateRecorded bool
+
+	var (
+		lastTimestampSeen time.Time
+		lastStateRecorded bool
+	)
 
 	for current != nil {
 		lastStateRecorded = current.up
+
 		lastTimestampSeen = current.timestamp
 		if lastTimestampSeen.Before(start) {
 			lastTimestampSeen = start

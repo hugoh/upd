@@ -112,6 +112,7 @@ func TestStatHandler_ServeHTTP(t *testing.T) {
 	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 
 	var raw map[string]any
+
 	err := json.Unmarshal(rec.Body.Bytes(), &raw)
 	require.NoError(t, err)
 	assert.Equal(t, true, raw["isUp"])
@@ -230,6 +231,7 @@ func TestReport_JSON_Marshal(t *testing.T) {
 	require.NoError(t, err)
 
 	var raw map[string]any
+
 	err = json.Unmarshal(data, &raw)
 	require.NoError(t, err)
 
@@ -253,6 +255,7 @@ func TestReport_JSONFieldNames(t *testing.T) {
 	require.NoError(t, err)
 
 	var raw map[string]any
+
 	err = json.Unmarshal(data, &raw)
 	require.NoError(t, err)
 

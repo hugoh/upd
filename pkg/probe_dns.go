@@ -40,12 +40,14 @@ func (p DNSProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
 	}
 	start := time.Now()
 	addr, err := resolver.LookupHost(ctx, p.Domain)
+
 	report := BuildReport(p, start)
 	if err != nil {
 		report.error = fmt.Errorf("error resolving %s: %w", p.Domain, err)
 
 		return report
 	}
+
 	report.response = fmt.Sprintf("%s @ %s", addr[0], p.DNSResolver)
 
 	return report

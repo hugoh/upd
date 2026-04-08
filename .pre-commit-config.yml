@@ -1,9 +1,0 @@
-repos:
-  - repo: local
-    hooks:
-      - id: test
-        name: Run tests
-        language: system
-        entry: task test
-        pass_filenames: false
-        types: [go, yaml]

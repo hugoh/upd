@@ -240,7 +240,9 @@ func (suite *TestSuiteStats) TestCalc_EmptyWithRecordChange() {
 
 func (suite *TestSuiteStats) TestCalcError() {
 	empty := GetTracker()
+
 	var err error
+
 	_, _, err = empty.CalculateUptime(true, 72*time.Hour, suite.Now)
 	suite.Require().Error(err)
 	_, _, err = empty.CalculateUptime(true, 24*time.Hour, suite.Now)

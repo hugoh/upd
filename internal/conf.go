@@ -5,31 +5,31 @@
 //
 // The Configuration struct is loaded from YAML files and contains all
 // settings for the application including:
-//   - Network connectivity checks (HTTP, TCP, DNS)
-//   - Check intervals (normal and down states)
-//   - Down actions to execute when connection fails
-//   - Statistics server configuration
-//   - Logging configuration
+// - Network connectivity checks (HTTP, TCP, DNS)
+// - Check intervals (normal and down states)
+// - Down actions to execute when connection fails
+// - Statistics server configuration
+// - Logging configuration
 //
 // Example configuration:
 //
 //	checks:
-//	  every:
-//	    normal: 2m
-//	    down: 30s
-//	  list:
-//	    ordered:
-//	      - http://captive.apple.com/hotspot-detect.html
-//	    shuffled:
-//	      - dns://8.8.8.8/example.com
-//	  timeout: 10s
+//	 every:
+//	   normal: 2m
+//	   down: 30s
+//	 list:
+//	   ordered:
+//	     - http://captive.apple.com/hotspot-detect.html
+//	   shuffled:
+//	     - dns://8.8.8.8/example.com
+//	 timeout: 10s
 //	downAction:
-//	  exec: \"echo 'Connection down'\"
-//	  every:
-//	    after: 60s
-//	    repeat: 300s
+//	 exec: "echo 'Connection down'"
+//	 every:
+//	   after: 60s
+//	   repeat: 300s
 //	stats:
-//	  port: \":8080\"
+//	 port: ":8080"
 //	logLevel: debug
 //
 // The configuration supports environment variable substitution using
@@ -38,16 +38,16 @@
 // Example with environment variables:
 //
 //	checks:
-//	  timeout: ${UPD_TIMEOUT:10s}  // Use UPD_TIMEOUT env var or 10s default
+//	 timeout: ${UPD_TIMEOUT:10s} // Use UPD_TIMEOUT env var or 10s default
 //
 // Command Handling:
 //
 // The Cmd function provides the main CLI interface using the urfave/cli
 // library. It supports:
-//   - Configuration file specification via `-c` or `--config` flag
-//   - Debug logging via `-d` or `--debug` flag
-//   - SIGHUP signal handling for configuration reload
-//   - Graceful shutdown on SIGINT or SIGTERM
+// - Configuration file specification via `-c` or `--config` flag
+// - Debug logging via `-d` or `--debug` flag
+// - SIGHUP signal handling for configuration reload
+// - Graceful shutdown on SIGINT or SIGTERM
 //
 // Network Security:
 //
@@ -58,6 +58,7 @@ package internal
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -75,7 +76,6 @@ import (
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/rawbytes"
 	"github.com/knadh/koanf/v2"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -117,7 +117,7 @@ type Configuration struct {
 }
 
 func configError(msg string, path string, err error) (*Configuration, error) {
-	logrus.WithField("file", path).WithError(err).Error(msg)
+	slog.Error(msg, "file", path, "error", err)
 
 	return nil, fmt.Errorf("%s: %w", msg, err)
 }
@@ -140,12 +140,13 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 	// Read file - cfgFile has been cleaned and resolved to absolute path
 	// #nosec G304 // Path is sanitized by filepath.Abs() and filepath.Clean(), and only reads admin-configured files
 	var content []byte
+
 	content, err = os.ReadFile(absPath) // #nosec G304
 	if err != nil {
 		return configError("Could not read config", absPath, err)
 	}
 
-	logger.L.WithField("file", absPath).Debug("[Config] config file used")
+	logger.L.Debug("[Config] config file used", "file", absPath)
 
 	substContent, err := envsubst.EvalEnv(string(content))
 	if err != nil {
@@ -157,17 +158,21 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 	if err != nil {
 		return configError("Could not read config", absPath, err)
 	}
+
 	var conf Configuration
+
 	err = cfg.UnmarshalWithConf("", &conf, koanf.UnmarshalConf{})
 	if err != nil {
 		return configError("Unable to parse the config", cfgFile, err)
 	}
 
 	validate := validator.New()
+
 	err = validate.RegisterValidation("validTCPPort", isValidTCPPort)
 	if err != nil {
 		return configError("failed to instantiate config validator", cfgFile, err)
 	}
+
 	err = validate.Struct(&conf)
 	if err != nil {
 		return configError("Missing required attributes", cfgFile, err)
@@ -206,52 +211,54 @@ func (c Configuration) GetChecks() (*pkg.CheckList, error) {
 func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
 	checks := make([]*pkg.Check, 0, len(category))
 	for _, check := range category {
-		url, err := url.Parse(check)
+		parsedURL, err := url.Parse(check)
 		if err != nil {
-			logger.L.WithFields(logrus.Fields{
-				"check": check,
-				"err":   err,
-			}).Error("could not parse check in config")
+			logger.L.Error("could not parse check in config", "check", check, "error", err)
 
 			continue
 		}
+
 		var probe pkg.Probe
-		switch url.Scheme {
+
+		switch parsedURL.Scheme {
 		case pkg.DNS:
-			domain := strings.TrimPrefix(url.Path, "/")
+			domain := strings.TrimPrefix(parsedURL.Path, "/")
 			if domain == "" {
-				logger.L.WithFields(logrus.Fields{
-					"check": check,
-				}).Error("DNS check missing domain")
+				logger.L.Error("DNS check missing domain", "check", check)
 
 				continue
 			}
-			if url.Host == "" {
-				logger.L.WithFields(logrus.Fields{
-					"check": check,
-				}).Error("DNS check missing resolver host")
+
+			if parsedURL.Host == "" {
+				logger.L.Error("DNS check missing resolver host", "check", check)
 
 				continue
 			}
-			port := url.Port()
+
+			port := parsedURL.Port()
 			if port == "" {
 				port = DefaultDNSPort
 			}
-			dnsResolver := url.Host + ":" + port
+
+			dnsResolver := parsedURL.Host + ":" + port
 			probe = pkg.NewDNSProbe(dnsResolver, domain)
 		case pkg.HTTP, pkg.HTTPS:
-			probe = pkg.NewHTTPProbe(url.String())
+			probe = pkg.NewHTTPProbe(parsedURL.String())
 		case pkg.TCP:
-			hostPort := fmt.Sprintf("%s:%s", url.Hostname(), url.Port())
+			hostPort := fmt.Sprintf("%s:%s", parsedURL.Hostname(), parsedURL.Port())
 			probe = pkg.NewTCPProbe(hostPort)
 		default:
-			logger.L.WithFields(logrus.Fields{
-				"check":    check,
-				"protocol": url.Scheme,
-			}).Error("unknown protocol in config")
+			logger.L.Error(
+				"unknown protocol in config",
+				"check",
+				check,
+				"protocol",
+				parsedURL.Scheme,
+			)
 
 			continue
 		}
+
 		checks = append(checks, &pkg.Check{
 			Probe:   &probe,
 			Timeout: c.Checks.TimeOut,
@@ -286,20 +293,28 @@ func (c Configuration) GetDelays() map[bool]time.Duration {
 }
 
 func (c Configuration) logSetup() {
-	if logger.L.GetLevel() == logrus.DebugLevel {
-		// Already set
+	if c.LogLevel == "" {
 		return
 	}
+
+	var level slog.Level
+
 	switch c.LogLevel {
 	case "trace":
-		logger.L.SetLevel(logrus.TraceLevel)
+		level = slog.LevelDebug - 4 //nolint:mnd // slog doesn't have LevelTrace, use LevelDebug - 4
 	case "debug":
-		logger.L.SetLevel(logrus.DebugLevel)
+		level = slog.LevelDebug
 	case "info":
-		logger.L.SetLevel(logrus.InfoLevel)
-	case "warn", "":
-		logger.L.SetLevel(logrus.WarnLevel)
+		level = slog.LevelInfo
+	case "warn":
+		level = slog.LevelWarn
 	default:
-		logger.L.WithField("loglevel", c.LogLevel).Error("[Config] Unknown loglevel")
+		logger.L.Error("[Config] Unknown loglevel", "loglevel", c.LogLevel)
+
+		return
 	}
+
+	logger.L = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: level,
+	}))
 }

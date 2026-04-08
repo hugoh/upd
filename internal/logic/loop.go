@@ -86,7 +86,6 @@ import (
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/status"
 	"github.com/hugoh/upd/pkg"
-	"github.com/sirupsen/logrus"
 )
 
 // Delays maps connection state to check interval durations.
@@ -111,7 +110,8 @@ func NewLoop() *Loop {
 }
 
 // Configure initializes the loop with checks, delays, and optional down action.
-func (l *Loop) Configure(checkList *pkg.CheckList,
+func (l *Loop) Configure(
+	checkList *pkg.CheckList,
 	delays Delays,
 	downAction *DownAction,
 	retention time.Duration,
@@ -132,6 +132,7 @@ func (l *Loop) DownActionStart(ctx context.Context) error {
 	if l.downActionLoop != nil {
 		return ErrDownActionRunning
 	}
+
 	l.downActionLoop = l.downAction.Start(ctx)
 
 	return nil
@@ -143,6 +144,7 @@ func (l *Loop) DownActionStop(ctx context.Context) {
 		// Nothing to stop
 		return
 	}
+
 	l.downActionLoop.Stop(ctx)
 	l.downActionLoop = nil
 }
@@ -153,16 +155,19 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 	if !changed {
 		return
 	}
-	logger.L.WithField("up", l.status.Up).Info("[Loop] connection status changed")
+
+	logger.L.Info("[Loop] connection status changed", "up", l.status.Up)
+
 	if !l.hasDownAction() {
 		return
 	}
+
 	if upStatus {
 		l.DownActionStop(ctx)
 	} else {
 		err := l.DownActionStart(ctx)
 		if err != nil {
-			logger.L.WithError(err).Error("[Loop] could not start DownAction")
+			logger.L.Error("[Loop] could not start DownAction", "error", err)
 		}
 	}
 }
@@ -170,18 +175,21 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 // Run starts the monitoring loop.
 func (l *Loop) Run(ctx context.Context) {
 	var checker Checker
+
 	if l.statServer == nil {
 		l.statServer = status.StartStatServer(l.status, l.statServerConfig)
 	}
+
 	for {
-		status, err := pkg.CheckerRun(ctx, checker, l.checkList.GetIterator())
+		checkStatus, err := pkg.CheckerRun(ctx, checker, l.checkList.GetIterator())
 		if err == nil {
-			l.ProcessCheck(ctx, status)
+			l.ProcessCheck(ctx, checkStatus)
 		} else {
-			logger.L.WithError(err).Error("[Loop] error")
+			logger.L.Error("[Loop] error", "error", err)
 		}
+
 		sleepTime := l.delays[l.status.Up]
-		logger.L.WithField("wait", sleepTime).Trace("[Loop] waiting for next loop iteration")
+		logger.L.Debug("[Loop] waiting for next loop iteration", "wait", sleepTime)
 
 		select {
 		case <-ctx.Done():
@@ -196,6 +204,7 @@ func (l *Loop) Run(ctx context.Context) {
 // Stop gracefully shuts down the loop and its components.
 func (l *Loop) Stop(ctx context.Context) {
 	l.DownActionStop(ctx)
+
 	if l.statServer != nil {
 		l.statServer.StopStatServer(ctx)
 	}
@@ -209,21 +218,25 @@ func (l *Loop) hasDownAction() bool {
 type Checker struct{}
 
 // CheckRun logs the start of a check.
-func (checker Checker) CheckRun(c pkg.Check) {
-	probe := *c.Probe
-	logger.L.WithFields(logrus.Fields{
-		"probe":    probe,
-		"protocol": probe.Scheme(),
-		"timeout":  c.Timeout,
-	}).Trace("[Check] running")
+func (checker Checker) CheckRun(chk pkg.Check) {
+	probe := *chk.Probe
+	logger.L.Debug(
+		"[Check] running",
+		"probe",
+		probe,
+		"protocol",
+		probe.Scheme(),
+		"timeout",
+		chk.Timeout,
+	)
 }
 
 // ProbeSuccess logs successful probe results.
 func (checker Checker) ProbeSuccess(report *pkg.Report) {
-	logger.L.WithFields(report.LogrusFields()).Debug("[Check] success")
+	logger.L.Debug("[Check] success", report.LogAttrs()...)
 }
 
 // ProbeFailure logs failed probe results.
 func (checker Checker) ProbeFailure(report *pkg.Report) {
-	logger.L.WithFields(report.LogrusFields()).Warn("[Check] failed")
+	logger.L.Warn("[Check] failed", report.LogAttrs()...)
 }

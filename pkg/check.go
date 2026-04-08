@@ -142,12 +142,14 @@ func CheckerRun(
 		if check == nil {
 			return false, nil // All checks failed
 		}
+
 		report := check.RunProbe(ctx, checker)
 		if report.error != nil {
 			checker.ProbeFailure(report)
 
 			continue
 		}
+
 		checker.ProbeSuccess(report)
 
 		return true, nil

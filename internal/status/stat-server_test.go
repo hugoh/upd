@@ -41,6 +41,7 @@ func TestStartStatServer_WithPort(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	server.StopStatServer(ctx)
 }
 
@@ -74,6 +75,7 @@ func TestStatServer_Start_WithTimeouts(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	server.StopStatServer(ctx)
 }
 
@@ -104,6 +106,7 @@ func TestStatServer_Start_UsesDefaultTimeouts(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	server.StopStatServer(ctx)
 }
 
@@ -132,6 +135,7 @@ func TestStopStatServer_GracefulShutdown(t *testing.T) {
 	}
 
 	go server.Start()
+
 	time.Sleep(50 * time.Millisecond)
 
 	require.NotNil(t, server.server)
@@ -159,6 +163,7 @@ func TestStatServer_Route(t *testing.T) {
 	}
 
 	go server.Start()
+
 	time.Sleep(50 * time.Millisecond)
 
 	require.NotNil(t, server.server)
@@ -166,6 +171,7 @@ func TestStatServer_Route(t *testing.T) {
 	url := "http://localhost" + server.server.Addr + StatRoute
 
 	client := &http.Client{Timeout: 1 * time.Second}
+
 	resp, err := client.Get(url)
 	if err == nil {
 		err = resp.Body.Close()
@@ -176,6 +182,7 @@ func TestStatServer_Route(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	server.StopStatServer(ctx)
 }
 
