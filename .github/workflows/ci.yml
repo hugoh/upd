@@ -14,7 +14,7 @@ jobs:
     outputs:
       tools: ${{ steps.mise.outputs.tools }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
         with:
           persist-credentials: false
       - uses: yshrsmz/action-mise-values@92f49c5a07ebc7ffa957be5efa6a2c673578bbb0
@@ -27,14 +27,14 @@ jobs:
       contents: read
     steps:
       - &checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
         with:
           persist-credentials: false
       - &setup-go
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
         with:
           go-version: ${{ fromJson(needs.versions.outputs.tools).go }}
-      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20
+      - uses: golangci/golangci-lint-action@46c9287ccb5fd9a896cb5705a7012084e34f6736
         with:
           version: v${{ fromJson(needs.versions.outputs.tools).golangci-lint }}
 
@@ -49,7 +49,7 @@ jobs:
       - *setup-go
       - &setup-task
         name: Install Task
-        uses: arduino/setup-task@b91d5d2c96a56797b48ac1e0e89220bf64044611
+        uses: arduino/setup-task@77082889a3e84e008fbc86f7113cfc85a3a5ca8c
         with:
           version: ${{ fromJson(needs.versions.outputs.tools).task }}
       - name: Test
