@@ -1,5 +1,6 @@
 [tools]
 go = "1.26.2"
+"go:github.com/vladopajic/go-test-coverage" = "1.0.1"
 golangci-lint = "2.11.4"
 goreleaser = "2.15.2"
 gotestsum = "1.13.0"
@@ -28,16 +29,12 @@ run = ["gotestsum -- -tags=integration ./internal"]
 
 [tasks.coverage]
 description = "Generate test coverage"
-run = "go test ./... -coverprofile=${COVEROUT} -covermode=atomic -coverpkg=./..."
+run = "go test ./... -coverprofile=${COVEROUT} -covermode=atomic"
 
 [tasks.covercheck]
 description = "Check test coverage"
 depends = ["coverage"]
-run = """
-  cov=$(go tool cover -func=${COVEROUT} | awk '/total/{gsub(/%/,"",$3); print $3}')
-  echo "Coverage: ${cov}% (Minimum: ${TEST_COVERAGE}%)"
-  awk "BEGIN{exit ($cov < $TEST_COVERAGE)}"
-"""
+run = "go-test-coverage -config .testcoverage.yml"
 
 [tasks.ci]
 description = "Run CI checks (lint, test, coverage)"
