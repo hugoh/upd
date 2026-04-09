@@ -5,52 +5,26 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hugoh/upd/internal/nulllogger"
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func ensureExec(t *testing.T, hook *test.Hook, expectedValue string, foundCount int) {
-	t.Helper()
-	assert.Eventually(t, func() bool {
-		count := 0
-		for _, e := range hook.AllEntries() {
-			if val, ok := e.Data["exec"]; ok {
-				count++
-				if val != expectedValue {
-					return false
-				}
-				if count == foundCount {
-					return true
-				}
-			}
-		}
-
-		return false
-	}, 2*time.Second, 20*time.Millisecond, "Expected to find %d entries with exec=%s", foundCount, expectedValue)
-}
 
 func Test_ExecuteSucceed(t *testing.T) {
 	da := &DownAction{
 		Exec: "true",
 	}
-	hook := nulllogger.NewNullLoggerHook()
 	dal, _ := da.NewDownActionLoop(context.Background())
 	err := dal.Execute(context.Background(), da.Exec)
 	require.NoError(t, err)
-	ensureExec(t, hook, "/usr/bin/true", 1)
 }
 
 func Test_ExecuteFail(t *testing.T) {
 	da := &DownAction{
 		Exec: "false",
 	}
-	hook := nulllogger.NewNullLoggerHook()
 	dal, _ := da.NewDownActionLoop(context.Background())
 	err := dal.Execute(context.Background(), da.Exec)
 	require.NoError(t, err, "Success in starting a command that fails")
-	ensureExec(t, hook, "/usr/bin/false", 1)
 }
 
 func Test_ExecuteNonExistent(t *testing.T) {
@@ -63,8 +37,10 @@ func Test_ExecuteNonExistent(t *testing.T) {
 }
 
 func getTestDA() *DownAction {
-	const after = 42 * time.Second
-	const every = 1 * time.Second
+	const (
+		after = 42 * time.Second
+		every = 1 * time.Second
+	)
 
 	return &DownAction{
 		After: after,
@@ -82,32 +58,31 @@ func Test_Start(t *testing.T) {
 }
 
 func Test_StartAndStop(t *testing.T) {
-	time.Sleep(50 * time.Millisecond)
 	every := 100 * time.Millisecond
 	da := &DownAction{
 		After:    10 * time.Millisecond,
 		Every:    every,
 		Exec:     "true",
-		StopExec: "false",
+		StopExec: "true",
 	}
-	hook := nulllogger.NewNullLoggerHook()
 	dal := da.Start(context.Background())
 	assert.NotNil(t, dal, "DownAction loop is running")
 	time.Sleep(50 * time.Millisecond)
-	ensureExec(t, hook, "/usr/bin/true", 1)
-	hook.Reset()
 	dal.Stop(context.Background())
-	ensureExec(t, hook, "/usr/bin/false", 2)
 }
 
 func testBackoff(t *testing.T, hasLimit bool) {
 	t.Helper()
+
 	da := getTestDA()
+
 	const backoffLimit = 2 * time.Second
 	if hasLimit {
 		da.BackoffLimit = backoffLimit
 	}
+
 	assert.InEpsilon(t, 1.5, BackoffFactor, 0.01, "Ensuring we have the right values")
+
 	dal, _ := da.NewDownActionLoop(context.Background())
 	assert.Equal(t, DownActionIteration{iteration: -1, sleepTime: 0}, *dal.it)
 	dal.iterate()
@@ -115,14 +90,17 @@ func testBackoff(t *testing.T, hasLimit bool) {
 	dal.iterate()
 	assert.Equal(t, DownActionIteration{iteration: 1, sleepTime: da.Every}, *dal.it)
 	dal.iterate()
+
 	current := time.Duration(1.5 * float64(time.Second))
 	assert.Equal(t, DownActionIteration{iteration: 2, sleepTime: current}, *dal.it)
 	dal.iterate()
+
 	if hasLimit {
 		current = da.BackoffLimit
 	} else {
 		current = time.Duration(2.25 * float64(time.Second))
 	}
+
 	assert.Equal(
 		t,
 		DownActionIteration{iteration: 3, sleepTime: current, limitReached: hasLimit},

@@ -6,8 +6,6 @@ package pkg
 
 import (
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
 // Report is the result of a connection attempt.
@@ -32,19 +30,16 @@ func BuildReport(p Probe, startTime time.Time) *Report {
 	}
 }
 
-// LogrusFields returns logrus fields for logging the report.
-func (r *Report) LogrusFields() logrus.Fields {
-	fields := logrus.Fields{
-		"protocol": r.protocol,
-		"elapsed":  r.elapsed,
-	}
+// LogAttrs returns log attributes for logging the report.
+func (r *Report) LogAttrs() []any {
+	attrs := []any{"protocol", r.protocol, "elapsed", r.elapsed}
 	if r.response != "" {
-		fields["response"] = r.response
+		attrs = append(attrs, "response", r.response)
 	} else if r.error != nil {
-		fields["error"] = r.error.Error()
+		attrs = append(attrs, "error", r.error.Error())
 	}
 
-	return fields
+	return attrs
 }
 
 // Protocol returns the protocol used for the probe (e.g., "http", "tcp", "dns").

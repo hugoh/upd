@@ -11,7 +11,7 @@ import (
 
 const (
 	// JSONIndentSpaces is the indentation used for JSON output.
-	JSONIndentSpaces = "    "
+	JSONIndentSpaces = "  "
 	// FailedToGenerateJSONMsg is the error message for JSON generation failures.
 	FailedToGenerateJSONMsg = "Failed to generate JSON"
 )
@@ -61,7 +61,7 @@ func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	logger.L.WithField("requester", req.RemoteAddr).Info("[Stats] requested")
+	logger.L.Info("[Stats] requested", "requester", req.RemoteAddr)
 
 	stats := h.GenStatReport()
 
@@ -69,7 +69,7 @@ func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 
 	jsonData, err := json.MarshalIndent(stats, "", JSONIndentSpaces)
 	if err != nil {
-		logger.L.WithError(err).Error("[Stats] error marshalling JSON stats")
+		logger.L.Error("[Stats] error marshalling JSON stats", "error", err)
 		http.Error(writer, FailedToGenerateJSONMsg, http.StatusInternalServerError)
 
 		return
@@ -77,6 +77,6 @@ func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 
 	_, err = writer.Write(jsonData)
 	if err != nil {
-		logger.L.WithError(err).Error("[Stats] error returning JSON stats")
+		logger.L.Error("[Stats] error returning JSON stats", "error", err)
 	}
 }

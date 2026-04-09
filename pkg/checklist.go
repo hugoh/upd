@@ -56,6 +56,7 @@ func (it *ChecksIteratorImpl) ShuffleIfNeeded() {
 	if it.index > 0 {
 		return
 	}
+
 	it.checks.Shuffle()
 }
 
@@ -82,11 +83,14 @@ func (cl *CheckList) GetIterator() *CheckListIteratorImpl {
 // Fetch returns the next check from ordered then shuffled lists.
 func (it *CheckListIteratorImpl) Fetch() *Check {
 	var check *Check
+
 	check = it.orderedIterator.Fetch()
 	if check != nil {
 		return check
 	}
+
 	it.shuffledIterator.ShuffleIfNeeded()
+
 	check = it.shuffledIterator.Fetch()
 	if check != nil {
 		return check

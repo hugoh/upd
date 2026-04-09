@@ -3,7 +3,9 @@ package logic
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/hugoh/upd/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -89,4 +91,32 @@ func Test_ProcessCheck_StatusChanged_DownStatus_StartsDownAction_Error(t *testin
 	loop.ProcessCheck(ctx, false)
 	// DownAction should still be running
 	assert.NotNil(t, loop.downActionLoop)
+}
+
+func TestChecker_CheckRun(t *testing.T) {
+	checker := Checker{}
+	probe := pkg.Probe(pkg.NewHTTPProbe("http://example.com"))
+	check := pkg.Check{Probe: &probe, Timeout: time.Second}
+
+	assert.NotPanics(t, func() {
+		checker.CheckRun(check)
+	})
+}
+
+func TestChecker_ProbeSuccess(t *testing.T) {
+	checker := Checker{}
+	report := &pkg.Report{}
+
+	assert.NotPanics(t, func() {
+		checker.ProbeSuccess(report)
+	})
+}
+
+func TestChecker_ProbeFailure(t *testing.T) {
+	checker := Checker{}
+	report := &pkg.Report{}
+
+	assert.NotPanics(t, func() {
+		checker.ProbeFailure(report)
+	})
 }

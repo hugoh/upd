@@ -51,6 +51,7 @@ func formatDuration(d time.Duration) string {
 	if strings.HasSuffix(str, TrailingZeroMSuffix) {
 		str = strings.TrimSuffix(str, TrailingZeroSSuffix)
 	}
+
 	if strings.HasSuffix(str, TrailingZeroHSuffix) {
 		str = strings.TrimSuffix(str, TrailingZeroHMSuffix)
 	}

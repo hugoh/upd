@@ -22,14 +22,15 @@ const (
 )
 
 // StatServerConfig holds configuration for the statistics HTTP server.
+//
+//nolint:tagalign // golines formatter reorders tags differently than tagalign expects
 type StatServerConfig struct {
-	Port      string `validate:"omitempty,validTCPPort"`
-	Reports   []time.Duration
-	Retention time.Duration
-	// Timeouts for the HTTP server
-	ReadTimeout  time.Duration `koanf:"readTimeout"  validate:"omitempty,gte=0"`
-	WriteTimeout time.Duration `koanf:"writeTimeout" validate:"omitempty,gte=0"`
-	IdleTimeout  time.Duration `koanf:"idleTimeout"  validate:"omitempty,gte=0"`
+	Port         string `validate:"omitempty,validTCPPort"`
+	Reports      []time.Duration
+	Retention    time.Duration
+	ReadTimeout  time.Duration `validate:"omitempty,gte=0"        koanf:"readTimeout"`
+	WriteTimeout time.Duration `validate:"omitempty,gte=0"        koanf:"writeTimeout"`
+	IdleTimeout  time.Duration `validate:"omitempty,gte=0"        koanf:"idleTimeout"`
 }
 
 // StatServer provides an HTTP endpoint for status statistics.
@@ -46,6 +47,7 @@ func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 
 		return nil
 	}
+
 	server := StatServer{
 		status: status,
 		config: config,
@@ -57,7 +59,6 @@ func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 
 // Start initializes and runs the HTTP server.
 func (s *StatServer) Start() {
-	// Use configured timeouts or fall back to defaults
 	readTimeout := s.config.ReadTimeout
 	if readTimeout == 0 {
 		readTimeout = DefaultStatServerReadTimeout
@@ -83,14 +84,19 @@ func (s *StatServer) Start() {
 		WriteTimeout: writeTimeout,
 		IdleTimeout:  idleTimeout,
 	}
-	logger.L.WithField("statserver", fmt.Sprintf("http://localhost%s%s", s.server.Addr, StatRoute)).
-		Info("[Stats] server started")
+	logger.L.Info(
+		"[Stats] server started",
+		"statserver",
+		fmt.Sprintf("http://localhost%s%s", s.server.Addr, StatRoute),
+	)
+
 	err := s.server.ListenAndServe()
 	if err != nil {
 		if errors.Is(err, http.ErrServerClosed) {
 			return
 		}
-		logger.L.WithError(err).Error("[Stats] error starting stats server")
+
+		logger.L.Error("[Stats] error starting stats server", "error", err)
 	}
 }
 
@@ -99,9 +105,11 @@ func (s *StatServer) StopStatServer(ctx context.Context) {
 	if s.server == nil {
 		return
 	}
+
 	logger.L.Info("[Stats] shutting down stats server")
+
 	err := s.server.Shutdown(ctx)
 	if err != nil {
-		logger.L.WithError(err).Error("[Stats] error shutting down stats server")
+		logger.L.Error("[Stats] error shutting down stats server", "error", err)
 	}
 }

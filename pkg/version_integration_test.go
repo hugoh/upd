@@ -1,6 +1,6 @@
 //go:build integration
 
-package internal_test
+package pkg_test
 
 import (
 	"fmt"
@@ -26,7 +26,15 @@ func TestVersionIsSetByLdflags(t *testing.T) {
 	ldflags := fmt.Sprintf("-X github.com/hugoh/upd/pkg.version=%s", testVersion)
 
 	// Build the main package with the ldflags.
-	buildCmd := exec.Command("go", "build", "-o", binaryPath, "-ldflags", ldflags, "github.com/hugoh/upd")
+	buildCmd := exec.Command(
+		"go",
+		"build",
+		"-o",
+		binaryPath,
+		"-ldflags",
+		ldflags,
+		"github.com/hugoh/upd",
+	)
 	err := buildCmd.Run()
 	require.NoError(t, err, "failed to build binary for testing")
 
@@ -37,5 +45,10 @@ func TestVersionIsSetByLdflags(t *testing.T) {
 
 	// Verify that the output matches the version we injected.
 	expectedOutput := fmt.Sprintf("upd version %s", testVersion)
-	require.Equal(t, expectedOutput, strings.TrimSpace(string(output)), "version output is not correct")
+	require.Equal(
+		t,
+		expectedOutput,
+		strings.TrimSpace(string(output)),
+		"version output is not correct",
+	)
 }

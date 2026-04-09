@@ -18,16 +18,21 @@ func TestDnsProbe(t *testing.T) {
 		"returns the first resolved IP address if the request is successful",
 		func(t *testing.T) {
 			dnsProbe := NewDNSProbe(dnsResolver, "google.com")
+
 			report := dnsProbe.Probe(context.Background(), testTimeout)
 			if report.error != nil {
 				t.Fatal(report.error)
 			}
+
 			got := report.response
+
 			var ip, server string
+
 			_, err := fmt.Sscanf(got, "%s @ %s", &ip, &server)
 			if err != nil {
 				t.Fatalf("the output is not ip @ service: %s: %v", got, err)
 			}
+
 			ipAddr := net.ParseIP(ip)
 			if ipAddr == nil {
 				t.Fatalf("invalid IP address %s: %v", got, err)
@@ -39,6 +44,7 @@ func TestDnsProbe(t *testing.T) {
 		report := dnsProbe.Probe(context.Background(), testTimeout)
 		err := checkError(t, report)
 		got := err.Error()
+
 		prefix := "error resolving invalid.aa"
 		if !strings.HasPrefix(got, prefix) {
 			t.Fatalf("got %q, want prefix %q", got, prefix)

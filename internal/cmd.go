@@ -45,10 +45,12 @@ func SetupLoop(loop *logic.Loop, configPath string) (*Configuration, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error reading configuration: %w", err)
 	}
+
 	checklist, checkErr := newConf.GetChecks()
 	if checkErr != nil {
 		return nil, fmt.Errorf("invalid checks in configuration: %w", checkErr)
 	}
+
 	loop.Configure(checklist,
 		newConf.GetDelays(),
 		newConf.GetDownAction(),
@@ -75,16 +77,21 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 
 		errCh := make(chan error, ErrChanSize)
 		done := make(chan struct{})
+
 		go func(ctx context.Context) {
 			defer close(done)
+
 			var err error
+
 			_, err = SetupLoop(loop, cmd.String(ConfigConfig))
 			if err != nil {
 				errCh <- fmt.Errorf("cannot configure app: %w", err)
 
 				return
 			}
+
 			errCh <- nil
+
 			loop.Run(ctx)
 			loop.Stop(ctx)
 		}(currentWorkerCtx)
@@ -103,6 +110,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 
 				return err
 			}
+
 			<-done
 		case <-sighupCh:
 			logger.L.Info("[App] SIGHUP received: reloading configuration")

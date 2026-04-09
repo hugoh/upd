@@ -1,3 +1,4 @@
+// Package logic provides the core monitoring loop and down action handling.
 package logic
 
 import (
@@ -10,7 +11,6 @@ import (
 
 	"github.com/google/shlex"
 	"github.com/hugoh/upd/internal/logger"
-	"github.com/sirupsen/logrus"
 )
 
 // DownAction holds configuration for actions executed when connection is down.
@@ -54,6 +54,7 @@ func validateCommand(command []string) error {
 	if len(command) == 0 {
 		return ErrNoCommand
 	}
+
 	if command[0] == "" {
 		return ErrEmptyCommand
 	}
@@ -66,10 +67,12 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	if execString == "" {
 		return ErrNoCommand
 	}
+
 	command, errSh := shlex.Split(execString)
 	if errSh != nil {
 		return fmt.Errorf("failed to parse DownAction definition: %w", errSh)
 	}
+
 	err := validateCommand(command)
 	if err != nil {
 		return fmt.Errorf("invalid command: %w", err)
@@ -79,19 +82,20 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	cmdEnv := os.Environ()
 	cmdEnv = append(cmdEnv, fmt.Sprintf("UPD_ITERATION=%d", dal.it.iteration))
 	cmd.Env = cmdEnv
-	logger.L.WithField("exec", cmd.String()).Info("[DownAction] executing command")
+	logger.L.Info("[DownAction] executing command", "exec", cmd.String())
+
 	err = cmd.Start()
 	if err != nil {
-		logger.L.WithField("exec", cmd.String()).WithError(err).Error("[DownAction] failed to run")
+		logger.L.Error("[DownAction] failed to run", "exec", cmd.String(), "error", err)
 
 		return fmt.Errorf("failed to execute DownAction: %w", err)
 	}
+
 	go func() {
 		err := cmd.Wait()
 		if err != nil {
-			logger.L.WithField("exec", cmd.String()).
-				WithError(err).
-				Warn("[DownAction] error executing command")
+			logger.L.Warn("[DownAction] error executing command",
+				"exec", cmd.String(), "error", err)
 		}
 	}()
 
@@ -120,7 +124,9 @@ func (da *DownAction) NewDownActionLoop(ctx context.Context) (*DownActionLoop, c
 // Start begins the down action loop in a goroutine.
 func (da *DownAction) Start(ctx context.Context) *DownActionLoop {
 	dal, ctx := da.NewDownActionLoop(ctx)
+
 	logger.L.Debug("[DownAction] kicking off run loop")
+
 	go dal.run(ctx)
 
 	return dal
@@ -131,9 +137,10 @@ func (dal *DownActionLoop) Stop(ctx context.Context) {
 	if dal.da.StopExec != "" {
 		err := dal.Execute(ctx, dal.da.StopExec)
 		if err != nil && !errors.Is(err, ErrNoCommand) {
-			logger.L.WithError(err).Warn("[DownAction] failed to execute stop command")
+			logger.L.Warn("[DownAction] failed to execute stop command", "error", err)
 		}
 	}
+
 	logger.L.Debug("[DownAction] sending shutdown signal")
 	dal.cancelFunc()
 }
@@ -154,15 +161,16 @@ func (dal *DownActionLoop) iterate() {
 			}
 		}
 	}
-	logger.L.WithFields(logrus.Fields{
-		"iteration":    dal.it.iteration,
-		"sleepTime":    dal.it.sleepTime,
-		"limitReached": dal.it.limitReached,
-	}).Trace("[DownAction] iteration details")
+
+	logger.L.Debug("[DownAction] iteration details",
+		"iteration", dal.it.iteration,
+		"sleepTime", dal.it.sleepTime,
+		"limitReached", dal.it.limitReached)
 }
 
 func (dal *DownActionLoop) run(ctx context.Context) {
 	dal.iterate()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -171,10 +179,12 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 			return
 		case <-time.After(dal.it.sleepTime):
 		}
+
 		err := dal.Execute(ctx, dal.da.Exec)
 		if err != nil {
-			logger.L.WithError(err).Error("[DownAction] failed to execute")
+			logger.L.Error("[DownAction] failed to execute", "error", err)
 		}
+
 		if dal.da.Every > 0 {
 			dal.iterate()
 		} else {
