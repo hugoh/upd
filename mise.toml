@@ -1,6 +1,6 @@
 [tools]
 go = "1.26.2"
-"go:github.com/vladopajic/go-test-coverage" = "1.0.1"
+"go:github.com/vladopajic/go-test-coverage/v2" = "2.18.4"
 golangci-lint = "2.11.4"
 goreleaser = "2.15.2"
 gotestsum = "1.13.0"
