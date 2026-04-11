@@ -37,13 +37,17 @@ jobs:
           version: v${{ fromJson(needs.versions.outputs.tools).golangci-lint }}
 
   test:
+    needs: versions
     environment: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - *checkout
+      - *setup-go
       - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151
+        with:
+          install: false
       - name: Test
         run: mise test
       - name: Test Integration
