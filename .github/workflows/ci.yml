@@ -46,6 +46,8 @@ jobs:
       - *checkout
       - *setup-go
       - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151
+        with:
+          install: false
       - name: Test
         run: mise test
       - name: Test Integration
