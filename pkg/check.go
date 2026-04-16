@@ -62,7 +62,7 @@ func (c *Check) RunProbe(ctx context.Context, checker Checker) *Report {
 	checker.CheckRun(*c)
 	p := *c.Probe
 
-	return p.Probe(ctx, c.Timeout)
+	return p.Execute(ctx, c.Timeout)
 }
 
 // NullChecker is a no-op implementation of the Checker interface.

@@ -14,7 +14,7 @@ type fakeProbe struct {
 	ret *Report
 }
 
-func (f *fakeProbe) Probe(_ context.Context, _ time.Duration) *Report {
+func (f *fakeProbe) Execute(_ context.Context, _ time.Duration) *Report {
 	return f.ret
 }
 func (f *fakeProbe) Scheme() string { return "fake" }

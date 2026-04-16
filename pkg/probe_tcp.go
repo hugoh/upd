@@ -22,8 +22,8 @@ func (p TCPProbe) Scheme() string {
 	return TCP
 }
 
-// Probe executes the TCP connection attempt and returns a report.
-func (p TCPProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
+// Execute runs the TCP connection attempt and returns a report.
+func (p TCPProbe) Execute(ctx context.Context, timeout time.Duration) *Report {
 	start := time.Now()
 	dialer := &net.Dialer{
 		Timeout: timeout,

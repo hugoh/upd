@@ -38,7 +38,7 @@ func TestTcpProbe_Success(t *testing.T) {
 	hostPort := listen.Addr().String()
 	tcpProbe := NewTCPProbe(hostPort)
 
-	report := tcpProbe.Probe(context.Background(), testTimeout)
+	report := tcpProbe.Execute(context.Background(), testTimeout)
 	if report.error != nil {
 		t.Fatal(report.error)
 	}
@@ -62,7 +62,7 @@ func TestTcpProbe_Success(t *testing.T) {
 func TestTcpProbe_RequestFails(t *testing.T) {
 	tcpProbe := NewTCPProbe("localhost:80")
 
-	report := tcpProbe.Probe(context.Background(), 1)
+	report := tcpProbe.Execute(context.Background(), 1)
 	if report.error == nil {
 		t.Fatal("got nil, want an error")
 	}
@@ -82,7 +82,7 @@ func TestTcpProbe_RequestFails(t *testing.T) {
 
 func TestTcpProbe_Timeout(t *testing.T) {
 	tcpProbe := NewTCPProbe("192.0.2.1:53")
-	report := tcpProbe.Probe(context.Background(), testTimeoutFail)
+	report := tcpProbe.Execute(context.Background(), testTimeoutFail)
 	checkTimeout(t, report, "i/o timeout")
 }
 

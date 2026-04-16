@@ -51,8 +51,8 @@ func (p *HTTPProbe) Scheme() string {
 	return HTTP
 }
 
-// Probe executes the HTTP request and returns a report.
-func (p *HTTPProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
+// Execute runs the HTTP request and returns a report.
+func (p *HTTPProbe) Execute(ctx context.Context, timeout time.Duration) *Report {
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
