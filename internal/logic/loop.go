@@ -191,13 +191,17 @@ func (l *Loop) Run(ctx context.Context) {
 		sleepTime := l.delays[l.status.Up]
 		logger.L.Debug("[Loop] waiting for next loop iteration", "wait", sleepTime)
 
+		timer := time.NewTimer(sleepTime)
 		select {
 		case <-ctx.Done():
+			timer.Stop()
 			logger.L.Debug("[Loop] context canceled during sleep, exiting Run()")
 
 			return
-		case <-time.After(sleepTime):
+		case <-timer.C:
 		}
+
+		timer.Stop()
 	}
 }
 

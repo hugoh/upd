@@ -87,3 +87,43 @@ func TestStop_StopsStatServer(t *testing.T) {
 
 	assert.Nil(t, loop.statServer)
 }
+
+func TestRun_StopsTimerOnContextCancel(t *testing.T) {
+	loop := NewLoop()
+	emptyCheckList := &pkg.CheckList{}
+	longDelay := 10 * time.Second
+	loop.Configure(
+		emptyCheckList,
+		Delays{true: longDelay, false: longDelay},
+		nil,
+		0,
+		&status.StatServerConfig{},
+	)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	done := make(chan struct{})
+	start := time.Now()
+
+	go func() {
+		loop.Run(ctx)
+		close(done)
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+
+	select {
+	case <-done:
+		elapsed := time.Since(start)
+		assert.Less(
+			t,
+			elapsed,
+			500*time.Millisecond,
+			"Run() should exit quickly after context cancel, not wait for timer",
+		)
+	case <-time.After(1 * time.Second):
+		t.Fatal("Run() did not exit within expected time - timer may not be stopped properly")
+	}
+}
