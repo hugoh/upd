@@ -165,6 +165,18 @@ func (s *Status) GenStatReport(periods []time.Duration) *Report {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	if s.stateChangeTracker == nil {
+		return &Report{
+			Generated:  generated,
+			Uptime:     ReadableDuration(0),
+			Up:         s.Up,
+			Version:    version.Version(),
+			Stats:      nil,
+			CheckCount: 0,
+			LastUpdate: ReadableDuration(0),
+		}
+	}
+
 	return &Report{
 		Generated:  generated,
 		Uptime:     ReadableDuration(generated.Sub(s.stateChangeTracker.started)),

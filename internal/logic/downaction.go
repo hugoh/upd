@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 
 	"github.com/google/shlex"
@@ -34,6 +35,7 @@ type DownActionLoop struct {
 	da         *DownAction
 	it         *DownActionIteration
 	cancelFunc context.CancelFunc
+	mu         sync.RWMutex
 }
 
 // BackoffFactor is the multiplier for exponential backoff.
@@ -77,10 +79,15 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	if err != nil {
 		return fmt.Errorf("invalid command: %w", err)
 	}
+
+	dal.mu.RLock()
+	iteration := dal.it.iteration
+	dal.mu.RUnlock()
+
 	// #nosec G204 // Command is validated by shlex.Split() and validateCommand() before execution
 	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
 	cmdEnv := os.Environ()
-	cmdEnv = append(cmdEnv, fmt.Sprintf("UPD_ITERATION=%d", dal.it.iteration))
+	cmdEnv = append(cmdEnv, fmt.Sprintf("UPD_ITERATION=%d", iteration))
 	cmd.Env = cmdEnv
 	logger.L.Info("[DownAction] executing command", "exec", cmd.String())
 
@@ -146,6 +153,9 @@ func (dal *DownActionLoop) Stop(ctx context.Context) {
 }
 
 func (dal *DownActionLoop) iterate() {
+	dal.mu.Lock()
+	defer dal.mu.Unlock()
+
 	dal.it.iteration++
 	switch dal.it.iteration {
 	case 0:
@@ -172,12 +182,20 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 	dal.iterate()
 
 	for {
+		dal.mu.RLock()
+		sleepTime := dal.it.sleepTime
+		dal.mu.RUnlock()
+
+		timer := time.NewTimer(sleepTime)
+
 		select {
 		case <-ctx.Done():
+			timer.Stop()
 			logger.L.Debug("[DownAction] canceled")
 
 			return
-		case <-time.After(dal.it.sleepTime):
+		case <-timer.C:
+			timer.Stop()
 		}
 
 		err := dal.Execute(ctx, dal.da.Exec)

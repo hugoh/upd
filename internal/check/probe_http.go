@@ -77,12 +77,11 @@ func (p *HTTPProbe) Execute(ctx context.Context, timeout time.Duration) *Report 
 		return report
 	}
 
-	err = resp.Body.Close()
-	if err != nil {
-		report.error = fmt.Errorf("error closing response body: %w", err)
-
-		return report
-	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && report.error == nil {
+			report.error = fmt.Errorf("error closing response body: %w", closeErr)
+		}
+	}()
 
 	report.response = resp.Status
 

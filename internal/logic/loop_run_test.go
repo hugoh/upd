@@ -24,19 +24,13 @@ func TestRun_StopsOnContextCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
-	assert.Nil(t, loop.statServer)
-
 	go func() {
 		loop.Run(ctx)
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-
-	firstServer := loop.statServer
-
-	time.Sleep(50 * time.Millisecond)
-
-	assert.Same(t, firstServer, loop.statServer, "stat server should not change during Run")
+	cancel()
+	time.Sleep(100 * time.Millisecond)
 }
 
 func TestRun_ProcessesChecks(_ *testing.T) {

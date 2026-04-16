@@ -122,7 +122,8 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 	}
 
 	reports := make([]ReportByPeriod, reportCount)
-	for idx := range reportCount {
+
+	for idx := range periods {
 		period := periods[idx]
 
 		availability, downtime, err := tracker.CalculateUptime(currentState, period, end)

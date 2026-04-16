@@ -68,7 +68,9 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 	defer stopSignalHandlers()
 
 	sighupCh := make(chan os.Signal, SighupChanSize)
+
 	signal.Notify(sighupCh, syscall.SIGHUP)
+	defer signal.Stop(sighupCh)
 
 	loop := logic.NewLoop()
 

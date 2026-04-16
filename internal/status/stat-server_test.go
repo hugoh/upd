@@ -59,12 +59,8 @@ func TestStatServer_Start_WithTimeouts(t *testing.T) {
 		IdleTimeout:  2 * time.Second,
 	}
 
-	server := &StatServer{
-		status: status,
-		config: config,
-	}
-
-	go server.Start()
+	server := StartStatServer(status, config)
+	require.NotNil(t, server)
 
 	time.Sleep(50 * time.Millisecond)
 
@@ -90,12 +86,8 @@ func TestStatServer_Start_UsesDefaultTimeouts(t *testing.T) {
 		Retention: 1 * time.Hour,
 	}
 
-	server := &StatServer{
-		status: status,
-		config: config,
-	}
-
-	go server.Start()
+	server := StartStatServer(status, config)
+	require.NotNil(t, server)
 
 	time.Sleep(50 * time.Millisecond)
 
@@ -129,12 +121,8 @@ func TestStopStatServer_GracefulShutdown(t *testing.T) {
 		Retention: 1 * time.Hour,
 	}
 
-	server := &StatServer{
-		status: status,
-		config: config,
-	}
-
-	go server.Start()
+	server := StartStatServer(status, config)
+	require.NotNil(t, server)
 
 	time.Sleep(50 * time.Millisecond)
 
@@ -157,12 +145,8 @@ func TestStatServer_Route(t *testing.T) {
 		Retention: 1 * time.Hour,
 	}
 
-	server := &StatServer{
-		status: status,
-		config: config,
-	}
-
-	go server.Start()
+	server := StartStatServer(status, config)
+	require.NotNil(t, server)
 
 	time.Sleep(50 * time.Millisecond)
 

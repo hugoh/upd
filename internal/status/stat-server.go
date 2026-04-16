@@ -48,56 +48,40 @@ func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 		return nil
 	}
 
-	server := StatServer{
-		status: status,
-		config: config,
-	}
-	go server.Start()
-
-	return &server
-}
-
-// Start initializes and runs the HTTP server.
-func (s *StatServer) Start() {
-	readTimeout := s.config.ReadTimeout
+	readTimeout := config.ReadTimeout
 	if readTimeout == 0 {
 		readTimeout = DefaultStatServerReadTimeout
 	}
 
-	writeTimeout := s.config.WriteTimeout
+	writeTimeout := config.WriteTimeout
 	if writeTimeout == 0 {
 		writeTimeout = DefaultStatServerWriteTimeout
 	}
 
-	idleTimeout := s.config.IdleTimeout
+	idleTimeout := config.IdleTimeout
 	if idleTimeout == 0 {
 		idleTimeout = DefaultStatServerIdleTimeout
 	}
 
+	server := &StatServer{
+		status: status,
+		config: config,
+		server: &http.Server{
+			Addr:         config.Port,
+			ReadTimeout:  readTimeout,
+			WriteTimeout: writeTimeout,
+			IdleTimeout:  idleTimeout,
+		},
+	}
+
 	mux := http.NewServeMux()
-	statHandler := NewStatHandler(s)
+	statHandler := NewStatHandler(server)
 	mux.Handle(StatRoute, statHandler)
-	s.server = &http.Server{
-		Addr:         s.config.Port,
-		Handler:      mux,
-		ReadTimeout:  readTimeout,
-		WriteTimeout: writeTimeout,
-		IdleTimeout:  idleTimeout,
-	}
-	logger.L.Info(
-		"[Stats] server started",
-		"statserver",
-		fmt.Sprintf("http://localhost%s%s", s.server.Addr, StatRoute),
-	)
+	server.server.Handler = mux
 
-	err := s.server.ListenAndServe()
-	if err != nil {
-		if errors.Is(err, http.ErrServerClosed) {
-			return
-		}
+	go server.listenAndServe()
 
-		logger.L.Error("[Stats] error starting stats server", "error", err)
-	}
+	return server
 }
 
 // StopStatServer gracefully shuts down the statistics server.
@@ -111,5 +95,22 @@ func (s *StatServer) StopStatServer(ctx context.Context) {
 	err := s.server.Shutdown(ctx)
 	if err != nil {
 		logger.L.Error("[Stats] error shutting down stats server", "error", err)
+	}
+}
+
+func (s *StatServer) listenAndServe() {
+	logger.L.Info(
+		"[Stats] server started",
+		"statserver",
+		fmt.Sprintf("http://localhost%s%s", s.server.Addr, StatRoute),
+	)
+
+	err := s.server.ListenAndServe()
+	if err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			return
+		}
+
+		logger.L.Error("[Stats] error starting stats server", "error", err)
 	}
 }
