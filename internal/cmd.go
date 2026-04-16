@@ -13,7 +13,7 @@ import (
 
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
-	"github.com/hugoh/upd/pkg"
+	"github.com/hugoh/upd/internal/version"
 	"github.com/urfave/cli/v3"
 )
 
@@ -68,7 +68,9 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 	defer stopSignalHandlers()
 
 	sighupCh := make(chan os.Signal, SighupChanSize)
+
 	signal.Notify(sighupCh, syscall.SIGHUP)
+	defer signal.Stop(sighupCh)
 
 	loop := logic.NewLoop()
 
@@ -141,7 +143,7 @@ func Cmd() error {
 	app := &cli.Command{
 		Name:    AppName,
 		Usage:   AppShort,
-		Version: pkg.Version(),
+		Version: version.Version(),
 		Flags:   flags,
 		Action:  Run,
 	}

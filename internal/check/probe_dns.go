@@ -1,4 +1,4 @@
-package pkg
+package check
 
 import (
 	"context"
@@ -26,8 +26,8 @@ func (p DNSProbe) Scheme() string {
 	return DNS
 }
 
-// Probe executes the DNS resolution and returns a report.
-func (p DNSProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
+// Execute runs the DNS resolution and returns a report.
+func (p DNSProbe) Execute(ctx context.Context, timeout time.Duration) *Report {
 	resolver := &net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {

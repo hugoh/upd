@@ -1,4 +1,4 @@
-package pkg
+package check
 
 import (
 	"context"
@@ -19,7 +19,7 @@ func TestDnsProbe(t *testing.T) {
 		func(t *testing.T) {
 			dnsProbe := NewDNSProbe(dnsResolver, "google.com")
 
-			report := dnsProbe.Probe(context.Background(), testTimeout)
+			report := dnsProbe.Execute(context.Background(), testTimeout)
 			if report.error != nil {
 				t.Fatal(report.error)
 			}
@@ -41,7 +41,7 @@ func TestDnsProbe(t *testing.T) {
 	)
 	t.Run("returns an error if the request fails", func(t *testing.T) {
 		dnsProbe := NewDNSProbe(dnsResolver, "invalid.aa")
-		report := dnsProbe.Probe(context.Background(), testTimeout)
+		report := dnsProbe.Execute(context.Background(), testTimeout)
 		err := checkError(t, report)
 		got := err.Error()
 
@@ -54,7 +54,7 @@ func TestDnsProbe(t *testing.T) {
 		"returns an error if the request times out",
 		func(t *testing.T) {
 			dnsProbe := NewDNSProbe(addressForTimeout, "google.com")
-			report := dnsProbe.Probe(context.Background(), testTimeoutFail)
+			report := dnsProbe.Execute(context.Background(), testTimeoutFail)
 			checkTimeout(t, report, "i/o timeout")
 		},
 	)

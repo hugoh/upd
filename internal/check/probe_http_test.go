@@ -1,4 +1,4 @@
-package pkg
+package check
 
 import (
 	"context"
@@ -28,7 +28,7 @@ func TestHttpProbe_Success(t *testing.T) {
 	u := url.URL{Scheme: "http", Host: server.Addr}
 	httpProbe := NewHTTPProbe(u.String())
 
-	report := httpProbe.Probe(context.Background(), testTimeout)
+	report := httpProbe.Execute(context.Background(), testTimeout)
 	if report.error != nil {
 		t.Fatal(report.error)
 	}
@@ -79,7 +79,7 @@ func TestHttpProbe_UserAgentHeader(t *testing.T) {
 	u := url.URL{Scheme: "http", Host: hostPort, Path: "/ua"}
 	httpProbe := NewHTTPProbe(u.String())
 
-	report := httpProbe.Probe(context.Background(), testTimeout)
+	report := httpProbe.Execute(context.Background(), testTimeout)
 	if report.error != nil {
 		t.Fatal(report.error)
 	}
@@ -98,7 +98,7 @@ func TestHttpProbe_UserAgentHeader(t *testing.T) {
 func TestHttpProbe_RequestFails(t *testing.T) {
 	u := url.URL{Scheme: "http", Host: "localhost"}
 	httpProbe := NewHTTPProbe(u.String())
-	report := httpProbe.Probe(context.Background(), testTimeout)
+	report := httpProbe.Execute(context.Background(), testTimeout)
 	err := checkError(t, report)
 	got := err.Error()
 
@@ -111,7 +111,7 @@ func TestHttpProbe_RequestFails(t *testing.T) {
 func TestHttpProbe_Timeout(t *testing.T) {
 	u := url.URL{Scheme: "http", Host: "192.0.2.1:53"}
 	httpProbe := NewHTTPProbe(u.String())
-	report := httpProbe.Probe(context.Background(), testTimeoutFail)
+	report := httpProbe.Execute(context.Background(), testTimeoutFail)
 	checkTimeout(t, report, "context deadline exceeded")
 }
 
@@ -215,7 +215,7 @@ func TestHTTPProbe_RoundTrip_NetworkFailure(t *testing.T) {
 
 func TestHTTPProbe_ProbeWithTimeout(t *testing.T) {
 	httpProbe := &HTTPProbe{URL: "://invalid", client: http.DefaultClient}
-	report := httpProbe.Probe(context.Background(), time.Second)
+	report := httpProbe.Execute(context.Background(), time.Second)
 	require.Error(t, report.error)
 	assert.Contains(t, report.error.Error(), "error building request")
 }

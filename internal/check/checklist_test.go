@@ -1,4 +1,4 @@
-package pkg
+package check
 
 import (
 	"reflect"
@@ -52,10 +52,10 @@ func TestChecks_Shuffle(t *testing.T) {
 	// Not guaranteed to change order, but likely
 }
 
-func TestCheckListIterator_Fetch(t *testing.T) {
+func TestListIterator_Fetch(t *testing.T) {
 	ordered := Checks{newCheck(1), newCheck(2)}
 	shuffled := Checks{newCheck(3), newCheck(4)}
-	cl := &CheckList{Ordered: ordered, Shuffled: shuffled}
+	cl := &List{Ordered: ordered, Shuffled: shuffled}
 	it := cl.GetIterator()
 
 	got := []*Check{}
@@ -75,8 +75,8 @@ func TestCheckListIterator_Fetch(t *testing.T) {
 	assert.Same(t, got[1], ordered[1], "second check should be from ordered")
 }
 
-func TestCheckListIterator_Empty(t *testing.T) {
-	cl := &CheckList{}
+func TestListIterator_Empty(t *testing.T) {
+	cl := &List{}
 	it := cl.GetIterator()
 	assert.Nil(t, it.Fetch(), "Fetch() on empty iterator should return nil")
 }

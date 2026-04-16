@@ -2,9 +2,9 @@
 go = "1.26.2"
 "go:github.com/vladopajic/go-test-coverage/v2" = "2.18.4"
 golangci-lint = "2.11.4"
-goreleaser = "2.15.2"
+goreleaser = "2.15.3"
 gotestsum = "1.13.0"
-prettier = "3.8.1"
+prettier = "3.8.3"
 
 [env]
 COVEROUT = "cover.out"
@@ -20,11 +20,11 @@ run = [
 
 [tasks.test]
 description = "Run tests"
-run = ["gotestsum"]
+run = "gotestsum -- -race ./..."
 
 [tasks.test-int]
 description = "Run integration tests"
-run = ["gotestsum -- -tags=integration ./internal"]
+run = "gotestsum -- -race -tags=integration ./internal"
 
 [tasks.coverage]
 description = "Generate test coverage"

@@ -1,10 +1,12 @@
-package pkg
+package check
 
 import (
 	"context"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/hugoh/upd/internal/version"
 )
 
 const (
@@ -17,7 +19,7 @@ const (
 //
 //nolint:gochecknoglobals // Intentional singleton for connection pooling
 var updClient = &http.Client{
-	Transport: &updTransport{version: version},
+	Transport: &updTransport{version: version.Version()},
 }
 
 type updTransport struct {
@@ -51,8 +53,8 @@ func (p *HTTPProbe) Scheme() string {
 	return HTTP
 }
 
-// Probe executes the HTTP request and returns a report.
-func (p *HTTPProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
+// Execute runs the HTTP request and returns a report.
+func (p *HTTPProbe) Execute(ctx context.Context, timeout time.Duration) *Report {
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -75,12 +77,11 @@ func (p *HTTPProbe) Probe(ctx context.Context, timeout time.Duration) *Report {
 		return report
 	}
 
-	err = resp.Body.Close()
-	if err != nil {
-		report.error = fmt.Errorf("error closing response body: %w", err)
-
-		return report
-	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && report.error == nil {
+			report.error = fmt.Errorf("error closing response body: %w", closeErr)
+		}
+	}()
 
 	report.response = resp.Status
 

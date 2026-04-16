@@ -1,4 +1,4 @@
-package pkg
+package check
 
 import "math/rand/v2"
 
@@ -18,19 +18,19 @@ type ChecksIteratorImpl struct {
 	limit  int
 }
 
-// CheckList contains ordered and shuffled check collections.
-type CheckList struct {
+// List contains ordered and shuffled check collections.
+type List struct {
 	Ordered  Checks
 	Shuffled Checks
 }
 
-// CheckListIterator provides sequential access to both ordered and shuffled checks.
-type CheckListIterator interface {
+// ListIterator provides sequential access to both ordered and shuffled checks.
+type ListIterator interface {
 	Fetch() *Check
 }
 
-// CheckListIteratorImpl implements CheckListIterator for ordered then shuffled access.
-type CheckListIteratorImpl struct {
+// ListIteratorImpl implements ListIterator for ordered then shuffled access.
+type ListIteratorImpl struct {
 	orderedIterator  ChecksIterator
 	shuffledIterator ChecksIterator
 }
@@ -73,15 +73,15 @@ func (it *ChecksIteratorImpl) Fetch() *Check {
 }
 
 // GetIterator creates a new iterator over both ordered and shuffled checks.
-func (cl *CheckList) GetIterator() *CheckListIteratorImpl {
-	return &CheckListIteratorImpl{
+func (cl *List) GetIterator() *ListIteratorImpl {
+	return &ListIteratorImpl{
 		orderedIterator:  NewChecksIterator(cl.Ordered),
 		shuffledIterator: NewChecksIterator(cl.Shuffled),
 	}
 }
 
 // Fetch returns the next check from ordered then shuffled lists.
-func (it *CheckListIteratorImpl) Fetch() *Check {
+func (it *ListIteratorImpl) Fetch() *Check {
 	var check *Check
 
 	check = it.orderedIterator.Fetch()
