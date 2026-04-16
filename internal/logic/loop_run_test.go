@@ -5,14 +5,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hugoh/upd/internal/check"
 	"github.com/hugoh/upd/internal/status"
-	"github.com/hugoh/upd/pkg"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRun_StopsOnContextCancel(t *testing.T) {
 	loop := NewLoop()
-	emptyCheckList := &pkg.CheckList{}
+	emptyCheckList := &check.List{}
 	loop.Configure(
 		emptyCheckList,
 		Delays{true: 1 * time.Second, false: 1 * time.Second},
@@ -41,13 +41,13 @@ func TestRun_StopsOnContextCancel(t *testing.T) {
 
 func TestRun_ProcessesChecks(_ *testing.T) {
 	loop := NewLoop()
-	probe := pkg.Probe(pkg.NewHTTPProbe("http://example.invalid"))
-	dummyCheck := &pkg.Check{
+	probe := check.Probe(check.NewHTTPProbe("http://example.invalid"))
+	dummyCheck := &check.Check{
 		Probe:   &probe,
 		Timeout: 1 * time.Second,
 	}
-	checkList := &pkg.CheckList{
-		Ordered: pkg.Checks{dummyCheck},
+	checkList := &check.List{
+		Ordered: check.Checks{dummyCheck},
 	}
 
 	loop.Configure(
@@ -70,7 +70,7 @@ func TestRun_ProcessesChecks(_ *testing.T) {
 
 func TestStop_StopsStatServer(t *testing.T) {
 	loop := NewLoop()
-	emptyCheckList := &pkg.CheckList{}
+	emptyCheckList := &check.List{}
 	loop.Configure(
 		emptyCheckList,
 		Delays{true: 1 * time.Second, false: 1 * time.Second},
@@ -90,7 +90,7 @@ func TestStop_StopsStatServer(t *testing.T) {
 
 func TestRun_StopsTimerOnContextCancel(t *testing.T) {
 	loop := NewLoop()
-	emptyCheckList := &pkg.CheckList{}
+	emptyCheckList := &check.List{}
 	longDelay := 10 * time.Second
 	loop.Configure(
 		emptyCheckList,

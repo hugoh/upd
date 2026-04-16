@@ -2,7 +2,7 @@
 // Copyright Jesús Rubio <jesusprubio@gmail.com>
 // MIT License
 
-package pkg
+package check
 
 import (
 	"time"

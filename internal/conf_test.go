@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hugoh/upd/internal/check"
 	"github.com/hugoh/upd/internal/logic"
-	"github.com/hugoh/upd/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -91,39 +91,39 @@ func (suite *TestSuite) TestGetChecks() {
 	checklist, err := suite.conf.GetChecks()
 	suite.Require().NoError(err)
 	// Collect all checks from both Ordered and Shuffled
-	allChecks := append([]*pkg.Check{}, checklist.Ordered...)
+	allChecks := append([]*check.Check{}, checklist.Ordered...)
 	allChecks = append(allChecks, checklist.Shuffled...)
 
 	var (
-		probe     pkg.Probe
-		httpProbe *pkg.HTTPProbe
-		dns       *pkg.DNSProbe
-		tcp       *pkg.TCPProbe
+		probe     check.Probe
+		httpProbe *check.HTTPProbe
+		dns       *check.DNSProbe
+		tcp       *check.TCPProbe
 		ok        bool
 	)
 
 	suite.Len(allChecks, 4)
 	probe = *allChecks[0].Probe
-	httpProbe, ok = probe.(*pkg.HTTPProbe)
+	httpProbe, ok = probe.(*check.HTTPProbe)
 	suite.True(ok)
 	suite.Equal("http", httpProbe.Scheme())
 	suite.Equal("http://captive.apple.com/hotspot-detect.html", httpProbe.URL)
 
 	probe = *allChecks[1].Probe
-	httpProbe, ok = probe.(*pkg.HTTPProbe)
+	httpProbe, ok = probe.(*check.HTTPProbe)
 	suite.True(ok)
 	suite.Equal("http", httpProbe.Scheme())
 	suite.Equal("https://example.com/", httpProbe.URL)
 
 	probe = *allChecks[2].Probe
-	dns, ok = probe.(*pkg.DNSProbe)
+	dns, ok = probe.(*check.DNSProbe)
 	suite.True(ok)
 	suite.Equal("dns", dns.Scheme())
 	suite.Equal("1.1.1.1:53", dns.DNSResolver)
 	suite.Equal("www.google.com", dns.Domain)
 
 	probe = *allChecks[3].Probe
-	tcp, ok = probe.(*pkg.TCPProbe)
+	tcp, ok = probe.(*check.TCPProbe)
 	suite.True(ok)
 	suite.Equal("tcp", tcp.Scheme())
 	suite.Equal("1.0.0.1:53", tcp.HostPort)
@@ -158,15 +158,15 @@ func TestDNSCheckValidation_MissingDomain(t *testing.T) {
 	// Check that dns://8.8.4.4/ is ignored due to missing domain
 	dnsChecks := 0
 
-	for _, check := range checklist.Ordered {
-		_, ok := (*check.Probe).(*pkg.DNSProbe)
+	for _, chk := range checklist.Ordered {
+		_, ok := (*chk.Probe).(*check.DNSProbe)
 		if ok {
 			dnsChecks++
 		}
 	}
 
-	for _, check := range checklist.Shuffled {
-		_, ok := (*check.Probe).(*pkg.DNSProbe)
+	for _, chk := range checklist.Shuffled {
+		_, ok := (*chk.Probe).(*check.DNSProbe)
 		if ok {
 			dnsChecks++
 		}
@@ -185,15 +185,15 @@ func TestDNSCheckValidation_MissingResolver(t *testing.T) {
 	// Check that dns:///google.com is ignored due to missing resolver host
 	dnsChecks := 0
 
-	for _, check := range checklist.Ordered {
-		_, ok := (*check.Probe).(*pkg.DNSProbe)
+	for _, chk := range checklist.Ordered {
+		_, ok := (*chk.Probe).(*check.DNSProbe)
 		if ok {
 			dnsChecks++
 		}
 	}
 
-	for _, check := range checklist.Shuffled {
-		_, ok := (*check.Probe).(*pkg.DNSProbe)
+	for _, chk := range checklist.Shuffled {
+		_, ok := (*chk.Probe).(*check.DNSProbe)
 		if ok {
 			dnsChecks++
 		}
@@ -204,15 +204,15 @@ func TestDNSCheckValidation_MissingResolver(t *testing.T) {
 	// Verify we still have the HTTP check
 	httpChecks := 0
 
-	for _, check := range checklist.Ordered {
-		_, ok := (*check.Probe).(*pkg.HTTPProbe)
+	for _, chk := range checklist.Ordered {
+		_, ok := (*chk.Probe).(*check.HTTPProbe)
 		if ok {
 			httpChecks++
 		}
 	}
 
-	for _, check := range checklist.Shuffled {
-		_, ok := (*check.Probe).(*pkg.HTTPProbe)
+	for _, chk := range checklist.Shuffled {
+		_, ok := (*chk.Probe).(*check.HTTPProbe)
 		if ok {
 			httpChecks++
 		}

@@ -1,6 +1,6 @@
 //go:build integration
 
-package pkg_test
+package version_test
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ func TestVersionIsSetByLdflags(t *testing.T) {
 	// Your .goreleaser.yaml uses the shorthand `-X pkg.version`. For a direct `go build`
 	// command, we should use the full package path for the variable, which is more robust.
 	// The module path `github.com/hugoh/upd` is inferred from your import paths.
-	ldflags := fmt.Sprintf("-X github.com/hugoh/upd/pkg.version=%s", testVersion)
+	ldflags := fmt.Sprintf("-X github.com/hugoh/upd/internal/version.version=%s", testVersion)
 
 	// Build the main package with the ldflags.
 	buildCmd := exec.Command(

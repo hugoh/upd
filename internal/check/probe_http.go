@@ -1,10 +1,12 @@
-package pkg
+package check
 
 import (
 	"context"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/hugoh/upd/internal/version"
 )
 
 const (
@@ -17,7 +19,7 @@ const (
 //
 //nolint:gochecknoglobals // Intentional singleton for connection pooling
 var updClient = &http.Client{
-	Transport: &updTransport{version: version},
+	Transport: &updTransport{version: version.Version()},
 }
 
 type updTransport struct {

@@ -1,4 +1,4 @@
-package pkg
+package check
 
 import (
 	"context"

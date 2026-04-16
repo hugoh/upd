@@ -15,10 +15,10 @@
 // Example - Creating and running a loop:
 //
 //	loop := logic.NewLoop()
-//	checks := &pkg.CheckList{
-//		Ordered: pkg.Checks{
+//	checks := &check.List{
+//		Ordered: check.Checks{
 //			{
-//				Probe:   pkg.NewHTTPProbe("https://example.com"),
+//				Probe:   check.NewHTTPProbe("https://example.com"),
 //				Timeout: 10 * time.Second,
 //			},
 //		},
@@ -83,9 +83,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/hugoh/upd/internal/check"
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/status"
-	"github.com/hugoh/upd/pkg"
 )
 
 // Delays maps connection state to check interval durations.
@@ -93,7 +93,7 @@ type Delays map[bool]time.Duration
 
 // Loop manages periodic network connectivity checks.
 type Loop struct {
-	checkList        *pkg.CheckList
+	checkList        *check.List
 	delays           Delays
 	downAction       *DownAction
 	downActionLoop   *DownActionLoop
@@ -111,7 +111,7 @@ func NewLoop() *Loop {
 
 // Configure initializes the loop with checks, delays, and optional down action.
 func (l *Loop) Configure(
-	checkList *pkg.CheckList,
+	checkList *check.List,
 	delays Delays,
 	downAction *DownAction,
 	retention time.Duration,
@@ -181,7 +181,7 @@ func (l *Loop) Run(ctx context.Context) {
 	}
 
 	for {
-		checkStatus, err := pkg.CheckerRun(ctx, checker, l.checkList.GetIterator())
+		checkStatus, err := check.CheckerRun(ctx, checker, l.checkList.GetIterator())
 		if err == nil {
 			l.ProcessCheck(ctx, checkStatus)
 		} else {
@@ -218,11 +218,11 @@ func (l *Loop) hasDownAction() bool {
 	return l.downAction != nil
 }
 
-// Checker implements pkg.Checker for logging check lifecycle events.
+// Checker implements check.Checker for logging check lifecycle events.
 type Checker struct{}
 
 // CheckRun logs the start of a check.
-func (checker Checker) CheckRun(chk pkg.Check) {
+func (checker Checker) CheckRun(chk check.Check) {
 	probe := *chk.Probe
 	logger.L.Debug(
 		"[Check] running",
@@ -236,11 +236,11 @@ func (checker Checker) CheckRun(chk pkg.Check) {
 }
 
 // ProbeSuccess logs successful probe results.
-func (checker Checker) ProbeSuccess(report *pkg.Report) {
+func (checker Checker) ProbeSuccess(report *check.Report) {
 	logger.L.Debug("[Check] success", report.LogAttrs()...)
 }
 
 // ProbeFailure logs failed probe results.
-func (checker Checker) ProbeFailure(report *pkg.Report) {
+func (checker Checker) ProbeFailure(report *check.Report) {
 	logger.L.Warn("[Check] failed", report.LogAttrs()...)
 }

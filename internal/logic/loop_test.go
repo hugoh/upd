@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hugoh/upd/pkg"
+	"github.com/hugoh/upd/internal/check"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -95,8 +95,8 @@ func Test_ProcessCheck_StatusChanged_DownStatus_StartsDownAction_Error(t *testin
 
 func TestChecker_CheckRun(t *testing.T) {
 	checker := Checker{}
-	probe := pkg.Probe(pkg.NewHTTPProbe("http://example.com"))
-	check := pkg.Check{Probe: &probe, Timeout: time.Second}
+	probe := check.Probe(check.NewHTTPProbe("http://example.com"))
+	check := check.Check{Probe: &probe, Timeout: time.Second}
 
 	assert.NotPanics(t, func() {
 		checker.CheckRun(check)
@@ -105,7 +105,7 @@ func TestChecker_CheckRun(t *testing.T) {
 
 func TestChecker_ProbeSuccess(t *testing.T) {
 	checker := Checker{}
-	report := &pkg.Report{}
+	report := &check.Report{}
 
 	assert.NotPanics(t, func() {
 		checker.ProbeSuccess(report)
@@ -114,7 +114,7 @@ func TestChecker_ProbeSuccess(t *testing.T) {
 
 func TestChecker_ProbeFailure(t *testing.T) {
 	checker := Checker{}
-	report := &pkg.Report{}
+	report := &check.Report{}
 
 	assert.NotPanics(t, func() {
 		checker.ProbeFailure(report)

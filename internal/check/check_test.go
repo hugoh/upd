@@ -1,4 +1,4 @@
-package pkg
+package check
 
 import (
 	"context"
@@ -19,12 +19,12 @@ func (f *fakeProbe) Execute(_ context.Context, _ time.Duration) *Report {
 }
 func (f *fakeProbe) Scheme() string { return "fake" }
 
-type fakeCheckListIterator struct {
+type fakeListIterator struct {
 	checks []*Check
 	idx    int
 }
 
-func (it *fakeCheckListIterator) Fetch() *Check {
+func (it *fakeListIterator) Fetch() *Check {
 	if it.idx >= len(it.checks) {
 		return nil
 	}
@@ -49,7 +49,7 @@ func TestCheckerRun_SuccessFirst(t *testing.T) {
 	probe := &fakeProbe{ret: &Report{}}
 	probeIface := Probe(probe)
 	check := &Check{Probe: &probeIface, Timeout: 1 * time.Second}
-	it := &fakeCheckListIterator{checks: []*Check{check}}
+	it := &fakeListIterator{checks: []*Check{check}}
 	checker := &recordChecker{}
 	ctx := context.Background()
 	ok, err := CheckerRun(ctx, checker, it)
@@ -65,7 +65,7 @@ func TestCheckerRun_AllFail(t *testing.T) {
 	probe := &fakeProbe{ret: rep}
 	probeIface := Probe(probe)
 	check := &Check{Probe: &probeIface, Timeout: 1 * time.Second}
-	it := &fakeCheckListIterator{checks: []*Check{check, check}}
+	it := &fakeListIterator{checks: []*Check{check, check}}
 	checker := &recordChecker{}
 	ctx := context.Background()
 	ok, err := CheckerRun(ctx, checker, it)
@@ -77,7 +77,7 @@ func TestCheckerRun_AllFail(t *testing.T) {
 }
 
 func TestCheckerRun_Empty(t *testing.T) {
-	it := &fakeCheckListIterator{checks: []*Check{}}
+	it := &fakeListIterator{checks: []*Check{}}
 	checker := &recordChecker{}
 	ctx := context.Background()
 	ok, err := CheckerRun(ctx, checker, it)
@@ -100,7 +100,7 @@ func TestRunChecks(t *testing.T) {
 		probe := &fakeProbe{ret: &Report{}}
 		probeIface := Probe(probe)
 		check := &Check{Probe: &probeIface, Timeout: time.Second}
-		cl := &CheckList{Ordered: Checks{check}}
+		cl := &List{Ordered: Checks{check}}
 		ok, err := RunChecks(context.Background(), cl.GetIterator())
 		assert.True(t, ok)
 		assert.NoError(t, err)
@@ -110,18 +110,18 @@ func TestRunChecks(t *testing.T) {
 		probe := &fakeProbe{ret: &Report{error: errors.New("fail")}}
 		probeIface := Probe(probe)
 		check := &Check{Probe: &probeIface, Timeout: time.Second}
-		cl := &CheckList{Ordered: Checks{check}}
+		cl := &List{Ordered: Checks{check}}
 		ok, err := RunChecks(context.Background(), cl.GetIterator())
 		assert.False(t, ok)
 		assert.NoError(t, err)
 	})
 }
 
-func TestCheckerRun_WithCheckListIterator(t *testing.T) {
+func TestCheckerRun_WithListIterator(t *testing.T) {
 	probe := &fakeProbe{ret: &Report{}}
 	probeIface := Probe(probe)
 	check := &Check{Probe: &probeIface, Timeout: 1 * time.Second}
-	cl := &CheckList{Ordered: Checks{check}}
+	cl := &List{Ordered: Checks{check}}
 	it := cl.GetIterator()
 	checker := &recordChecker{}
 	ctx := context.Background()

@@ -69,10 +69,10 @@ import (
 
 	"github.com/drone/envsubst"
 	"github.com/go-playground/validator"
+	"github.com/hugoh/upd/internal/check"
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
 	"github.com/hugoh/upd/internal/status"
-	"github.com/hugoh/upd/pkg"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/rawbytes"
 	"github.com/knadh/koanf/v2"
@@ -195,8 +195,8 @@ func isValidTCPPort(fl validator.FieldLevel) bool {
 var ErrNoChecks = errors.New("no valid checks found in config")
 
 // GetChecks builds a CheckList from the configuration.
-func (c Configuration) GetChecks() (*pkg.CheckList, error) {
-	checkList := &pkg.CheckList{
+func (c Configuration) GetChecks() (*check.List, error) {
+	checkList := &check.List{
 		Ordered:  c.GetChecksCat(c.Checks.List.Ordered),
 		Shuffled: c.GetChecksCat(c.Checks.List.Shuffled),
 	}
@@ -208,29 +208,29 @@ func (c Configuration) GetChecks() (*pkg.CheckList, error) {
 }
 
 // GetChecksCat creates checks from a list of check URIs.
-func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
-	checks := make([]*pkg.Check, 0, len(category))
-	for _, check := range category {
-		parsedURL, err := url.Parse(check)
+func (c Configuration) GetChecksCat(category []string) []*check.Check {
+	checks := make([]*check.Check, 0, len(category))
+	for _, checkStr := range category {
+		parsedURL, err := url.Parse(checkStr)
 		if err != nil {
-			logger.L.Error("could not parse check in config", "check", check, "error", err)
+			logger.L.Error("could not parse check in config", "check", checkStr, "error", err)
 
 			continue
 		}
 
-		var probe pkg.Probe
+		var probe check.Probe
 
 		switch parsedURL.Scheme {
-		case pkg.DNS:
+		case check.DNS:
 			domain := strings.TrimPrefix(parsedURL.Path, "/")
 			if domain == "" {
-				logger.L.Error("DNS check missing domain", "check", check)
+				logger.L.Error("DNS check missing domain", "check", checkStr)
 
 				continue
 			}
 
 			if parsedURL.Host == "" {
-				logger.L.Error("DNS check missing resolver host", "check", check)
+				logger.L.Error("DNS check missing resolver host", "check", checkStr)
 
 				continue
 			}
@@ -241,17 +241,17 @@ func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
 			}
 
 			dnsResolver := parsedURL.Host + ":" + port
-			probe = pkg.NewDNSProbe(dnsResolver, domain)
-		case pkg.HTTP, pkg.HTTPS:
-			probe = pkg.NewHTTPProbe(parsedURL.String())
-		case pkg.TCP:
+			probe = check.NewDNSProbe(dnsResolver, domain)
+		case check.HTTP, check.HTTPS:
+			probe = check.NewHTTPProbe(parsedURL.String())
+		case check.TCP:
 			hostPort := fmt.Sprintf("%s:%s", parsedURL.Hostname(), parsedURL.Port())
-			probe = pkg.NewTCPProbe(hostPort)
+			probe = check.NewTCPProbe(hostPort)
 		default:
 			logger.L.Error(
 				"unknown protocol in config",
 				"check",
-				check,
+				checkStr,
 				"protocol",
 				parsedURL.Scheme,
 			)
@@ -259,7 +259,7 @@ func (c Configuration) GetChecksCat(category []string) []*pkg.Check {
 			continue
 		}
 
-		checks = append(checks, &pkg.Check{
+		checks = append(checks, &check.Check{
 			Probe:   &probe,
 			Timeout: c.Checks.TimeOut,
 		})

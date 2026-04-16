@@ -85,7 +85,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hugoh/upd/pkg"
+	"github.com/hugoh/upd/internal/version"
 )
 
 // Status tracks the current network connectivity state and history.
@@ -169,7 +169,7 @@ func (s *Status) GenStatReport(periods []time.Duration) *Report {
 		Generated:  generated,
 		Uptime:     ReadableDuration(generated.Sub(s.stateChangeTracker.started)),
 		Up:         s.Up,
-		Version:    pkg.Version(),
+		Version:    version.Version(),
 		Stats:      s.stateChangeTracker.GenReports(s.Up, generated, periods),
 		CheckCount: s.stateChangeTracker.updateCount,
 		LastUpdate: ReadableDuration(generated.Sub(s.stateChangeTracker.lastUpdated)),

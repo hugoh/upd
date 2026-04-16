@@ -1,5 +1,5 @@
-// Package pkg provides network connectivity checking functionality.
-package pkg
+// Package check provides network connectivity checking functionality.
+package check
 
 import (
 	"context"
@@ -10,9 +10,9 @@ import (
 //
 // Example:
 //
-//	check := &pkg.Check{
-//		Probe:   pkg.NewHTTPProbe("https://example.com"),
-//		Timeout: 10 * time.Second,
+//	check := &check.Check{
+//	    Probe: check.NewHTTPProbe("https://example.com"),
+//	    Timeout: 10 * time.Second,
 //	}
 type Check struct {
 	Probe   *Probe        // The probe to execute for this check
@@ -23,25 +23,25 @@ type Check struct {
 //
 // Implement this interface to customize behavior during check runs.
 // Common use cases include:
-//   - Custom logging
-//   - Metrics collection
-//   - Alerting
-//   - Status tracking
+// - Custom logging
+// - Metrics collection
+// - Alerting
+// - Status tracking
 //
 // Example - Custom Logging Checker:
 //
 //	type LoggingChecker struct {}
 //
 //	func (l *LoggingChecker) CheckRun(c Check) {
-//		fmt.Printf("Running check: %s (timeout: %v)\n", (*c.Probe).Scheme(), c.Timeout)
+//	    fmt.Printf("Running check: %s (timeout: %v)\n", (*c.Probe).Scheme(), c.Timeout)
 //	}
 //
 //	func (l *LoggingChecker) ProbeSuccess(report *Report) {
-//		fmt.Printf("Success: %s, elapsed: %v\n", report.Response(), report.Elapsed())
+//	    fmt.Printf("Success: %s, elapsed: %v\n", report.Response(), report.Elapsed())
 //	}
 //
 //	func (l *LoggingChecker) ProbeFailure(report *Report) {
-//		fmt.Printf("Failed: %s, error: %v\n", report.Protocol(), report.Error())
+//	    fmt.Printf("Failed: %s, error: %v\n", report.Protocol(), report.Error())
 //	}
 type Checker interface {
 	// CheckRun is called before executing a probe.
@@ -72,7 +72,7 @@ func (c *Check) RunProbe(ctx context.Context, checker Checker) *Report {
 //
 // Example:
 //
-//	checker := &pkg.NullChecker{}
+//	checker := &check.NullChecker{}
 //	report := check.RunProbe(ctx, checker)
 type NullChecker struct{}
 
@@ -94,13 +94,13 @@ func (c NullChecker) ProbeFailure(_ *Report) {}
 //
 // Example:
 //
-//	success, err := pkg.RunChecks(ctx, checkList.GetIterator())
+//	success, err := check.RunChecks(ctx, checkList.GetIterator())
 //	if success {
-//		fmt.Println("Connection is up")
+//	    fmt.Println("Connection is up")
 //	} else {
-//		fmt.Println("Connection is down")
+//	    fmt.Println("Connection is down")
 //	}
-func RunChecks(ctx context.Context, checkListIterator CheckListIterator) (bool, error) {
+func RunChecks(ctx context.Context, checkListIterator ListIterator) (bool, error) {
 	var nc NullChecker
 
 	return CheckerRun(ctx, nc, checkListIterator)
@@ -112,9 +112,9 @@ func RunChecks(ctx context.Context, checkListIterator CheckListIterator) (bool, 
 // connection is up. Returns false if all checks fail.
 //
 // The Checker interface methods are called at appropriate times:
-//   - CheckRun before each probe is executed
-//   - ProbeSuccess after a successful probe
-//   - ProbeFailure after a failed probe
+// - CheckRun before each probe is executed
+// - ProbeSuccess after a successful probe
+// - ProbeFailure after a failed probe
 //
 // This allows custom logging, metrics collection, or alerting during
 // check execution.
@@ -122,7 +122,7 @@ func RunChecks(ctx context.Context, checkListIterator CheckListIterator) (bool, 
 // Example:
 //
 //	checker := &LoggingChecker{}
-//	success, err := pkg.CheckerRun(ctx, checker, checkList.GetIterator())
+//	success, err := check.CheckerRun(ctx, checker, checkList.GetIterator())
 //
 // Parameters:
 //   - ctx: Context for cancellation and timeout control
@@ -135,7 +135,7 @@ func RunChecks(ctx context.Context, checkListIterator CheckListIterator) (bool, 
 func CheckerRun(
 	ctx context.Context,
 	checker Checker,
-	checkListIterator CheckListIterator,
+	checkListIterator ListIterator,
 ) (bool, error) {
 	for {
 		check := checkListIterator.Fetch()

@@ -13,7 +13,7 @@ import (
 
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
-	"github.com/hugoh/upd/pkg"
+	"github.com/hugoh/upd/internal/version"
 	"github.com/urfave/cli/v3"
 )
 
@@ -141,7 +141,7 @@ func Cmd() error {
 	app := &cli.Command{
 		Name:    AppName,
 		Usage:   AppShort,
-		Version: pkg.Version(),
+		Version: version.Version(),
 		Flags:   flags,
 		Action:  Run,
 	}

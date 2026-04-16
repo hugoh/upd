@@ -1,8 +1,4 @@
-// Initially from: https://github.com/jesusprubio/up @ 784898b4b4e72ccb80b520c0dfbe8ebbc72b87fe
-// Copyright Jesús Rubio <jesusprubio@gmail.com>
-// MIT License
-
-package pkg
+package check
 
 import (
 	"context"
@@ -22,12 +18,12 @@ type Probe interface {
 	//
 	// Example:
 	//
-	//	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	//	defer cancel()
-	//	report := probe.Execute(ctx, 2*time.Second)
-	//	if report.error != nil {
-	//		// handle error
-	//	}
+	// ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	// defer cancel()
+	// report := probe.Execute(ctx, 2*time.Second)
+	// if report.error != nil {
+	// // handle error
+	// }
 	Execute(ctx context.Context, timeout time.Duration) *Report
 
 	// Scheme returns the protocol scheme (e.g., "http", "https", "tcp", "dns").
