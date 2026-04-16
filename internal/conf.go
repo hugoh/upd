@@ -85,6 +85,10 @@ const (
 	DefaultDNSPort = "53"
 )
 
+var tcpPortRegex = regexp.MustCompile(
+	`^:(6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[0-9]{1,4})$`,
+)
+
 // ConfigFileUsed stores the path of the active configuration file for debugging purposes.
 //
 //nolint:gochecknoglobals // Package-level state for debugging and diagnostics
@@ -184,11 +188,7 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 }
 
 func isValidTCPPort(fl validator.FieldLevel) bool {
-	re := regexp.MustCompile(
-		`^:(6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[0-9]{1,4})$`,
-	)
-
-	return re.MatchString(fl.Field().String())
+	return tcpPortRegex.MatchString(fl.Field().String())
 }
 
 // ErrNoChecks is returned when no valid checks are found in configuration.
