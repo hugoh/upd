@@ -223,13 +223,12 @@ type Checker struct{}
 
 // CheckRun logs the start of a check.
 func (checker Checker) CheckRun(chk check.Check) {
-	probe := *chk.Probe
 	logger.L.Debug(
 		"[Check] running",
 		"probe",
-		probe,
+		chk.Probe,
 		"protocol",
-		probe.Scheme(),
+		chk.Probe.Scheme(),
 		"timeout",
 		chk.Timeout,
 	)

@@ -48,7 +48,7 @@ func (r *recordChecker) ProbeFailure(rep *Report) { r.fail = append(r.fail, rep)
 func TestCheckerRun_SuccessFirst(t *testing.T) {
 	probe := &fakeProbe{ret: &Report{}}
 	probeIface := Probe(probe)
-	check := &Check{Probe: &probeIface, Timeout: 1 * time.Second}
+	check := &Check{Probe: probeIface, Timeout: 1 * time.Second}
 	it := &fakeListIterator{checks: []*Check{check}}
 	checker := &recordChecker{}
 	ctx := context.Background()
@@ -64,7 +64,7 @@ func TestCheckerRun_AllFail(t *testing.T) {
 	rep := &Report{error: errors.New("fail")}
 	probe := &fakeProbe{ret: rep}
 	probeIface := Probe(probe)
-	check := &Check{Probe: &probeIface, Timeout: 1 * time.Second}
+	check := &Check{Probe: probeIface, Timeout: 1 * time.Second}
 	it := &fakeListIterator{checks: []*Check{check, check}}
 	checker := &recordChecker{}
 	ctx := context.Background()
@@ -99,7 +99,7 @@ func TestRunChecks(t *testing.T) {
 	t.Run("returns true on success", func(t *testing.T) {
 		probe := &fakeProbe{ret: &Report{}}
 		probeIface := Probe(probe)
-		check := &Check{Probe: &probeIface, Timeout: time.Second}
+		check := &Check{Probe: probeIface, Timeout: time.Second}
 		cl := &List{Ordered: Checks{check}}
 		ok, err := RunChecks(context.Background(), cl.GetIterator())
 		assert.True(t, ok)
@@ -109,7 +109,7 @@ func TestRunChecks(t *testing.T) {
 	t.Run("returns false on all failures", func(t *testing.T) {
 		probe := &fakeProbe{ret: &Report{error: errors.New("fail")}}
 		probeIface := Probe(probe)
-		check := &Check{Probe: &probeIface, Timeout: time.Second}
+		check := &Check{Probe: probeIface, Timeout: time.Second}
 		cl := &List{Ordered: Checks{check}}
 		ok, err := RunChecks(context.Background(), cl.GetIterator())
 		assert.False(t, ok)
@@ -120,7 +120,7 @@ func TestRunChecks(t *testing.T) {
 func TestCheckerRun_WithListIterator(t *testing.T) {
 	probe := &fakeProbe{ret: &Report{}}
 	probeIface := Probe(probe)
-	check := &Check{Probe: &probeIface, Timeout: 1 * time.Second}
+	check := &Check{Probe: probeIface, Timeout: 1 * time.Second}
 	cl := &List{Ordered: Checks{check}}
 	it := cl.GetIterator()
 	checker := &recordChecker{}

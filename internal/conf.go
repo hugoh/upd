@@ -260,7 +260,7 @@ func (c Configuration) GetChecksCat(category []string) []*check.Check {
 		}
 
 		checks = append(checks, &check.Check{
-			Probe:   &probe,
+			Probe:   probe,
 			Timeout: c.Checks.TimeOut,
 		})
 	}

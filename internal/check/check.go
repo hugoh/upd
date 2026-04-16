@@ -15,7 +15,7 @@ import (
 //	    Timeout: 10 * time.Second,
 //	}
 type Check struct {
-	Probe   *Probe        // The probe to execute for this check
+	Probe   Probe         // The probe to execute for this check
 	Timeout time.Duration // Maximum duration to wait for the probe to complete
 }
 
@@ -30,10 +30,10 @@ type Check struct {
 //
 // Example - Custom Logging Checker:
 //
-//	type LoggingChecker struct {}
+// type LoggingChecker struct {}
 //
 //	func (l *LoggingChecker) CheckRun(c Check) {
-//	    fmt.Printf("Running check: %s (timeout: %v)\n", (*c.Probe).Scheme(), c.Timeout)
+//		fmt.Printf("Running check: %s (timeout: %v)\n", c.Probe.Scheme(), c.Timeout)
 //	}
 //
 //	func (l *LoggingChecker) ProbeSuccess(report *Report) {
@@ -60,9 +60,8 @@ type Checker interface {
 // RunProbe executes the check and returns a report.
 func (c *Check) RunProbe(ctx context.Context, checker Checker) *Report {
 	checker.CheckRun(*c)
-	p := *c.Probe
 
-	return p.Execute(ctx, c.Timeout)
+	return c.Probe.Execute(ctx, c.Timeout)
 }
 
 // NullChecker is a no-op implementation of the Checker interface.

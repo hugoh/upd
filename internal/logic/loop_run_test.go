@@ -43,7 +43,7 @@ func TestRun_ProcessesChecks(_ *testing.T) {
 	loop := NewLoop()
 	probe := check.Probe(check.NewHTTPProbe("http://example.invalid"))
 	dummyCheck := &check.Check{
-		Probe:   &probe,
+		Probe:   probe,
 		Timeout: 1 * time.Second,
 	}
 	checkList := &check.List{

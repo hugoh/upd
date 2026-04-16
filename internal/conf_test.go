@@ -103,26 +103,26 @@ func (suite *TestSuite) TestGetChecks() {
 	)
 
 	suite.Len(allChecks, 4)
-	probe = *allChecks[0].Probe
+	probe = allChecks[0].Probe
 	httpProbe, ok = probe.(*check.HTTPProbe)
 	suite.True(ok)
 	suite.Equal("http", httpProbe.Scheme())
 	suite.Equal("http://captive.apple.com/hotspot-detect.html", httpProbe.URL)
 
-	probe = *allChecks[1].Probe
+	probe = allChecks[1].Probe
 	httpProbe, ok = probe.(*check.HTTPProbe)
 	suite.True(ok)
 	suite.Equal("http", httpProbe.Scheme())
 	suite.Equal("https://example.com/", httpProbe.URL)
 
-	probe = *allChecks[2].Probe
+	probe = allChecks[2].Probe
 	dns, ok = probe.(*check.DNSProbe)
 	suite.True(ok)
 	suite.Equal("dns", dns.Scheme())
 	suite.Equal("1.1.1.1:53", dns.DNSResolver)
 	suite.Equal("www.google.com", dns.Domain)
 
-	probe = *allChecks[3].Probe
+	probe = allChecks[3].Probe
 	tcp, ok = probe.(*check.TCPProbe)
 	suite.True(ok)
 	suite.Equal("tcp", tcp.Scheme())
@@ -159,14 +159,14 @@ func TestDNSCheckValidation_MissingDomain(t *testing.T) {
 	dnsChecks := 0
 
 	for _, chk := range checklist.Ordered {
-		_, ok := (*chk.Probe).(*check.DNSProbe)
+		_, ok := chk.Probe.(*check.DNSProbe)
 		if ok {
 			dnsChecks++
 		}
 	}
 
 	for _, chk := range checklist.Shuffled {
-		_, ok := (*chk.Probe).(*check.DNSProbe)
+		_, ok := chk.Probe.(*check.DNSProbe)
 		if ok {
 			dnsChecks++
 		}
@@ -186,14 +186,14 @@ func TestDNSCheckValidation_MissingResolver(t *testing.T) {
 	dnsChecks := 0
 
 	for _, chk := range checklist.Ordered {
-		_, ok := (*chk.Probe).(*check.DNSProbe)
+		_, ok := chk.Probe.(*check.DNSProbe)
 		if ok {
 			dnsChecks++
 		}
 	}
 
 	for _, chk := range checklist.Shuffled {
-		_, ok := (*chk.Probe).(*check.DNSProbe)
+		_, ok := chk.Probe.(*check.DNSProbe)
 		if ok {
 			dnsChecks++
 		}
@@ -205,14 +205,14 @@ func TestDNSCheckValidation_MissingResolver(t *testing.T) {
 	httpChecks := 0
 
 	for _, chk := range checklist.Ordered {
-		_, ok := (*chk.Probe).(*check.HTTPProbe)
+		_, ok := chk.Probe.(*check.HTTPProbe)
 		if ok {
 			httpChecks++
 		}
 	}
 
 	for _, chk := range checklist.Shuffled {
-		_, ok := (*chk.Probe).(*check.HTTPProbe)
+		_, ok := chk.Probe.(*check.HTTPProbe)
 		if ok {
 			httpChecks++
 		}

@@ -96,7 +96,7 @@ func Test_ProcessCheck_StatusChanged_DownStatus_StartsDownAction_Error(t *testin
 func TestChecker_CheckRun(t *testing.T) {
 	checker := Checker{}
 	probe := check.Probe(check.NewHTTPProbe("http://example.com"))
-	check := check.Check{Probe: &probe, Timeout: time.Second}
+	check := check.Check{Probe: probe, Timeout: time.Second}
 
 	assert.NotPanics(t, func() {
 		checker.CheckRun(check)
