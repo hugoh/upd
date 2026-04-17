@@ -3,6 +3,7 @@
 [![CI](https://github.com/hugoh/upd/actions/workflows/ci.yml/badge.svg)](https://github.com/hugoh/upd/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/github/hugoh/upd/graph/badge.svg?token=UFSZDFKCTR)](https://codecov.io/github/hugoh/upd)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hugoh/upd)](https://goreportcard.com/report/github.com/hugoh/upd)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fhugoh%2Fupd.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fhugoh%2Fupd?ref=badge_shield)
 
 This is a small utility built as a single binary for easy deployment to monitor internet connections and reboot appropriate networking equipment if the connection is down.
 
@@ -124,3 +125,7 @@ The sample configuration above will provide data looking like this:
   "generatedAt": "2024-12-12T17:38:01.738046722-06:00"
 }
 ```
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fhugoh%2Fupd.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fhugoh%2Fupd?ref=badge_large)
