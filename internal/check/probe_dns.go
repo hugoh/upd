@@ -14,7 +14,7 @@ type DNSProbe struct {
 }
 
 // NewDNSProbe creates a new DNS probe for the given resolver and domain.
-func NewDNSProbe(dnsResolver string, domain string) *DNSProbe {
+func NewDNSProbe(dnsResolver, domain string) *DNSProbe {
 	return &DNSProbe{
 		DNSResolver: dnsResolver,
 		Domain:      domain,
