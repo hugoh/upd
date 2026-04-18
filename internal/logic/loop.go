@@ -222,7 +222,7 @@ func (l *Loop) hasDownAction() bool {
 type Checker struct{}
 
 // CheckRun logs the start of a check.
-func (checker Checker) CheckRun(chk check.Check) {
+func (Checker) CheckRun(chk check.Check) {
 	logger.L.Debug(
 		"[Check] running",
 		"probe",
@@ -235,11 +235,11 @@ func (checker Checker) CheckRun(chk check.Check) {
 }
 
 // ProbeSuccess logs successful probe results.
-func (checker Checker) ProbeSuccess(report *check.Report) {
+func (Checker) ProbeSuccess(report *check.Report) {
 	logger.L.Debug("[Check] success", report.LogAttrs()...)
 }
 
 // ProbeFailure logs failed probe results.
-func (checker Checker) ProbeFailure(report *check.Report) {
+func (Checker) ProbeFailure(report *check.Report) {
 	logger.L.Warn("[Check] failed", report.LogAttrs()...)
 }
