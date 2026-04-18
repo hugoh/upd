@@ -176,7 +176,7 @@ func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
 			uptime += endOfPeriod.Sub(lastTimestampSeen)
 		}
 
-		if time.Time.Equal(lastTimestampSeen, start) {
+		if lastTimestampSeen.Equal(start) {
 			break
 		}
 
