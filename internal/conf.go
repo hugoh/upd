@@ -58,6 +58,7 @@ package internal
 import (
 	"errors"
 	"fmt"
+	"net"
 	"log/slog"
 	"net/url"
 	"os"
@@ -245,7 +246,7 @@ func (c Configuration) GetChecksCat(category []string) []*check.Check {
 		case check.HTTP, check.HTTPS:
 			probe = check.NewHTTPProbe(parsedURL.String())
 		case check.TCP:
-			hostPort := fmt.Sprintf("%s:%s", parsedURL.Hostname(), parsedURL.Port())
+			hostPort := net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())
 			probe = check.NewTCPProbe(hostPort)
 		default:
 			logger.L.Error(
