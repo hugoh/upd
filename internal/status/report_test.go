@@ -103,7 +103,7 @@ func TestStatHandler_ServeHTTP(t *testing.T) {
 
 	handler := NewStatHandler(server)
 
-	req := httptest.NewRequest(http.MethodGet, StatRoute, nil)
+	req := httptest.NewRequest(http.MethodGet, StatRoute, http.NoBody)
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -137,7 +137,7 @@ func TestStatHandler_ServeHTTP_MethodNotAllowed(t *testing.T) {
 
 	handler := NewStatHandler(server)
 
-	req := httptest.NewRequest(http.MethodPost, StatRoute, nil)
+	req := httptest.NewRequest(http.MethodPost, StatRoute, http.NoBody)
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -163,7 +163,7 @@ func TestStatHandler_ServeHTTP_MethodHead(t *testing.T) {
 
 	handler := NewStatHandler(server)
 
-	req := httptest.NewRequest(http.MethodHead, StatRoute, nil)
+	req := httptest.NewRequest(http.MethodHead, StatRoute, http.NoBody)
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -189,7 +189,7 @@ func TestStatHandler_ServeHTTP_JSONFormat(t *testing.T) {
 
 	handler := NewStatHandler(server)
 
-	req := httptest.NewRequest(http.MethodGet, StatRoute, nil)
+	req := httptest.NewRequest(http.MethodGet, StatRoute, http.NoBody)
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)

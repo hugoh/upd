@@ -182,7 +182,7 @@ func TestHTTPProbe_RoundTrip(t *testing.T) {
 	}()
 
 	trans := &updTransport{version: "test"}
-	req := httptest.NewRequest(http.MethodGet, "http://"+hostPort+"/rt", nil)
+	req := httptest.NewRequest(http.MethodGet, "http://"+hostPort+"/rt", http.NoBody)
 	resp, err := trans.RoundTrip(req)
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
@@ -198,7 +198,7 @@ func TestHTTPProbe_RoundTrip(t *testing.T) {
 
 func TestHTTPProbe_RoundTrip_NetworkFailure(t *testing.T) {
 	trans := &updTransport{version: "test"}
-	req := httptest.NewRequest(http.MethodGet, "http://192.0.2.1:9999/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "http://192.0.2.1:9999/test", http.NoBody)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()

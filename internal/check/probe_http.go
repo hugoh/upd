@@ -58,7 +58,7 @@ func (p *HTTPProbe) Execute(ctx context.Context, timeout time.Duration) *Report 
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	req, bErr := http.NewRequestWithContext(ctxWithTimeout, http.MethodGet, p.URL, nil)
+	req, bErr := http.NewRequestWithContext(ctxWithTimeout, http.MethodGet, p.URL, http.NoBody)
 	if bErr != nil {
 		start := time.Now()
 		report := BuildReport(p, start)
