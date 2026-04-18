@@ -22,7 +22,7 @@ func NewDNSProbe(dnsResolver, domain string) *DNSProbe {
 }
 
 // Scheme returns the protocol scheme (dns).
-func (p DNSProbe) Scheme() string {
+func (DNSProbe) Scheme() string {
 	return DNS
 }
 

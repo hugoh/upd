@@ -49,7 +49,7 @@ func NewHTTPProbe(url string) *HTTPProbe {
 }
 
 // Scheme returns the protocol scheme (http or https).
-func (p *HTTPProbe) Scheme() string {
+func (*HTTPProbe) Scheme() string {
 	return HTTP
 }
 

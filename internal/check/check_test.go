@@ -17,7 +17,7 @@ type fakeProbe struct {
 func (f *fakeProbe) Execute(_ context.Context, _ time.Duration) *Report {
 	return f.ret
 }
-func (f *fakeProbe) Scheme() string { return "fake" }
+func (*fakeProbe) Scheme() string { return "fake" }
 
 type fakeListIterator struct {
 	checks []*Check

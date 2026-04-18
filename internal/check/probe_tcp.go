@@ -18,7 +18,7 @@ func NewTCPProbe(hostPort string) *TCPProbe {
 }
 
 // Scheme returns the protocol scheme (tcp).
-func (p TCPProbe) Scheme() string {
+func (TCPProbe) Scheme() string {
 	return TCP
 }
 

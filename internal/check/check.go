@@ -76,13 +76,13 @@ func (c *Check) RunProbe(ctx context.Context, checker Checker) *Report {
 type NullChecker struct{}
 
 // CheckRun is a no-op implementation of Checker.CheckRun.
-func (c NullChecker) CheckRun(_ Check) {}
+func (NullChecker) CheckRun(_ Check) {}
 
 // ProbeSuccess is a no-op implementation of Checker.ProbeSuccess.
-func (c NullChecker) ProbeSuccess(_ *Report) {}
+func (NullChecker) ProbeSuccess(_ *Report) {}
 
 // ProbeFailure is a no-op implementation of Checker.ProbeFailure.
-func (c NullChecker) ProbeFailure(_ *Report) {}
+func (NullChecker) ProbeFailure(_ *Report) {}
 
 // RunChecks executes a series of checks using a NullChecker.
 //
