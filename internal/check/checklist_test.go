@@ -58,7 +58,7 @@ func TestListIterator_Fetch(t *testing.T) {
 	cl := &List{Ordered: ordered, Shuffled: shuffled}
 	it := cl.GetIterator()
 
-	got := []*Check{}
+	var got []*Check
 
 	for {
 		c := it.Fetch()
