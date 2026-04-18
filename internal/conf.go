@@ -58,8 +58,8 @@ package internal
 import (
 	"errors"
 	"fmt"
-	"net"
 	"log/slog"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
