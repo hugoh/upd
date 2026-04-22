@@ -40,7 +40,7 @@ jobs:
       - uses: yshrsmz/action-mise-values@92f49c5a07ebc7ffa957be5efa6a2c673578bbb0
         id: mise
 
-  lint:
+  goci:
     needs: versions
     runs-on: ubuntu-latest
     permissions:
@@ -51,45 +51,25 @@ jobs:
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version: ${{ fromJson(needs.versions.outputs.tools).go }}
-      - uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20
-        with:
-          version: v${{ fromJson(needs.versions.outputs.tools).golangci-lint }}
-
-  test:
-    needs: versions
-    environment: test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - *checkout
-      - *setup-go
       - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151
+      - name: Lint
+        run: mise lint
       - name: Test
         run: mise test
       - name: Test Integration
-        run: mise run test-int
+        run: mise test-int
       - name: Coverage
-        run: mise run covercheck
+        run: mise covercheck
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-
-  build:
-    needs: [versions, lint, test]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - *checkout
-      - *setup-go
       - name: Build
         run: go build .
 
   release:
     runs-on: ubuntu-latest
-    needs: [hk, versions, build]
+    needs: [hk, versions, goci]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
