@@ -19,7 +19,6 @@ description = "Lint code"
 run = [
   "go mod tidy -diff",
   "golangci-lint run ./...",
-  "prettier --check .",
   "goreleaser check",
 ]
 
@@ -54,7 +53,7 @@ run = "golangci-lint run --fix ./..."
 
 [tasks.format]
 description = "Format the code"
-run = ["golangci-lint fmt ./...", "prettier --write ."]
+run = "golangci-lint fmt ./..."
 
 [tasks.tidy]
 description = "Tidy the module"
