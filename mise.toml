@@ -6,9 +6,9 @@ golangci-lint = "2.11.4"
 goreleaser = "2.15.3"
 gotestsum = "1.13.0"
 hk = "1.43.0"
-"npm:markdownlint-cli" = "0.48.0"
-prettier = "3.8.3"
+rumdl = "0.1.80"
 zizmor = "1.24.1"
+dprint = "0.54.0"
 
 [env]
 COVEROUT = "cover.out"
@@ -17,10 +17,10 @@ HK_PKL_BACKEND = "pklr"
 [tasks.lint]
 description = "Lint code"
 run = [
-        "go mod tidy -diff",
-        "golangci-lint run ./...",
-        "prettier --check .",
-        "goreleaser check",
+  "go mod tidy -diff",
+  "golangci-lint run ./...",
+  "prettier --check .",
+  "goreleaser check",
 ]
 
 [tasks.test]
