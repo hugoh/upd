@@ -29,12 +29,7 @@ type updTransport struct {
 func (t *updTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Add("User-Agent", UserAgentPrefix+t.version)
 
-	resp, err := http.DefaultTransport.RoundTrip(req)
-	if err != nil {
-		return nil, fmt.Errorf("updTransport RoundTrip error: %w", err)
-	}
-
-	return resp, nil
+	return http.DefaultTransport.RoundTrip(req) //nolint:wrapcheck // base transport
 }
 
 // HTTPProbe performs HTTP connectivity checks.
