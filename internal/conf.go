@@ -68,7 +68,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/drone/envsubst"
 	"github.com/go-playground/validator"
 	"github.com/hugoh/upd/internal/check"
 	"github.com/hugoh/upd/internal/logger"
@@ -153,12 +152,8 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 
 	logger.L.Debug("[Config] config file used", "file", absPath)
 
-	substContent, err := envsubst.EvalEnv(string(content))
-	if err != nil {
-		return configError("envsubst failed", absPath, err)
-	}
+	substContent := os.ExpandEnv(string(content))
 
-	// Use koanf rawbytes provider to load the substituted config content
 	err = cfg.Load(rawbytes.Provider([]byte(substContent)), yaml.Parser())
 	if err != nil {
 		return configError("Could not read config", absPath, err)
