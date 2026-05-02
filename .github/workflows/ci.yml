@@ -11,6 +11,7 @@ permissions: {}
 
 jobs:
   hk:
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: read
@@ -29,6 +30,7 @@ jobs:
         run: cat /home/runner/.local/state/hk/output.log
 
   versions:
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     outputs:
       tools: ${{ steps.mise.outputs.tools }}
@@ -41,6 +43,7 @@ jobs:
         id: mise
 
   goci:
+    timeout-minutes: 30
     needs: versions
     runs-on: ubuntu-latest
     permissions:
@@ -68,6 +71,7 @@ jobs:
         run: go build .
 
   release:
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     needs: [hk, versions, goci]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

@@ -25,7 +25,7 @@ func TestHttpProbe_Success(t *testing.T) {
 		}
 	}()
 
-	u := url.URL{Scheme: "http", Host: server.Addr}
+	u := url.URL{Scheme: HTTP, Host: server.Addr}
 	httpProbe := NewHTTPProbe(u.String())
 
 	report := httpProbe.Execute(context.Background(), testTimeout)
@@ -76,7 +76,7 @@ func TestHttpProbe_UserAgentHeader(t *testing.T) {
 		}
 	}()
 
-	u := url.URL{Scheme: "http", Host: hostPort, Path: "/ua"}
+	u := url.URL{Scheme: HTTP, Host: hostPort, Path: "/ua"}
 	httpProbe := NewHTTPProbe(u.String())
 
 	report := httpProbe.Execute(context.Background(), testTimeout)
@@ -96,7 +96,7 @@ func TestHttpProbe_UserAgentHeader(t *testing.T) {
 }
 
 func TestHttpProbe_RequestFails(t *testing.T) {
-	u := url.URL{Scheme: "http", Host: "localhost"}
+	u := url.URL{Scheme: HTTP, Host: "localhost"}
 	httpProbe := NewHTTPProbe(u.String())
 	report := httpProbe.Execute(context.Background(), testTimeout)
 	err := checkError(t, report)
@@ -109,7 +109,7 @@ func TestHttpProbe_RequestFails(t *testing.T) {
 }
 
 func TestHttpProbe_Timeout(t *testing.T) {
-	u := url.URL{Scheme: "http", Host: "192.0.2.1:53"}
+	u := url.URL{Scheme: HTTP, Host: "192.0.2.1:53"}
 	httpProbe := NewHTTPProbe(u.String())
 	report := httpProbe.Execute(context.Background(), testTimeoutFail)
 	checkTimeout(t, report, "context deadline exceeded")

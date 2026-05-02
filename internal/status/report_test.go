@@ -11,12 +11,38 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testPort = ":8080"
+
+func setupTestServer(t *testing.T, opts ...func(*StatServerConfig)) *StatHandler {
+	t.Helper()
+
+	status := NewStatus()
+	status.SetRetention(1 * time.Hour)
+
+	config := &StatServerConfig{
+		Port:      testPort,
+		Reports:   []time.Duration{1 * time.Minute},
+		Retention: 1 * time.Hour,
+	}
+
+	for _, opt := range opts {
+		opt(config)
+	}
+
+	server := &StatServer{
+		status: status,
+		config: config,
+	}
+
+	return NewStatHandler(server)
+}
+
 func TestNewStatHandler(t *testing.T) {
 	status := NewStatus()
 	status.SetRetention(1 * time.Hour)
 
 	config := &StatServerConfig{
-		Port:      ":8080",
+		Port:      testPort,
 		Reports:   []time.Duration{1 * time.Minute},
 		Retention: 1 * time.Hour,
 	}
@@ -32,22 +58,11 @@ func TestNewStatHandler(t *testing.T) {
 }
 
 func TestStatHandler_GenStatReport(t *testing.T) {
-	status := NewStatus()
-	status.SetRetention(1 * time.Hour)
+	handler := setupTestServer(t, func(c *StatServerConfig) {
+		c.Reports = []time.Duration{1 * time.Minute, 5 * time.Minute}
+	})
+	status := handler.statServer.status
 	status.Update(true)
-
-	config := &StatServerConfig{
-		Port:      ":8080",
-		Reports:   []time.Duration{1 * time.Minute, 5 * time.Minute},
-		Retention: 1 * time.Hour,
-	}
-
-	server := &StatServer{
-		status: status,
-		config: config,
-	}
-
-	handler := NewStatHandler(server)
 
 	report := handler.GenStatReport()
 	require.NotNil(t, report)
@@ -58,26 +73,13 @@ func TestStatHandler_GenStatReport(t *testing.T) {
 }
 
 func TestStatHandler_GenStatReport_WithChanges(t *testing.T) {
-	status := NewStatus()
-	status.SetRetention(1 * time.Hour)
+	handler := setupTestServer(t)
+	status := handler.statServer.status
 	status.Update(true)
 	time.Sleep(10 * time.Millisecond)
 	status.Update(false)
 	time.Sleep(10 * time.Millisecond)
 	status.Update(true)
-
-	config := &StatServerConfig{
-		Port:      ":8080",
-		Reports:   []time.Duration{1 * time.Minute},
-		Retention: 1 * time.Hour,
-	}
-
-	server := &StatServer{
-		status: status,
-		config: config,
-	}
-
-	handler := NewStatHandler(server)
 
 	report := handler.GenStatReport()
 	require.NotNil(t, report)
@@ -86,22 +88,9 @@ func TestStatHandler_GenStatReport_WithChanges(t *testing.T) {
 }
 
 func TestStatHandler_ServeHTTP(t *testing.T) {
-	status := NewStatus()
-	status.SetRetention(1 * time.Hour)
+	handler := setupTestServer(t)
+	status := handler.statServer.status
 	status.Update(true)
-
-	config := &StatServerConfig{
-		Port:      ":8080",
-		Reports:   []time.Duration{1 * time.Minute},
-		Retention: 1 * time.Hour,
-	}
-
-	server := &StatServer{
-		status: status,
-		config: config,
-	}
-
-	handler := NewStatHandler(server)
 
 	req := httptest.NewRequest(http.MethodGet, StatRoute, http.NoBody)
 	rec := httptest.NewRecorder()
@@ -120,22 +109,9 @@ func TestStatHandler_ServeHTTP(t *testing.T) {
 }
 
 func TestStatHandler_ServeHTTP_MethodNotAllowed(t *testing.T) {
-	status := NewStatus()
-	status.SetRetention(1 * time.Hour)
+	handler := setupTestServer(t)
+	status := handler.statServer.status
 	status.Update(true)
-
-	config := &StatServerConfig{
-		Port:      ":8080",
-		Reports:   []time.Duration{1 * time.Minute},
-		Retention: 1 * time.Hour,
-	}
-
-	server := &StatServer{
-		status: status,
-		config: config,
-	}
-
-	handler := NewStatHandler(server)
 
 	req := httptest.NewRequest(http.MethodPost, StatRoute, http.NoBody)
 	rec := httptest.NewRecorder()
@@ -146,22 +122,9 @@ func TestStatHandler_ServeHTTP_MethodNotAllowed(t *testing.T) {
 }
 
 func TestStatHandler_ServeHTTP_MethodHead(t *testing.T) {
-	status := NewStatus()
-	status.SetRetention(1 * time.Hour)
+	handler := setupTestServer(t)
+	status := handler.statServer.status
 	status.Update(true)
-
-	config := &StatServerConfig{
-		Port:      ":8080",
-		Reports:   []time.Duration{1 * time.Minute},
-		Retention: 1 * time.Hour,
-	}
-
-	server := &StatServer{
-		status: status,
-		config: config,
-	}
-
-	handler := NewStatHandler(server)
 
 	req := httptest.NewRequest(http.MethodHead, StatRoute, http.NoBody)
 	rec := httptest.NewRecorder()
@@ -172,22 +135,9 @@ func TestStatHandler_ServeHTTP_MethodHead(t *testing.T) {
 }
 
 func TestStatHandler_ServeHTTP_JSONFormat(t *testing.T) {
-	status := NewStatus()
-	status.SetRetention(1 * time.Hour)
+	handler := setupTestServer(t)
+	status := handler.statServer.status
 	status.Update(true)
-
-	config := &StatServerConfig{
-		Port:      ":8080",
-		Reports:   []time.Duration{1 * time.Minute},
-		Retention: 1 * time.Hour,
-	}
-
-	server := &StatServer{
-		status: status,
-		config: config,
-	}
-
-	handler := NewStatHandler(server)
 
 	req := httptest.NewRequest(http.MethodGet, StatRoute, http.NoBody)
 	rec := httptest.NewRecorder()
