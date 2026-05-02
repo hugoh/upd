@@ -11,12 +11,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testPort = ":8080"
+
 func TestNewStatHandler(t *testing.T) {
 	status := NewStatus()
 	status.SetRetention(1 * time.Hour)
 
 	config := &StatServerConfig{
-		Port:      ":8080",
+		Port:      testPort,
 		Reports:   []time.Duration{1 * time.Minute},
 		Retention: 1 * time.Hour,
 	}
@@ -37,7 +39,7 @@ func TestStatHandler_GenStatReport(t *testing.T) {
 	status.Update(true)
 
 	config := &StatServerConfig{
-		Port:      ":8080",
+		Port:      testPort,
 		Reports:   []time.Duration{1 * time.Minute, 5 * time.Minute},
 		Retention: 1 * time.Hour,
 	}
@@ -67,7 +69,7 @@ func TestStatHandler_GenStatReport_WithChanges(t *testing.T) {
 	status.Update(true)
 
 	config := &StatServerConfig{
-		Port:      ":8080",
+		Port:      testPort,
 		Reports:   []time.Duration{1 * time.Minute},
 		Retention: 1 * time.Hour,
 	}
@@ -91,7 +93,7 @@ func TestStatHandler_ServeHTTP(t *testing.T) {
 	status.Update(true)
 
 	config := &StatServerConfig{
-		Port:      ":8080",
+		Port:      testPort,
 		Reports:   []time.Duration{1 * time.Minute},
 		Retention: 1 * time.Hour,
 	}
@@ -125,7 +127,7 @@ func TestStatHandler_ServeHTTP_MethodNotAllowed(t *testing.T) {
 	status.Update(true)
 
 	config := &StatServerConfig{
-		Port:      ":8080",
+		Port:      testPort,
 		Reports:   []time.Duration{1 * time.Minute},
 		Retention: 1 * time.Hour,
 	}
@@ -151,7 +153,7 @@ func TestStatHandler_ServeHTTP_MethodHead(t *testing.T) {
 	status.Update(true)
 
 	config := &StatServerConfig{
-		Port:      ":8080",
+		Port:      testPort,
 		Reports:   []time.Duration{1 * time.Minute},
 		Retention: 1 * time.Hour,
 	}
@@ -177,7 +179,7 @@ func TestStatHandler_ServeHTTP_JSONFormat(t *testing.T) {
 	status.Update(true)
 
 	config := &StatServerConfig{
-		Port:      ":8080",
+		Port:      testPort,
 		Reports:   []time.Duration{1 * time.Minute},
 		Retention: 1 * time.Hour,
 	}

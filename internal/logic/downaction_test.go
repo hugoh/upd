@@ -9,9 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testTrue  = "true"
+	testFalse = "false"
+)
+
 func Test_ExecuteSucceed(t *testing.T) {
 	da := &DownAction{
-		Exec: "true",
+		Exec: testTrue,
 	}
 	dal, _ := da.NewDownActionLoop(context.Background())
 	err := dal.Execute(context.Background(), da.Exec)
@@ -20,7 +25,7 @@ func Test_ExecuteSucceed(t *testing.T) {
 
 func Test_ExecuteFail(t *testing.T) {
 	da := &DownAction{
-		Exec: "false",
+		Exec: testFalse,
 	}
 	dal, _ := da.NewDownActionLoop(context.Background())
 	err := dal.Execute(context.Background(), da.Exec)
@@ -45,7 +50,7 @@ func getTestDA() *DownAction {
 	return &DownAction{
 		After: after,
 		Every: every,
-		Exec:  "true",
+		Exec:  testTrue,
 	}
 }
 
@@ -62,8 +67,8 @@ func Test_StartAndStop(t *testing.T) {
 	da := &DownAction{
 		After:    10 * time.Millisecond,
 		Every:    every,
-		Exec:     "true",
-		StopExec: "true",
+		Exec:     testTrue,
+		StopExec: testTrue,
 	}
 	dal := da.Start(context.Background())
 	assert.NotNil(t, dal, "DownAction loop is running")
@@ -129,7 +134,7 @@ func TestValidateCommand(t *testing.T) {
 		},
 		{
 			name:        "Valid single command",
-			command:     []string{"true"},
+			command:     []string{testTrue},
 			expectedErr: nil,
 		},
 		{

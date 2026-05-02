@@ -10,7 +10,7 @@ import (
 
 func TestLogAttrs_Response(t *testing.T) {
 	report := &Report{
-		protocol: "http",
+		protocol: HTTP,
 		response: "OK",
 		elapsed:  123 * time.Millisecond,
 	}
@@ -62,10 +62,10 @@ func TestProtocol(t *testing.T) {
 		name     string
 		protocol string
 	}{
-		{"HTTP", "http"},
-		{"HTTPS", "https"},
-		{"TCP", "tcp"},
-		{"DNS", "dns"},
+		{"HTTP", HTTP},
+		{"HTTPS", HTTPS},
+		{"TCP", TCP},
+		{"DNS", DNS},
 	}
 
 	for _, tt := range tests {

@@ -5,6 +5,7 @@ linters:
     - depguard
     - exhaustruct
     - godoclint
+    - gomodguard
     - noinlineerr
     - paralleltest
     - testpackage
