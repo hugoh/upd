@@ -64,47 +64,6 @@ func (c *Check) RunProbe(ctx context.Context, checker Checker) *Report {
 	return c.Probe.Execute(ctx, c.Timeout)
 }
 
-// NullChecker is a no-op implementation of the Checker interface.
-//
-// Use this when you don't need any special handling of check lifecycle events.
-// All methods are empty operations that do nothing.
-//
-// Example:
-//
-//	checker := &check.NullChecker{}
-//	report := check.RunProbe(ctx, checker)
-type NullChecker struct{}
-
-// CheckRun is a no-op implementation of Checker.CheckRun.
-func (NullChecker) CheckRun(_ Check) {}
-
-// ProbeSuccess is a no-op implementation of Checker.ProbeSuccess.
-func (NullChecker) ProbeSuccess(_ *Report) {}
-
-// ProbeFailure is a no-op implementation of Checker.ProbeFailure.
-func (NullChecker) ProbeFailure(_ *Report) {}
-
-// RunChecks executes a series of checks using a NullChecker.
-//
-// Returns true as soon as one check is successful, indicating that the
-// connection is up. Returns false if all checks fail.
-//
-// This is a convenience wrapper around CheckerRun that uses NullChecker.
-//
-// Example:
-//
-//	success, err := check.RunChecks(ctx, checkList.GetIterator())
-//	if success {
-//	    fmt.Println("Connection is up")
-//	} else {
-//	    fmt.Println("Connection is down")
-//	}
-func RunChecks(ctx context.Context, checkListIterator ListIterator) (bool, error) {
-	var nc NullChecker
-
-	return CheckerRun(ctx, nc, checkListIterator)
-}
-
 // CheckerRun executes a series of checks using the provided Checker interface.
 //
 // Returns true as soon as one check is successful, indicating that the
