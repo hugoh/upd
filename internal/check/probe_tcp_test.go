@@ -2,41 +2,40 @@ package check
 
 import (
 	"context"
+	"errors"
 	"net"
-	"strings"
 	"testing"
 )
 
+type fakeDialer struct {
+	conn net.Conn
+	err  error
+}
+
+func (d *fakeDialer) DialContext(_ context.Context, _, _ string) (net.Conn, error) {
+	return d.conn, d.err
+}
+
+type fakeTCPAddr struct{ addr string }
+
+func (*fakeTCPAddr) Network() string  { return "tcp" }
+func (a *fakeTCPAddr) String() string { return a.addr }
+
+type stubTCPConn struct {
+	net.Conn
+
+	localAddr net.Addr
+}
+
+func (c *stubTCPConn) LocalAddr() net.Addr { return c.localAddr }
+
 func TestTcpProbe_Success(t *testing.T) {
-	listen := newTestTCPServer(t)
+	wantLocalAddr := &fakeTCPAddr{addr: "127.0.0.1:54321"}
+	_, clientEnd := net.Pipe()
+	conn := &stubTCPConn{Conn: clientEnd, localAddr: wantLocalAddr}
 
-	defer func() {
-		if err := listen.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-
-	go func() {
-		connection, err := listen.Accept()
-		if err != nil {
-			t.Logf("Error accepting connection: %v", err)
-
-			return
-		}
-
-		go func(conn net.Conn) {
-			if _, err := conn.Write([]byte("pong")); err != nil {
-				t.Error(err)
-			}
-
-			if err := conn.Close(); err != nil {
-				t.Error(err)
-			}
-		}(connection)
-	}()
-
-	hostPort := listen.Addr().String()
-	tcpProbe := NewTCPProbe(hostPort)
+	dialer := &fakeDialer{conn: conn}
+	tcpProbe := &TCPProbe{HostPort: "127.0.0.1:12345", dialer: dialer}
 
 	report := tcpProbe.Execute(context.Background(), testTimeout)
 	if report.error != nil {
@@ -60,7 +59,8 @@ func TestTcpProbe_Success(t *testing.T) {
 }
 
 func TestTcpProbe_RequestFails(t *testing.T) {
-	tcpProbe := NewTCPProbe("localhost:80")
+	dialer := &fakeDialer{err: errors.New("connection refused")}
+	tcpProbe := &TCPProbe{HostPort: "localhost:80", dialer: dialer}
 
 	report := tcpProbe.Execute(context.Background(), 1)
 	if report.error == nil {
@@ -74,27 +74,16 @@ func TestTcpProbe_RequestFails(t *testing.T) {
 
 	got = report.error.Error()
 
-	want := "error making request to localhost:80: dial tcp: lookup localhost:"
-	if !strings.Contains(got, want) {
-		t.Fatalf("got %q, want to contain %q", got, want)
+	want := "error making request to localhost:80: connection refused"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
 	}
 }
 
 func TestTcpProbe_Timeout(t *testing.T) {
-	tcpProbe := NewTCPProbe("192.0.2.1:53")
-	report := tcpProbe.Execute(context.Background(), testTimeoutFail)
-	checkTimeout(t, report, "i/o timeout")
-}
+	dialer := &fakeDialer{err: context.DeadlineExceeded}
+	tcpProbe := &TCPProbe{HostPort: "192.0.2.1:53", dialer: dialer}
 
-func newTestTCPServer(t *testing.T) net.Listener {
-	t.Helper()
-
-	hostPort := net.JoinHostPort("127.0.0.1", "8081")
-
-	listen, err := net.Listen("tcp", hostPort)
-	if err != nil {
-		t.Fatalf("starting tcp server: %v", err)
-	}
-
-	return listen
+	report := tcpProbe.Execute(context.Background(), testTimeout)
+	checkTimeout(t, report, "context deadline exceeded")
 }

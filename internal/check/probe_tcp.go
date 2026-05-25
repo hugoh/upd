@@ -7,9 +7,15 @@ import (
 	"time"
 )
 
+// Dialer dials a TCP connection.
+type Dialer interface {
+	DialContext(ctx context.Context, network, address string) (net.Conn, error)
+}
+
 // TCPProbe performs TCP connectivity checks.
 type TCPProbe struct {
 	HostPort string
+	dialer   Dialer
 }
 
 // NewTCPProbe creates a new TCP probe for the given host:port.
@@ -25,10 +31,20 @@ func (TCPProbe) Scheme() string {
 // Execute runs the TCP connection attempt and returns a report.
 func (p TCPProbe) Execute(ctx context.Context, timeout time.Duration) *Report {
 	start := time.Now()
-	dialer := &net.Dialer{
-		Timeout: timeout,
+
+	var (
+		conn net.Conn
+		err  error
+	)
+
+	if p.dialer != nil {
+		conn, err = p.dialer.DialContext(ctx, "tcp", p.HostPort)
+	} else {
+		d := &net.Dialer{
+			Timeout: timeout,
+		}
+		conn, err = d.DialContext(ctx, "tcp", p.HostPort)
 	}
-	conn, err := dialer.DialContext(ctx, "tcp", p.HostPort)
 
 	report := BuildReport(p, start)
 	if err != nil {

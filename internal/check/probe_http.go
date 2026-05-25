@@ -23,13 +23,19 @@ var updClient = &http.Client{
 }
 
 type updTransport struct {
-	version string
+	version  string
+	delegate http.RoundTripper
 }
 
 func (t *updTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Add("User-Agent", UserAgentPrefix+t.version)
 
-	return http.DefaultTransport.RoundTrip(req) //nolint:wrapcheck // base transport
+	d := t.delegate
+	if d == nil {
+		d = http.DefaultTransport
+	}
+
+	return d.RoundTrip(req) //nolint:wrapcheck // base transport
 }
 
 // HTTPProbe performs HTTP connectivity checks.
