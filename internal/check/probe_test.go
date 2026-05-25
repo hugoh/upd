@@ -11,6 +11,8 @@ import (
 const (
 	testTimeout     = 1 * time.Second
 	testTimeoutFail = 1 * time.Microsecond
+	testOKStatus    = "200 OK"
+	testURL         = "http://example.com"
 )
 
 func checkError(t *testing.T, report *Report) error {

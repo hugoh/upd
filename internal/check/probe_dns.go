@@ -7,10 +7,16 @@ import (
 	"time"
 )
 
+// DNSResolver resolves hostnames to IP addresses.
+type DNSResolver interface {
+	LookupHost(ctx context.Context, host string) ([]string, error)
+}
+
 // DNSProbe performs DNS resolution connectivity checks.
 type DNSProbe struct {
 	DNSResolver string
 	Domain      string
+	resolver    DNSResolver
 }
 
 // NewDNSProbe creates a new DNS probe for the given resolver and domain.
@@ -28,16 +34,20 @@ func (DNSProbe) Scheme() string {
 
 // Execute runs the DNS resolution and returns a report.
 func (p DNSProbe) Execute(ctx context.Context, timeout time.Duration) *Report {
-	resolver := &net.Resolver{
-		PreferGo: true,
-		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-			d := net.Dialer{
-				Timeout: timeout,
-			}
+	resolver := p.resolver
+	if resolver == nil {
+		resolver = &net.Resolver{
+			PreferGo: true,
+			Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+				d := net.Dialer{
+					Timeout: timeout,
+				}
 
-			return d.DialContext(ctx, network, p.DNSResolver)
-		},
+				return d.DialContext(ctx, network, p.DNSResolver)
+			},
+		}
 	}
+
 	start := time.Now()
 	addr, err := resolver.LookupHost(ctx, p.Domain)
 
