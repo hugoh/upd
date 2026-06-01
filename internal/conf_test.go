@@ -131,7 +131,8 @@ func (suite *TestSuite) TestGetChecks() {
 
 func (suite *TestSuite) TestStatConf() {
 	conf := suite.conf.Stats
-	suite.Equal(":8080", conf.Port)
+	suite.NotNil(conf.Port)
+	suite.Equal(8080, conf.Port)
 }
 
 func TestReadConf_envsubst(t *testing.T) {

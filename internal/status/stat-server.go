@@ -25,12 +25,12 @@ const (
 //
 //nolint:tagalign // golines formatter reorders tags differently than tagalign expects
 type StatServerConfig struct {
-	Port         string `validate:"omitempty,validTCPPort"`
+	Port         int `validate:"omitempty,min=1,max=65535"`
 	Reports      []time.Duration
 	Retention    time.Duration
-	ReadTimeout  time.Duration `validate:"omitempty,gte=0"        koanf:"readTimeout"`
-	WriteTimeout time.Duration `validate:"omitempty,gte=0"        koanf:"writeTimeout"`
-	IdleTimeout  time.Duration `validate:"omitempty,gte=0"        koanf:"idleTimeout"`
+	ReadTimeout  time.Duration `validate:"omitempty,gte=0"           koanf:"readTimeout"`
+	WriteTimeout time.Duration `validate:"omitempty,gte=0"           koanf:"writeTimeout"`
+	IdleTimeout  time.Duration `validate:"omitempty,gte=0"           koanf:"idleTimeout"`
 }
 
 // StatServer provides an HTTP endpoint for status statistics.
@@ -42,7 +42,7 @@ type StatServer struct {
 
 // StartStatServer starts a new statistics server in a goroutine.
 func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
-	if config.Port == "" {
+	if config.Port == 0 {
 		logger.L.Debug("no stat server specified")
 
 		return nil
@@ -67,7 +67,7 @@ func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 		status: status,
 		config: config,
 		server: &http.Server{
-			Addr:         config.Port,
+			Addr:         fmt.Sprintf(":%d", config.Port),
 			ReadTimeout:  readTimeout,
 			WriteTimeout: writeTimeout,
 			IdleTimeout:  idleTimeout,

@@ -15,7 +15,7 @@ downAction:
     after: 120s
     repeat: 300s
 stats:
-  port: :8080
+  port: 8080
   retention: 10080m
   reports:
     - 10s

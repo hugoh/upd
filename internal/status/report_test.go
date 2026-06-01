@@ -11,8 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testPort = ":8080"
-
 func setupTestServer(t *testing.T, opts ...func(*StatServerConfig)) *StatHandler {
 	t.Helper()
 
@@ -20,7 +18,7 @@ func setupTestServer(t *testing.T, opts ...func(*StatServerConfig)) *StatHandler
 	status.SetRetention(1 * time.Hour)
 
 	config := &StatServerConfig{
-		Port:      testPort,
+		Port:      8080,
 		Reports:   []time.Duration{1 * time.Minute},
 		Retention: 1 * time.Hour,
 	}
@@ -42,7 +40,7 @@ func TestNewStatHandler(t *testing.T) {
 	status.SetRetention(1 * time.Hour)
 
 	config := &StatServerConfig{
-		Port:      testPort,
+		Port:      8080,
 		Reports:   []time.Duration{1 * time.Minute},
 		Retention: 1 * time.Hour,
 	}

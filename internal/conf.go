@@ -29,7 +29,7 @@
 //	   after: 60s
 //	   repeat: 300s
 //	stats:
-//	 port: ":8080"
+//	 port: 8080
 //	logLevel: debug
 //
 // The configuration supports environment variable substitution using
@@ -64,11 +64,10 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"strings"
 	"time"
 
-	"github.com/go-playground/validator"
+	"github.com/go-playground/validator/v10"
 	"github.com/hugoh/upd/internal/check"
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
@@ -83,10 +82,6 @@ const (
 	DefaultConfig = ".upd.yaml"
 	// DefaultDNSPort is the default DNS port.
 	DefaultDNSPort = "53"
-)
-
-var tcpPortRegex = regexp.MustCompile(
-	`^:(6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[0-9]{1,4})$`,
 )
 
 // ConfigFileUsed stores the path of the active configuration file for debugging purposes.
@@ -168,11 +163,6 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 
 	validate := validator.New()
 
-	err = validate.RegisterValidation("validTCPPort", isValidTCPPort)
-	if err != nil {
-		return configError("failed to instantiate config validator", cfgFile, err)
-	}
-
 	err = validate.Struct(&conf)
 	if err != nil {
 		return configError("Missing required attributes", cfgFile, err)
@@ -181,10 +171,6 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 	conf.logSetup()
 
 	return &conf, nil
-}
-
-func isValidTCPPort(fl validator.FieldLevel) bool {
-	return tcpPortRegex.MatchString(fl.Field().String())
 }
 
 // ErrNoChecks is returned when no valid checks are found in configuration.
