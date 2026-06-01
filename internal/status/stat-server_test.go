@@ -15,7 +15,7 @@ func TestStartStatServer_NoPort(t *testing.T) {
 	status.SetRetention(1 * time.Hour)
 
 	config := &StatServerConfig{
-		Port: "",
+		Port: 0,
 	}
 
 	server := StartStatServer(status, config)
@@ -27,7 +27,7 @@ func TestStartStatServer_WithPort(t *testing.T) {
 	status.SetRetention(1 * time.Hour)
 
 	config := &StatServerConfig{
-		Port:      ":0",
+		Port:      18765,
 		Reports:   []time.Duration{1 * time.Minute},
 		Retention: 1 * time.Hour,
 	}
@@ -51,7 +51,7 @@ func TestStatServer_Start_WithTimeouts(t *testing.T) {
 	status.Update(true)
 
 	config := &StatServerConfig{
-		Port:         ":0",
+		Port:         18765,
 		Reports:      []time.Duration{1 * time.Minute},
 		Retention:    1 * time.Hour,
 		ReadTimeout:  2 * time.Second,
@@ -81,7 +81,7 @@ func TestStatServer_Start_UsesDefaultTimeouts(t *testing.T) {
 	status.Update(true)
 
 	config := &StatServerConfig{
-		Port:      ":0",
+		Port:      18765,
 		Reports:   []time.Duration{1 * time.Minute},
 		Retention: 1 * time.Hour,
 	}
@@ -116,7 +116,7 @@ func TestStopStatServer_GracefulShutdown(t *testing.T) {
 	status.SetRetention(1 * time.Hour)
 
 	config := &StatServerConfig{
-		Port:      ":0",
+		Port:      18765,
 		Reports:   []time.Duration{1 * time.Minute},
 		Retention: 1 * time.Hour,
 	}
@@ -140,7 +140,7 @@ func TestStatServer_Route(t *testing.T) {
 	status.Update(true)
 
 	config := &StatServerConfig{
-		Port:      ":0",
+		Port:      18765,
 		Reports:   []time.Duration{1 * time.Minute},
 		Retention: 1 * time.Hour,
 	}

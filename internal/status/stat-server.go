@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/hugoh/upd/internal/logger"
+	"github.com/hugoh/upd/internal/types"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -22,15 +24,47 @@ const (
 )
 
 // StatServerConfig holds configuration for the statistics HTTP server.
-//
-//nolint:tagalign // golines formatter reorders tags differently than tagalign expects
 type StatServerConfig struct {
-	Port         string `validate:"omitempty,validTCPPort"`
+	Port         int `validate:"omitempty,min=1,max=65535"`
 	Reports      []time.Duration
 	Retention    time.Duration
-	ReadTimeout  time.Duration `validate:"omitempty,gte=0"        koanf:"readTimeout"`
-	WriteTimeout time.Duration `validate:"omitempty,gte=0"        koanf:"writeTimeout"`
-	IdleTimeout  time.Duration `validate:"omitempty,gte=0"        koanf:"idleTimeout"`
+	ReadTimeout  time.Duration `validate:"omitempty,gte=0"           yaml:"readTimeout"`  //nolint:tagalign
+	WriteTimeout time.Duration `validate:"omitempty,gte=0"           yaml:"writeTimeout"` //nolint:tagalign
+	IdleTimeout  time.Duration `validate:"omitempty,gte=0"           yaml:"idleTimeout"`  //nolint:tagalign
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface for StatServerConfig,
+// decoding duration strings (like "10s", "5m") into time.Duration fields via
+// the types.Duration intermediate type.
+func (s *StatServerConfig) UnmarshalYAML(value *yaml.Node) error {
+	type rawStatServerConfig struct {
+		Port         int
+		Reports      []types.Duration
+		Retention    types.Duration
+		ReadTimeout  types.Duration `yaml:"readTimeout"`
+		WriteTimeout types.Duration `yaml:"writeTimeout"`
+		IdleTimeout  types.Duration `yaml:"idleTimeout"`
+	}
+
+	var raw rawStatServerConfig
+
+	if err := value.Decode(&raw); err != nil {
+		return fmt.Errorf("failed to decode StatServerConfig: %w", err)
+	}
+
+	s.Port = raw.Port
+
+	s.Reports = make([]time.Duration, len(raw.Reports))
+	for i, d := range raw.Reports {
+		s.Reports[i] = d.StdDuration()
+	}
+
+	s.Retention = raw.Retention.StdDuration()
+	s.ReadTimeout = raw.ReadTimeout.StdDuration()
+	s.WriteTimeout = raw.WriteTimeout.StdDuration()
+	s.IdleTimeout = raw.IdleTimeout.StdDuration()
+
+	return nil
 }
 
 // StatServer provides an HTTP endpoint for status statistics.
@@ -42,7 +76,7 @@ type StatServer struct {
 
 // StartStatServer starts a new statistics server in a goroutine.
 func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
-	if config.Port == "" {
+	if config.Port == 0 {
 		logger.L.Debug("no stat server specified")
 
 		return nil
@@ -67,7 +101,7 @@ func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 		status: status,
 		config: config,
 		server: &http.Server{
-			Addr:         config.Port,
+			Addr:         fmt.Sprintf(":%d", config.Port),
 			ReadTimeout:  readTimeout,
 			WriteTimeout: writeTimeout,
 			IdleTimeout:  idleTimeout,

@@ -7,9 +7,11 @@ import (
 
 	"github.com/hugoh/upd/internal/check"
 	"github.com/hugoh/upd/internal/logic"
+	"github.com/hugoh/upd/internal/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/yaml.v3"
 )
 
 type TestSuite struct {
@@ -131,7 +133,8 @@ func (suite *TestSuite) TestGetChecks() {
 
 func (suite *TestSuite) TestStatConf() {
 	conf := suite.conf.Stats
-	suite.Equal(":8080", conf.Port)
+	suite.NotNil(conf.Port)
+	suite.Equal(8080, conf.Port)
 }
 
 func TestReadConf_envsubst(t *testing.T) {
@@ -139,13 +142,14 @@ func TestReadConf_envsubst(t *testing.T) {
 
 	conf, err := readTestConfig("upd_test_envvar.yaml")
 	require.NoError(t, err)
-	assert.Equal(t, 3*time.Second, conf.Checks.TimeOut)
+	assert.Equal(t, types.Duration(3*time.Second), conf.Checks.TimeOut)
 }
 
 func TestReadConf_envsubst_missing(t *testing.T) {
 	_, err := readTestConfig("upd_test_envvar.yaml")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "TimeOut")
+	assert.Contains(t, err.Error(), "environment variable")
+	assert.Contains(t, err.Error(), "not set")
 }
 
 func TestDNSCheckValidation_MissingDomain(t *testing.T) {
@@ -239,4 +243,141 @@ func TestLogSetup(t *testing.T) {
 			conf.logSetup()
 		})
 	}
+}
+
+func TestExpandNode_set(t *testing.T) {
+	t.Setenv("UPD_EXPAND_TEST", "expanded_value")
+
+	node := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Tag:   strTag,
+		Value: "prefix_${UPD_EXPAND_TEST}_suffix",
+	}
+
+	require.NoError(t, expandNode(node))
+
+	assert.Equal(t, "prefix_expanded_value_suffix", node.Value)
+}
+
+func TestExpandNode_unset(t *testing.T) {
+	node := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Tag:   strTag,
+		Value: "${NONEXISTENT_VAR}",
+	}
+
+	err := expandNode(node)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "NONEXISTENT_VAR")
+}
+
+func TestExpandNode_noVar(t *testing.T) {
+	node := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Tag:   strTag,
+		Value: "plain string without vars",
+	}
+
+	require.NoError(t, expandNode(node))
+
+	assert.Equal(t, "plain string without vars", node.Value)
+}
+
+func TestExpandNode_nonStringSkipped(t *testing.T) {
+	original := "123"
+
+	node := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Tag:   "!!int",
+		Value: original,
+	}
+
+	require.NoError(t, expandNode(node))
+
+	assert.Equal(t, original, node.Value)
+}
+
+func TestExpandNode_emptyTag(t *testing.T) {
+	t.Setenv("UPD_EMPTY_TAG", "works")
+
+	node := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Tag:   "",
+		Value: "${UPD_EMPTY_TAG}",
+	}
+
+	require.NoError(t, expandNode(node))
+
+	assert.Equal(t, "works", node.Value)
+}
+
+func TestExpandNode_mapping(t *testing.T) {
+	t.Setenv("UPD_MAP_KEY", "expanded")
+
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: strTag, Value: "key"},
+			{Kind: yaml.ScalarNode, Tag: strTag, Value: "${UPD_MAP_KEY}"},
+		},
+	}
+
+	require.NoError(t, expandNode(node))
+
+	assert.Equal(t, "expanded", node.Content[1].Value)
+}
+
+func TestExpandNode_sequence(t *testing.T) {
+	t.Setenv("UPD_SEQ_ITEM", "replaced")
+
+	node := &yaml.Node{
+		Kind: yaml.SequenceNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: strTag, Value: "${UPD_SEQ_ITEM}"},
+			{Kind: yaml.ScalarNode, Tag: strTag, Value: "static"},
+		},
+	}
+
+	require.NoError(t, expandNode(node))
+
+	assert.Equal(t, "replaced", node.Content[0].Value)
+	assert.Equal(t, "static", node.Content[1].Value)
+}
+
+func TestExpandNode_nested(t *testing.T) {
+	t.Setenv("UPD_NESTED", "deep")
+
+	node := &yaml.Node{
+		Kind: yaml.DocumentNode,
+		Content: []*yaml.Node{
+			{
+				Kind: yaml.MappingNode,
+				Content: []*yaml.Node{
+					{Kind: yaml.ScalarNode, Tag: strTag, Value: "nested"},
+					{Kind: yaml.ScalarNode, Tag: strTag, Value: "${UPD_NESTED}"},
+				},
+			},
+		},
+	}
+
+	require.NoError(t, expandNode(node))
+
+	assert.Equal(t, "deep", node.Content[0].Content[1].Value)
+}
+
+func TestExpandNode_unbracedNotExpanded(t *testing.T) {
+	node := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Tag:   strTag,
+		Value: "$PATH",
+	}
+
+	require.NoError(t, expandNode(node))
+
+	assert.Equal(t, "$PATH", node.Value)
+}
+
+func TestExpandNode_nilNode(t *testing.T) {
+	require.NoError(t, expandNode(nil))
 }

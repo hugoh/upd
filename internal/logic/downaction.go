@@ -2,6 +2,7 @@
 package logic
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -35,7 +36,11 @@ type DownActionLoop struct {
 	da         *DownAction
 	it         *DownActionIteration
 	cancelFunc context.CancelFunc
+	//nolint:containedctx // loopCtx stored to bind StopExec commands on loop exit
+	loopCtx    context.Context
 	mu         sync.RWMutex
+	currentCmd *exec.Cmd
+	cmdMu      sync.Mutex
 }
 
 // BackoffFactor is the multiplier for exponential backoff.
@@ -86,23 +91,39 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 
 	// #nosec G204 // Command is validated by shlex.Split() and validateCommand() before execution
 	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
+
+	var stderrBuf bytes.Buffer
+
+	cmd.Stderr = &stderrBuf
+
 	cmdEnv := os.Environ()
 	cmdEnv = append(cmdEnv, fmt.Sprintf("UPD_ITERATION=%d", iteration))
 	cmd.Env = cmdEnv
 	logger.L.Info("[DownAction] executing command", "exec", cmd.String())
 
-	err = cmd.Start()
-	if err != nil {
+	if err = cmd.Start(); err != nil {
 		logger.L.Error("[DownAction] failed to run", "exec", cmd.String(), "error", err)
 
 		return fmt.Errorf("failed to execute DownAction: %w", err)
 	}
 
+	dal.cmdMu.Lock()
+	dal.currentCmd = cmd
+	dal.cmdMu.Unlock()
+
 	go func() {
-		err := cmd.Wait()
-		if err != nil {
+		waitErr := cmd.Wait()
+
+		dal.cmdMu.Lock()
+		if dal.currentCmd == cmd {
+			dal.currentCmd = nil
+		}
+		dal.cmdMu.Unlock()
+
+		if waitErr != nil {
 			logger.L.Warn("[DownAction] error executing command",
-				"exec", cmd.String(), "error", err)
+				"exec", cmd.String(), "error", waitErr,
+				"stderr", string(bytes.TrimSpace(stderrBuf.Bytes())))
 		}
 	}()
 
@@ -123,6 +144,7 @@ func (da *DownAction) NewDownActionLoop(ctx context.Context) (*DownActionLoop, c
 		da:         da,
 		it:         NewDownActionIteration(),
 		cancelFunc: cancelFunc,
+		loopCtx:    ctx,
 	}
 
 	return dal, ctx
@@ -140,9 +162,13 @@ func (da *DownAction) Start(ctx context.Context) *DownActionLoop {
 }
 
 // Stop cancels the down action loop and executes the stop command.
-func (dal *DownActionLoop) Stop(ctx context.Context) {
+// The stop command is bound to loopCtx so cancelFunc kills it on loop exit.
+func (dal *DownActionLoop) Stop(_ context.Context) {
+	dal.killCurrentCmd()
+
 	if dal.da.StopExec != "" {
-		err := dal.Execute(ctx, dal.da.StopExec)
+		//nolint:contextcheck // loopCtx derived from the same hierarchy as ctx
+		err := dal.Execute(dal.loopCtx, dal.da.StopExec)
 		if err != nil && !errors.Is(err, ErrNoCommand) {
 			logger.L.Warn("[DownAction] failed to execute stop command", "error", err)
 		}
@@ -150,6 +176,27 @@ func (dal *DownActionLoop) Stop(ctx context.Context) {
 
 	logger.L.Debug("[DownAction] sending shutdown signal")
 	dal.cancelFunc()
+}
+
+// killCurrentCmd kills any currently running command and clears the reference.
+func (dal *DownActionLoop) killCurrentCmd() {
+	dal.cmdMu.Lock()
+	defer dal.cmdMu.Unlock()
+
+	if dal.currentCmd == nil {
+		return
+	}
+
+	logger.L.Warn("[DownAction] killing current command",
+		"pid", dal.currentCmd.Process.Pid)
+
+	if dal.currentCmd.Process != nil {
+		if err := dal.currentCmd.Process.Kill(); err != nil {
+			logger.L.Warn("[DownAction] failed to kill current command", "error", err)
+		}
+	}
+
+	dal.currentCmd = nil
 }
 
 func (dal *DownActionLoop) iterate() {
@@ -197,6 +244,8 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 		case <-timer.C:
 			timer.Stop()
 		}
+
+		dal.killCurrentCmd()
 
 		err := dal.Execute(ctx, dal.da.Exec)
 		if err != nil {
