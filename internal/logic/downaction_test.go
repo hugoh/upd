@@ -41,6 +41,27 @@ func Test_ExecuteNonExistent(t *testing.T) {
 	require.Error(t, err)
 }
 
+func Test_ExecuteStderrCapture(t *testing.T) {
+	da := &DownAction{}
+	dal, _ := da.NewDownActionLoop(context.Background())
+
+	err := dal.Execute(context.Background(), "sh -c 'echo stderr-output >&2; exit 1'")
+	require.NoError(t, err)
+
+	time.Sleep(200 * time.Millisecond)
+}
+
+func Test_ExecuteStderrCapture_Trimmed(t *testing.T) {
+	da := &DownAction{}
+	dal, _ := da.NewDownActionLoop(context.Background())
+
+	err := dal.Execute(context.Background(),
+		"sh -c 'printf \"\n\n  spaced-stderr  \n\n\" >&2; exit 1'")
+	require.NoError(t, err)
+
+	time.Sleep(200 * time.Millisecond)
+}
+
 func getTestDA() *DownAction {
 	const (
 		after = 42 * time.Second

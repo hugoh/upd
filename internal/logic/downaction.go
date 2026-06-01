@@ -2,6 +2,7 @@
 package logic
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -86,23 +87,28 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 
 	// #nosec G204 // Command is validated by shlex.Split() and validateCommand() before execution
 	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
+
+	var stderrBuf bytes.Buffer
+
+	cmd.Stderr = &stderrBuf
+
 	cmdEnv := os.Environ()
 	cmdEnv = append(cmdEnv, fmt.Sprintf("UPD_ITERATION=%d", iteration))
 	cmd.Env = cmdEnv
 	logger.L.Info("[DownAction] executing command", "exec", cmd.String())
 
-	err = cmd.Start()
-	if err != nil {
+	if err = cmd.Start(); err != nil {
 		logger.L.Error("[DownAction] failed to run", "exec", cmd.String(), "error", err)
 
 		return fmt.Errorf("failed to execute DownAction: %w", err)
 	}
 
 	go func() {
-		err := cmd.Wait()
-		if err != nil {
+		waitErr := cmd.Wait()
+		if waitErr != nil {
 			logger.L.Warn("[DownAction] error executing command",
-				"exec", cmd.String(), "error", err)
+				"exec", cmd.String(), "error", waitErr,
+				"stderr", string(bytes.TrimSpace(stderrBuf.Bytes())))
 		}
 	}()
 
