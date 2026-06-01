@@ -32,13 +32,11 @@
 //	 port: 8080
 //	logLevel: debug
 //
-// The configuration supports environment variable substitution using
-// the ${VAR} or $VAR syntax.
-//
-// Example with environment variables:
+// Configuration values support environment variable substitution using
+// the ${VAR} syntax in YAML string values:
 //
 //	checks:
-//	 timeout: ${UPD_TIMEOUT:10s} // Use UPD_TIMEOUT env var or 10s default
+//	 timeout: ${UPD_TIMEOUT} // Set UPD_TIMEOUT env var to override
 //
 // Command Handling:
 //
@@ -64,6 +62,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
@@ -72,9 +71,8 @@ import (
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
 	"github.com/hugoh/upd/internal/status"
-	"github.com/knadh/koanf/parsers/yaml"
-	"github.com/knadh/koanf/providers/rawbytes"
-	"github.com/knadh/koanf/v2"
+	"github.com/hugoh/upd/internal/types"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -93,26 +91,26 @@ var ConfigFileUsed string
 type Configuration struct {
 	Checks struct {
 		Every struct {
-			Normal time.Duration `validate:"required,gt=0"`
-			Down   time.Duration `validate:"required,gt=0"`
-		}
+			Normal types.Duration `validate:"required,gt=0"`
+			Down   types.Duration `validate:"required,gt=0"`
+		} `validate:"required"`
 		List struct {
 			Ordered  []string `validate:"dive,uri"`
 			Shuffled []string `validate:"dive,uri"`
 		} `validate:"required"`
-		TimeOut time.Duration `validate:"required,gt=0"`
+		TimeOut types.Duration `validate:"required,gt=0"`
 	} `validate:"required"`
 	DownAction struct {
 		Exec  string
 		Every struct {
-			After        time.Duration `validate:"omitempty,gt=0"`
-			Repeat       time.Duration `validate:"omitempty,gt=0"`
-			BackoffLimit time.Duration `koanf:"expBackoffLimit"   validate:"omitempty,gte=0"`
+			After        types.Duration `validate:"omitempty,gt=0"`
+			Repeat       types.Duration `validate:"omitempty,gt=0"`
+			BackoffLimit types.Duration `validate:"omitempty,gte=0" yaml:"expBackoffLimit"`
 		}
-		StopExec string `validate:"omitempty"`
-	} `validate:"omitempty"`
+		StopExec string `yaml:"stopExec" validate:"omitempty"` //nolint:tagalign
+	} `validate:"omitempty"                             yaml:"downAction"`
 	Stats    status.StatServerConfig `validate:"omitempty"`
-	LogLevel string                  `validate:"omitempty,oneof=trace debug info warn"`
+	LogLevel string                  `validate:"omitempty,oneof=trace debug info warn" yaml:"logLevel"`
 }
 
 func configError(msg string, path string, err error) (*Configuration, error) {
@@ -124,8 +122,6 @@ func configError(msg string, path string, err error) (*Configuration, error) {
 // ReadConf loads and validates configuration from the given file.
 func ReadConf(cfgFile string) (*Configuration, error) {
 	var err error
-
-	cfg := koanf.New(".")
 
 	if cfgFile == "" {
 		cfgFile = DefaultConfig
@@ -147,16 +143,20 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 
 	logger.L.Debug("[Config] config file used", "file", absPath)
 
-	substContent := os.ExpandEnv(string(content))
+	var doc yaml.Node
 
-	err = cfg.Load(rawbytes.Provider([]byte(substContent)), yaml.Parser())
+	err = yaml.Unmarshal(content, &doc)
 	if err != nil {
-		return configError("Could not read config", absPath, err)
+		return configError("Invalid YAML", absPath, err)
+	}
+
+	if err := expandNode(&doc); err != nil {
+		return configError("Unable to parse the config", absPath, err)
 	}
 
 	var conf Configuration
 
-	err = cfg.UnmarshalWithConf("", &conf, koanf.UnmarshalConf{})
+	err = doc.Decode(&conf)
 	if err != nil {
 		return configError("Unable to parse the config", cfgFile, err)
 	}
@@ -171,6 +171,59 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 	conf.logSetup()
 
 	return &conf, nil
+}
+
+// expandEnvRe matches ${VAR} patterns for environment variable expansion.
+var envVarRe = regexp.MustCompile(`\$\{([^}]+)\}`)
+
+// expandNode recursively walks a yaml.Node tree and expands ${VAR} references
+// in string scalar values. Only braced syntax is expanded; $VAR (unbraced) is
+// left unchanged to prevent accidental expansion of $PATH, $HOME, etc.
+// Returns an error if any referenced environment variable is not set.
+func expandNode(node *yaml.Node) error {
+	if node == nil {
+		return nil
+	}
+
+	switch node.Kind {
+	case yaml.ScalarNode:
+		return expandScalarNode(node)
+
+	case yaml.MappingNode, yaml.SequenceNode, yaml.DocumentNode:
+		for _, child := range node.Content {
+			if err := expandNode(child); err != nil {
+				return err
+			}
+		}
+
+	case yaml.AliasNode:
+		return expandNode(node.Alias)
+	}
+
+	return nil
+}
+
+const strTag = "!!str"
+
+var errMissingEnvVar = errors.New("environment variable is not set")
+
+func expandScalarNode(node *yaml.Node) error {
+	if node.Tag != strTag && node.Tag != "" {
+		return nil
+	}
+
+	matches := envVarRe.FindAllStringSubmatch(node.Value, -1)
+	for _, m := range matches {
+		if _, ok := os.LookupEnv(m[1]); !ok {
+			return fmt.Errorf("%q: %w", m[1], errMissingEnvVar)
+		}
+	}
+
+	node.Value = envVarRe.ReplaceAllStringFunc(node.Value, func(match string) string {
+		return os.Getenv(match[2 : len(match)-1])
+	})
+
+	return nil
 }
 
 // ErrNoChecks is returned when no valid checks are found in configuration.
@@ -243,7 +296,7 @@ func (c Configuration) GetChecksCat(category []string) []*check.Check {
 
 		checks = append(checks, &check.Check{
 			Probe:   probe,
-			Timeout: c.Checks.TimeOut,
+			Timeout: c.Checks.TimeOut.StdDuration(),
 		})
 	}
 
@@ -257,9 +310,9 @@ func (c Configuration) GetDownAction() *logic.DownAction {
 	}
 
 	return &logic.DownAction{
-		After:        c.DownAction.Every.After,
-		Every:        c.DownAction.Every.Repeat,
-		BackoffLimit: c.DownAction.Every.BackoffLimit,
+		After:        c.DownAction.Every.After.StdDuration(),
+		Every:        c.DownAction.Every.Repeat.StdDuration(),
+		BackoffLimit: c.DownAction.Every.BackoffLimit.StdDuration(),
 		Exec:         c.DownAction.Exec,
 		StopExec:     c.DownAction.StopExec,
 	}
@@ -268,8 +321,8 @@ func (c Configuration) GetDownAction() *logic.DownAction {
 // GetDelays returns the check intervals for up and down states.
 func (c Configuration) GetDelays() map[bool]time.Duration {
 	delays := make(map[bool]time.Duration)
-	delays[true] = c.Checks.Every.Normal
-	delays[false] = c.Checks.Every.Down
+	delays[true] = c.Checks.Every.Normal.StdDuration()
+	delays[false] = c.Checks.Every.Down.StdDuration()
 
 	return delays
 }
