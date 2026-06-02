@@ -25,12 +25,12 @@ const (
 
 // StatServerConfig holds configuration for the statistics HTTP server.
 type StatServerConfig struct {
-	Port         int `validate:"omitempty,min=1,max=65535"`
+	Port         int
 	Reports      []time.Duration
 	Retention    time.Duration
-	ReadTimeout  time.Duration `validate:"omitempty,gte=0"           yaml:"readTimeout"`  //nolint:tagalign
-	WriteTimeout time.Duration `validate:"omitempty,gte=0"           yaml:"writeTimeout"` //nolint:tagalign
-	IdleTimeout  time.Duration `validate:"omitempty,gte=0"           yaml:"idleTimeout"`  //nolint:tagalign
+	ReadTimeout  time.Duration `yaml:"readTimeout"`
+	WriteTimeout time.Duration `yaml:"writeTimeout"`
+	IdleTimeout  time.Duration `yaml:"idleTimeout"`
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for StatServerConfig,
