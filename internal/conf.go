@@ -66,7 +66,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/hugoh/upd/internal/check"
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
@@ -80,6 +79,11 @@ const (
 	DefaultConfig = ".upd.yaml"
 	// DefaultDNSPort is the default DNS port.
 	DefaultDNSPort = "53"
+
+	logLevelTrace = "trace"
+	logLevelDebug = "debug"
+	logLevelInfo  = "info"
+	logLevelWarn  = "warn"
 )
 
 // ConfigFileUsed stores the path of the active configuration file for debugging purposes.
@@ -91,26 +95,26 @@ var ConfigFileUsed string
 type Configuration struct {
 	Checks struct {
 		Every struct {
-			Normal types.Duration `validate:"required,gt=0"`
-			Down   types.Duration `validate:"required,gt=0"`
-		} `validate:"required"`
+			Normal types.Duration
+			Down   types.Duration
+		}
 		List struct {
-			Ordered  []string `validate:"dive,uri"`
-			Shuffled []string `validate:"dive,uri"`
-		} `validate:"required"`
-		TimeOut types.Duration `validate:"required,gt=0"`
-	} `validate:"required"`
+			Ordered  []string
+			Shuffled []string
+		}
+		TimeOut types.Duration
+	}
 	DownAction struct {
 		Exec  string
 		Every struct {
-			After        types.Duration `validate:"omitempty,gt=0"`
-			Repeat       types.Duration `validate:"omitempty,gt=0"`
-			BackoffLimit types.Duration `validate:"omitempty,gte=0" yaml:"expBackoffLimit"`
+			After        types.Duration
+			Repeat       types.Duration
+			BackoffLimit types.Duration `yaml:"expBackoffLimit"`
 		}
-		StopExec string `yaml:"stopExec" validate:"omitempty"` //nolint:tagalign
-	} `validate:"omitempty"                             yaml:"downAction"`
-	Stats    status.StatServerConfig `validate:"omitempty"`
-	LogLevel string                  `validate:"omitempty,oneof=trace debug info warn" yaml:"logLevel"`
+		StopExec string `yaml:"stopExec"`
+	} `yaml:"downAction"`
+	Stats    status.StatServerConfig
+	LogLevel string `yaml:"logLevel"`
 }
 
 func configError(msg string, path string, err error) (*Configuration, error) {
@@ -161,10 +165,7 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 		return configError("Unable to parse the config", cfgFile, err)
 	}
 
-	validate := validator.New()
-
-	err = validate.Struct(&conf)
-	if err != nil {
+	if err := conf.Validate(); err != nil {
 		return configError("Missing required attributes", cfgFile, err)
 	}
 
@@ -335,13 +336,13 @@ func (c Configuration) logSetup() {
 	var level slog.Level
 
 	switch c.LogLevel {
-	case "trace":
+	case logLevelTrace:
 		level = slog.LevelDebug - 4 //nolint:mnd // slog doesn't have LevelTrace, use LevelDebug - 4
-	case "debug":
+	case logLevelDebug:
 		level = slog.LevelDebug
-	case "info":
+	case logLevelInfo:
 		level = slog.LevelInfo
-	case "warn":
+	case logLevelWarn:
 		level = slog.LevelWarn
 	default:
 		logger.L.Error("[Config] Unknown loglevel", "loglevel", c.LogLevel)
