@@ -54,8 +54,8 @@ func SetupLoop(loop *logic.Loop, configPath string) (*Configuration, error) {
 	loop.Configure(checklist,
 		newConf.GetDelays(),
 		newConf.GetDownAction(),
-		newConf.Stats.Retention,
-		&newConf.Stats)
+		newConf.Stats.Retention.StdDuration(),
+		newConf.GetStatServerConfig())
 
 	return newConf, nil
 }
@@ -128,7 +128,7 @@ func Cmd() error {
 		&cli.StringFlag{
 			Name:      ConfigConfig,
 			Aliases:   []string{"c"},
-			Usage:     "use the specified YAML configuration file",
+			Usage:     "use the specified TOML configuration file",
 			Value:     DefaultConfig,
 			TakesFile: true,
 		},

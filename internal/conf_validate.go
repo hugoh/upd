@@ -81,9 +81,9 @@ func (c Configuration) validateStats() error {
 	var errs []error
 
 	errs = appendErr(errs, "port", validatePort(c.Stats.Port))
-	errs = appendErr(errs, "readTimeout", checkNonNegative(c.Stats.ReadTimeout))
-	errs = appendErr(errs, "writeTimeout", checkNonNegative(c.Stats.WriteTimeout))
-	errs = appendErr(errs, "idleTimeout", checkNonNegative(c.Stats.IdleTimeout))
+	errs = appendErr(errs, "readTimeout", checkNonNegative(c.Stats.ReadTimeout.StdDuration()))
+	errs = appendErr(errs, "writeTimeout", checkNonNegative(c.Stats.WriteTimeout.StdDuration()))
+	errs = appendErr(errs, "idleTimeout", checkNonNegative(c.Stats.IdleTimeout.StdDuration()))
 
 	return errors.Join(errs...)
 }

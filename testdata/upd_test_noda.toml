@@ -1,0 +1,17 @@
+logLevel = "debug"
+
+[checks]
+timeout = "2000ms"
+
+[checks.every]
+normal = "120s"
+down = "20s"
+
+[checks.list]
+ordered = [
+  "http://captive.apple.com/hotspot-detect.html",
+  "http://connectivitycheck.gstatic.com/generate_204",
+  "http://clients3.google.com/generate_204",
+  "http://www.msftconnecttest.com/connecttest.txt",
+]
+shuffled = ["dns://1.1.1.1/", "dns://1.0.0.1/", "dns://8.8.8.8/", "dns://8.8.4.4/"]

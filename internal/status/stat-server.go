@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/hugoh/upd/internal/logger"
-	"github.com/hugoh/upd/internal/types"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -28,43 +26,9 @@ type StatServerConfig struct {
 	Port         int
 	Reports      []time.Duration
 	Retention    time.Duration
-	ReadTimeout  time.Duration `yaml:"readTimeout"`
-	WriteTimeout time.Duration `yaml:"writeTimeout"`
-	IdleTimeout  time.Duration `yaml:"idleTimeout"`
-}
-
-// UnmarshalYAML implements the yaml.Unmarshaler interface for StatServerConfig,
-// decoding duration strings (like "10s", "5m") into time.Duration fields via
-// the types.Duration intermediate type.
-func (s *StatServerConfig) UnmarshalYAML(value *yaml.Node) error {
-	type rawStatServerConfig struct {
-		Port         int
-		Reports      []types.Duration
-		Retention    types.Duration
-		ReadTimeout  types.Duration `yaml:"readTimeout"`
-		WriteTimeout types.Duration `yaml:"writeTimeout"`
-		IdleTimeout  types.Duration `yaml:"idleTimeout"`
-	}
-
-	var raw rawStatServerConfig
-
-	if err := value.Decode(&raw); err != nil {
-		return fmt.Errorf("failed to decode StatServerConfig: %w", err)
-	}
-
-	s.Port = raw.Port
-
-	s.Reports = make([]time.Duration, len(raw.Reports))
-	for i, d := range raw.Reports {
-		s.Reports[i] = d.StdDuration()
-	}
-
-	s.Retention = raw.Retention.StdDuration()
-	s.ReadTimeout = raw.ReadTimeout.StdDuration()
-	s.WriteTimeout = raw.WriteTimeout.StdDuration()
-	s.IdleTimeout = raw.IdleTimeout.StdDuration()
-
-	return nil
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	IdleTimeout  time.Duration
 }
 
 // StatServer provides an HTTP endpoint for status statistics.

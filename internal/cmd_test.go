@@ -20,7 +20,7 @@ func TestRun_NoMultipleRestartsOnSuccess(t *testing.T) {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  ConfigConfig,
-				Value: testConfigDir + "/upd_test_minimal.yaml",
+				Value: testConfigDir + "/upd_test_minimal.toml",
 			},
 			&cli.BoolFlag{
 				Name: ConfigDebug,
@@ -42,7 +42,7 @@ func TestRun_WaitsForWorkerCompletion(t *testing.T) {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  ConfigConfig,
-				Value: testConfigDir + "/upd_test_minimal.yaml",
+				Value: testConfigDir + "/upd_test_minimal.toml",
 			},
 			&cli.BoolFlag{
 				Name: ConfigDebug,
