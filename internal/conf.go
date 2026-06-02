@@ -79,6 +79,11 @@ const (
 	DefaultConfig = ".upd.yaml"
 	// DefaultDNSPort is the default DNS port.
 	DefaultDNSPort = "53"
+
+	logLevelTrace = "trace"
+	logLevelDebug = "debug"
+	logLevelInfo  = "info"
+	logLevelWarn  = "warn"
 )
 
 // ConfigFileUsed stores the path of the active configuration file for debugging purposes.
@@ -331,13 +336,13 @@ func (c Configuration) logSetup() {
 	var level slog.Level
 
 	switch c.LogLevel {
-	case "trace":
+	case logLevelTrace:
 		level = slog.LevelDebug - 4 //nolint:mnd // slog doesn't have LevelTrace, use LevelDebug - 4
-	case "debug":
+	case logLevelDebug:
 		level = slog.LevelDebug
-	case "info":
+	case logLevelInfo:
 		level = slog.LevelInfo
-	case "warn":
+	case logLevelWarn:
 		level = slog.LevelWarn
 	default:
 		logger.L.Error("[Config] Unknown loglevel", "loglevel", c.LogLevel)
