@@ -71,7 +71,7 @@ downAction:
 # Options = debug, info, warn, error
 logLevel: trace
 stats:
-  port: :8080
+  port: 8080
   retention: 10080m
   reports:
     - 10s
