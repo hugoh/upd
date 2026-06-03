@@ -86,11 +86,6 @@ const (
 	logLevelWarn  = "warn"
 )
 
-// ConfigFileUsed stores the path of the active configuration file for debugging purposes.
-//
-//nolint:gochecknoglobals // Package-level state for debugging and diagnostics
-var ConfigFileUsed string
-
 // Configuration holds all application settings.
 type Configuration struct {
 	Checks struct {
@@ -316,13 +311,11 @@ func (c Configuration) GetStatServerConfig() *status.StatServerConfig {
 }
 
 func (c Configuration) logSetup() {
-	if c.LogLevel == "" {
-		return
-	}
-
 	var level slog.Level
 
 	switch c.LogLevel {
+	case "":
+		level = slog.LevelInfo
 	case logLevelTrace:
 		level = slog.LevelDebug - 4 //nolint:mnd // slog doesn't have LevelTrace, use LevelDebug - 4
 	case logLevelDebug:
