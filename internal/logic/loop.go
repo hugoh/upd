@@ -207,6 +207,7 @@ func (l *Loop) Stop(ctx context.Context) {
 
 	if l.statServer != nil {
 		l.statServer.StopStatServer(ctx)
+		l.statServer = nil
 	}
 }
 
