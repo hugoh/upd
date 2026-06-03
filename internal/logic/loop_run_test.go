@@ -18,14 +18,13 @@ func TestRun_StopsOnContextCancel(t *testing.T) {
 		Delays{true: 1 * time.Second, false: 1 * time.Second},
 		nil,
 		0,
-		&status.StatServerConfig{},
 	)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	go func() {
-		loop.Run(ctx)
+		loop.Run(ctx, &status.StatServerConfig{})
 	}()
 
 	time.Sleep(50 * time.Millisecond)
@@ -49,14 +48,13 @@ func TestRun_ProcessesChecks(_ *testing.T) {
 		Delays{true: 10 * time.Millisecond, false: 10 * time.Millisecond},
 		nil,
 		0,
-		&status.StatServerConfig{},
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	go func() {
-		loop.Run(ctx)
+		loop.Run(ctx, &status.StatServerConfig{})
 	}()
 
 	time.Sleep(100 * time.Millisecond)
@@ -70,7 +68,6 @@ func TestStop_StopsStatServer(t *testing.T) {
 		Delays{true: 1 * time.Second, false: 1 * time.Second},
 		nil,
 		0,
-		nil,
 	)
 
 	ctx := context.Background()
@@ -91,7 +88,6 @@ func TestRun_StopsTimerOnContextCancel(t *testing.T) {
 		Delays{true: longDelay, false: longDelay},
 		nil,
 		0,
-		&status.StatServerConfig{},
 	)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -101,7 +97,7 @@ func TestRun_StopsTimerOnContextCancel(t *testing.T) {
 	start := time.Now()
 
 	go func() {
-		loop.Run(ctx)
+		loop.Run(ctx, &status.StatServerConfig{})
 		close(done)
 	}()
 

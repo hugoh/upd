@@ -66,17 +66,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/hugoh/upd/internal/check"
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
 	"github.com/hugoh/upd/internal/status"
 	"github.com/hugoh/upd/internal/types"
-	"gopkg.in/yaml.v3"
 )
 
 const (
 	// DefaultConfig is the default configuration file name.
-	DefaultConfig = ".upd.yaml"
+	DefaultConfig = ".upd.toml"
 	// DefaultDNSPort is the default DNS port.
 	DefaultDNSPort = "53"
 
@@ -95,26 +95,33 @@ var ConfigFileUsed string
 type Configuration struct {
 	Checks struct {
 		Every struct {
-			Normal types.Duration
-			Down   types.Duration
-		}
+			Normal types.Duration `toml:"normal"`
+			Down   types.Duration `toml:"down"`
+		} `toml:"every"`
 		List struct {
-			Ordered  []string
-			Shuffled []string
-		}
-		TimeOut types.Duration
-	}
+			Ordered  []string `toml:"ordered"`
+			Shuffled []string `toml:"shuffled"`
+		} `toml:"list"`
+		TimeOut types.Duration `toml:"timeout"`
+	} `toml:"checks"`
 	DownAction struct {
-		Exec  string
+		Exec  string `toml:"exec"`
 		Every struct {
-			After        types.Duration
-			Repeat       types.Duration
-			BackoffLimit types.Duration `yaml:"expBackoffLimit"`
-		}
-		StopExec string `yaml:"stopExec"`
-	} `yaml:"downAction"`
-	Stats    status.StatServerConfig
-	LogLevel string `yaml:"logLevel"`
+			After        types.Duration `toml:"after"`
+			Repeat       types.Duration `toml:"repeat"`
+			BackoffLimit types.Duration `toml:"expBackoffLimit"`
+		} `toml:"every"`
+		StopExec string `toml:"stopExec"`
+	} `toml:"downAction"`
+	Stats struct {
+		Port         int              `toml:"port"`
+		Reports      []types.Duration `toml:"reports"`
+		Retention    types.Duration   `toml:"retention"`
+		ReadTimeout  types.Duration   `toml:"readTimeout"`
+		WriteTimeout types.Duration   `toml:"writeTimeout"`
+		IdleTimeout  types.Duration   `toml:"idleTimeout"`
+	} `toml:"stats"`
+	LogLevel string `toml:"logLevel"`
 }
 
 func configError(msg string, path string, err error) (*Configuration, error) {
@@ -147,22 +154,16 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 
 	logger.L.Debug("[Config] config file used", "file", absPath)
 
-	var doc yaml.Node
-
-	err = yaml.Unmarshal(content, &doc)
+	content, err = expandEnvVars(content)
 	if err != nil {
-		return configError("Invalid YAML", absPath, err)
-	}
-
-	if err := expandNode(&doc); err != nil {
 		return configError("Unable to parse the config", absPath, err)
 	}
 
 	var conf Configuration
 
-	err = doc.Decode(&conf)
+	err = toml.Unmarshal(content, &conf)
 	if err != nil {
-		return configError("Unable to parse the config", cfgFile, err)
+		return configError("Invalid TOML", absPath, err)
 	}
 
 	if err := conf.Validate(); err != nil {
@@ -174,57 +175,26 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 	return &conf, nil
 }
 
-// expandEnvRe matches ${VAR} patterns for environment variable expansion.
+// envVarRe matches ${VAR} patterns for environment variable expansion.
 var envVarRe = regexp.MustCompile(`\$\{([^}]+)\}`)
-
-// expandNode recursively walks a yaml.Node tree and expands ${VAR} references
-// in string scalar values. Only braced syntax is expanded; $VAR (unbraced) is
-// left unchanged to prevent accidental expansion of $PATH, $HOME, etc.
-// Returns an error if any referenced environment variable is not set.
-func expandNode(node *yaml.Node) error {
-	if node == nil {
-		return nil
-	}
-
-	switch node.Kind {
-	case yaml.ScalarNode:
-		return expandScalarNode(node)
-
-	case yaml.MappingNode, yaml.SequenceNode, yaml.DocumentNode:
-		for _, child := range node.Content {
-			if err := expandNode(child); err != nil {
-				return err
-			}
-		}
-
-	case yaml.AliasNode:
-		return expandNode(node.Alias)
-	}
-
-	return nil
-}
-
-const strTag = "!!str"
 
 var errMissingEnvVar = errors.New("environment variable is not set")
 
-func expandScalarNode(node *yaml.Node) error {
-	if node.Tag != strTag && node.Tag != "" {
-		return nil
-	}
-
-	matches := envVarRe.FindAllStringSubmatch(node.Value, -1)
+// expandEnvVars replaces ${VAR} references in raw config bytes. Only braced
+// syntax is expanded; $VAR (unbraced) is left unchanged to prevent accidental
+// expansion of $PATH, $HOME, etc. Returns an error if any referenced
+// environment variable is not set.
+func expandEnvVars(content []byte) ([]byte, error) {
+	matches := envVarRe.FindAllSubmatch(content, -1)
 	for _, m := range matches {
-		if _, ok := os.LookupEnv(m[1]); !ok {
-			return fmt.Errorf("%q: %w", m[1], errMissingEnvVar)
+		if _, ok := os.LookupEnv(string(m[1])); !ok {
+			return nil, fmt.Errorf("%q: %w", string(m[1]), errMissingEnvVar)
 		}
 	}
 
-	node.Value = envVarRe.ReplaceAllStringFunc(node.Value, func(match string) string {
-		return os.Getenv(match[2 : len(match)-1])
-	})
-
-	return nil
+	return envVarRe.ReplaceAllFunc(content, func(match []byte) []byte {
+		return []byte(os.Getenv(string(match[2 : len(match)-1])))
+	}), nil
 }
 
 // ErrNoChecks is returned when no valid checks are found in configuration.
@@ -326,6 +296,23 @@ func (c Configuration) GetDelays() map[bool]time.Duration {
 	delays[false] = c.Checks.Every.Down.StdDuration()
 
 	return delays
+}
+
+// GetStatServerConfig creates a runtime stats server config from the TOML-deserialized config.
+func (c Configuration) GetStatServerConfig() *status.StatServerConfig {
+	reports := make([]time.Duration, len(c.Stats.Reports))
+	for i, d := range c.Stats.Reports {
+		reports[i] = d.StdDuration()
+	}
+
+	return &status.StatServerConfig{
+		Port:         c.Stats.Port,
+		Reports:      reports,
+		Retention:    c.Stats.Retention.StdDuration(),
+		ReadTimeout:  c.Stats.ReadTimeout.StdDuration(),
+		WriteTimeout: c.Stats.WriteTimeout.StdDuration(),
+		IdleTimeout:  c.Stats.IdleTimeout.StdDuration(),
+	}
 }
 
 func (c Configuration) logSetup() {

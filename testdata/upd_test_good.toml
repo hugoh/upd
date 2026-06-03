@@ -1,0 +1,28 @@
+logLevel = "debug"
+
+[checks]
+timeout = "2000ms"
+
+[checks.every]
+normal = "120s"
+down = "20s"
+
+[checks.list]
+shuffled = [
+  "http://captive.apple.com/hotspot-detect.html",
+  "https://example.com/",
+  "dns://1.1.1.1/www.google.com",
+  "tcp://1.0.0.1:53/",
+]
+
+[downAction]
+exec = "cowsay"
+
+[downAction.every]
+after = "120s"
+repeat = "300s"
+
+[stats]
+port = 8080
+retention = "10080m"
+reports = ["10s", "15m", "60m", "1440m", "10080m"]

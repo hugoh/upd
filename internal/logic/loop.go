@@ -27,8 +27,8 @@
 //		true:  2 * time.Minute,  // Check every 2 minutes when up
 //		false: 30 * time.Second,  // Check every 30 seconds when down
 //	}
-//	loop.Configure(checks, delays, nil, 24*time.Hour, nil)
-//	go loop.Run(ctx)
+//	loop.Configure(checks, delays, nil, 24*time.Hour)
+//	go loop.Run(ctx, nil)
 //
 // Down Actions:
 //
@@ -48,7 +48,7 @@
 //		Exec:         "/usr/local/bin/notify-down",
 //		StopExec:     "/usr/local/bin/notify-up",
 //	}
-//	loop.Configure(checks, delays, downAction, 24*time.Hour, nil)
+//	loop.Configure(checks, delays, downAction, 24*time.Hour)
 //
 // Configuration:
 //
@@ -57,7 +57,6 @@
 //   - delays: Check intervals for up/down states
 //   - downAction: Optional down action configuration
 //   - retention: How long to keep status history (for statistics)
-//   - statServerConfig: Optional HTTP statistics server configuration
 //
 // Context and Cancellation:
 //
@@ -93,13 +92,12 @@ type Delays map[bool]time.Duration
 
 // Loop manages periodic network connectivity checks.
 type Loop struct {
-	checkList        *check.List
-	delays           Delays
-	downAction       *DownAction
-	downActionLoop   *DownActionLoop
-	statServer       *status.StatServer
-	statServerConfig *status.StatServerConfig
-	status           *status.Status
+	checkList      *check.List
+	delays         Delays
+	downAction     *DownAction
+	downActionLoop *DownActionLoop
+	statServer     *status.StatServer
+	status         *status.Status
 }
 
 // NewLoop creates a new monitoring loop.
@@ -115,13 +113,11 @@ func (l *Loop) Configure(
 	delays Delays,
 	downAction *DownAction,
 	retention time.Duration,
-	statServerConfig *status.StatServerConfig,
 ) {
 	l.checkList = checkList
 	l.delays = delays
 	l.downAction = downAction
 	l.status.SetRetention(retention)
-	l.statServerConfig = statServerConfig
 }
 
 // ErrDownActionRunning is returned when trying to start a down action while one is active.
@@ -172,12 +168,12 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 	}
 }
 
-// Run starts the monitoring loop.
-func (l *Loop) Run(ctx context.Context) {
+// Run starts the monitoring loop with optional statistics server config.
+func (l *Loop) Run(ctx context.Context, statServerConfig *status.StatServerConfig) {
 	var checker Checker
 
 	if l.statServer == nil {
-		l.statServer = status.StartStatServer(l.status, l.statServerConfig)
+		l.statServer = status.StartStatServer(l.status, statServerConfig)
 	}
 
 	for {
@@ -211,6 +207,7 @@ func (l *Loop) Stop(ctx context.Context) {
 
 	if l.statServer != nil {
 		l.statServer.StopStatServer(ctx)
+		l.statServer = nil
 	}
 }
 

@@ -1,0 +1,18 @@
+logLevel = "debug"
+
+[checks]
+timeout = "2000ms"
+
+[checks.every]
+normal = "120s"
+down = "20s"
+
+[checks.list]
+ordered = ["http://captive.apple.com/hotspot-detect.html", "ftp://foo.bar/", "dns://8.8.4.4/"]
+
+[downAction]
+exec = "cowsay"
+
+[downAction.every]
+after = "120s"
+repeat = "300s"

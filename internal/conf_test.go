@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/yaml.v3"
 )
 
 type TestSuite struct {
@@ -29,7 +28,7 @@ func readTestConfig(cfgFile string) (*Configuration, error) {
 func (suite *TestSuite) SetupTest() {
 	var err error
 
-	suite.conf, err = readTestConfig("upd_test_good.yaml")
+	suite.conf, err = readTestConfig("upd_test_good.toml")
 	suite.NoError(err)
 }
 
@@ -48,7 +47,7 @@ func (suite *TestSuite) TestGetDownActionFromConf() {
 }
 
 func TestNoDownAction(t *testing.T) {
-	conf, err := readTestConfig("upd_test_noda.yaml")
+	conf, err := readTestConfig("upd_test_noda.toml")
 	require.NoError(t, err)
 
 	da := conf.GetDownAction()
@@ -64,7 +63,7 @@ func (suite *TestSuite) TestGetDelaysFromConf() {
 }
 
 func TestGetChecksIgnored(t *testing.T) {
-	conf, err := readTestConfig("upd_test_bad.yaml")
+	conf, err := readTestConfig("upd_test_bad.toml")
 	require.NoError(t, err)
 
 	checklist, checkErr := conf.GetChecks()
@@ -82,7 +81,7 @@ func TestGetChecksIgnored(t *testing.T) {
 }
 
 func TestGetChecksFromConfFail(t *testing.T) {
-	conf, err := readTestConfig("upd_test_allbad.yaml")
+	conf, err := readTestConfig("upd_test_allbad.toml")
 	require.NoError(t, err)
 
 	_, checkErr := conf.GetChecks()
@@ -140,20 +139,20 @@ func (suite *TestSuite) TestStatConf() {
 func TestReadConf_envsubst(t *testing.T) {
 	t.Setenv("UPD_TEST_TIMEOUT", "3s")
 
-	conf, err := readTestConfig("upd_test_envvar.yaml")
+	conf, err := readTestConfig("upd_test_envvar.toml")
 	require.NoError(t, err)
 	assert.Equal(t, types.Duration(3*time.Second), conf.Checks.TimeOut)
 }
 
 func TestReadConf_envsubst_missing(t *testing.T) {
-	_, err := readTestConfig("upd_test_envvar.yaml")
+	_, err := readTestConfig("upd_test_envvar.toml")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "environment variable")
 	assert.Contains(t, err.Error(), "not set")
 }
 
 func TestDNSCheckValidation_MissingDomain(t *testing.T) {
-	conf, err := readTestConfig("upd_test_bad.yaml")
+	conf, err := readTestConfig("upd_test_bad.toml")
 	require.NoError(t, err)
 
 	checklist, checkErr := conf.GetChecks()
@@ -180,7 +179,7 @@ func TestDNSCheckValidation_MissingDomain(t *testing.T) {
 }
 
 func TestDNSCheckValidation_MissingResolver(t *testing.T) {
-	conf, err := readTestConfig("upd_test_dns_missing_resolver.yaml")
+	conf, err := readTestConfig("upd_test_dns_missing_resolver.toml")
 	require.NoError(t, err)
 
 	checklist, checkErr := conf.GetChecks()
@@ -245,139 +244,48 @@ func TestLogSetup(t *testing.T) {
 	}
 }
 
-func TestExpandNode_set(t *testing.T) {
+func TestExpandEnvVars_set(t *testing.T) {
 	t.Setenv("UPD_EXPAND_TEST", "expanded_value")
 
-	node := &yaml.Node{
-		Kind:  yaml.ScalarNode,
-		Tag:   strTag,
-		Value: "prefix_${UPD_EXPAND_TEST}_suffix",
-	}
-
-	require.NoError(t, expandNode(node))
-
-	assert.Equal(t, "prefix_expanded_value_suffix", node.Value)
+	content := []byte(`timeout = "prefix_${UPD_EXPAND_TEST}_suffix"`)
+	result, err := expandEnvVars(content)
+	require.NoError(t, err)
+	assert.Equal(t, []byte(`timeout = "prefix_expanded_value_suffix"`), result)
 }
 
-func TestExpandNode_unset(t *testing.T) {
-	node := &yaml.Node{
-		Kind:  yaml.ScalarNode,
-		Tag:   strTag,
-		Value: "${NONEXISTENT_VAR}",
-	}
-
-	err := expandNode(node)
-
+func TestExpandEnvVars_unset(t *testing.T) {
+	content := []byte(`timeout = "${NONEXISTENT_VAR}"`)
+	_, err := expandEnvVars(content)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "NONEXISTENT_VAR")
 }
 
-func TestExpandNode_noVar(t *testing.T) {
-	node := &yaml.Node{
-		Kind:  yaml.ScalarNode,
-		Tag:   strTag,
-		Value: "plain string without vars",
-	}
-
-	require.NoError(t, expandNode(node))
-
-	assert.Equal(t, "plain string without vars", node.Value)
+func TestExpandEnvVars_noVar(t *testing.T) {
+	content := []byte(`timeout = "2000ms"`)
+	result, err := expandEnvVars(content)
+	require.NoError(t, err)
+	assert.Equal(t, []byte(`timeout = "2000ms"`), result)
 }
 
-func TestExpandNode_nonStringSkipped(t *testing.T) {
-	original := "123"
-
-	node := &yaml.Node{
-		Kind:  yaml.ScalarNode,
-		Tag:   "!!int",
-		Value: original,
-	}
-
-	require.NoError(t, expandNode(node))
-
-	assert.Equal(t, original, node.Value)
+func TestExpandEnvVars_unbracedNotExpanded(t *testing.T) {
+	content := []byte(`exec = "$PATH"`)
+	result, err := expandEnvVars(content)
+	require.NoError(t, err)
+	assert.Equal(t, []byte(`exec = "$PATH"`), result)
 }
 
-func TestExpandNode_emptyTag(t *testing.T) {
-	t.Setenv("UPD_EMPTY_TAG", "works")
+func TestExpandEnvVars_multiple(t *testing.T) {
+	t.Setenv("UPD_A", "a_val")
+	t.Setenv("UPD_B", "b_val")
 
-	node := &yaml.Node{
-		Kind:  yaml.ScalarNode,
-		Tag:   "",
-		Value: "${UPD_EMPTY_TAG}",
-	}
-
-	require.NoError(t, expandNode(node))
-
-	assert.Equal(t, "works", node.Value)
+	content := []byte("x = \"${UPD_A}\"\ny = \"${UPD_B}\"")
+	result, err := expandEnvVars(content)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("x = \"a_val\"\ny = \"b_val\""), result)
 }
 
-func TestExpandNode_mapping(t *testing.T) {
-	t.Setenv("UPD_MAP_KEY", "expanded")
-
-	node := &yaml.Node{
-		Kind: yaml.MappingNode,
-		Content: []*yaml.Node{
-			{Kind: yaml.ScalarNode, Tag: strTag, Value: "key"},
-			{Kind: yaml.ScalarNode, Tag: strTag, Value: "${UPD_MAP_KEY}"},
-		},
-	}
-
-	require.NoError(t, expandNode(node))
-
-	assert.Equal(t, "expanded", node.Content[1].Value)
-}
-
-func TestExpandNode_sequence(t *testing.T) {
-	t.Setenv("UPD_SEQ_ITEM", "replaced")
-
-	node := &yaml.Node{
-		Kind: yaml.SequenceNode,
-		Content: []*yaml.Node{
-			{Kind: yaml.ScalarNode, Tag: strTag, Value: "${UPD_SEQ_ITEM}"},
-			{Kind: yaml.ScalarNode, Tag: strTag, Value: "static"},
-		},
-	}
-
-	require.NoError(t, expandNode(node))
-
-	assert.Equal(t, "replaced", node.Content[0].Value)
-	assert.Equal(t, "static", node.Content[1].Value)
-}
-
-func TestExpandNode_nested(t *testing.T) {
-	t.Setenv("UPD_NESTED", "deep")
-
-	node := &yaml.Node{
-		Kind: yaml.DocumentNode,
-		Content: []*yaml.Node{
-			{
-				Kind: yaml.MappingNode,
-				Content: []*yaml.Node{
-					{Kind: yaml.ScalarNode, Tag: strTag, Value: "nested"},
-					{Kind: yaml.ScalarNode, Tag: strTag, Value: "${UPD_NESTED}"},
-				},
-			},
-		},
-	}
-
-	require.NoError(t, expandNode(node))
-
-	assert.Equal(t, "deep", node.Content[0].Content[1].Value)
-}
-
-func TestExpandNode_unbracedNotExpanded(t *testing.T) {
-	node := &yaml.Node{
-		Kind:  yaml.ScalarNode,
-		Tag:   strTag,
-		Value: "$PATH",
-	}
-
-	require.NoError(t, expandNode(node))
-
-	assert.Equal(t, "$PATH", node.Value)
-}
-
-func TestExpandNode_nilNode(t *testing.T) {
-	require.NoError(t, expandNode(nil))
+func TestExpandEnvVars_nilContent(t *testing.T) {
+	result, err := expandEnvVars(nil)
+	require.NoError(t, err)
+	assert.Empty(t, result)
 }

@@ -12,7 +12,7 @@ import (
 
 func emptyNewLoop() *Loop {
 	l := NewLoop()
-	l.Configure(nil, nil, nil, 0, nil)
+	l.Configure(nil, nil, nil, 0)
 
 	return l
 }

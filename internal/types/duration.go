@@ -4,25 +4,17 @@ package types
 import (
 	"fmt"
 	"time"
-
-	"gopkg.in/yaml.v3"
 )
 
-// Duration is a time.Duration that supports YAML unmarshaling from duration
-// strings like "10s", "5m", "1h".
+// Duration is a time.Duration that supports text-based unmarshaling from
+// duration strings like "10s", "5m", "1h".
 type Duration time.Duration
 
-// UnmarshalYAML implements the yaml.Unmarshaler interface for Duration.
-func (d *Duration) UnmarshalYAML(value *yaml.Node) error {
-	var str string
-
-	if err := value.Decode(&str); err != nil {
-		return fmt.Errorf("failed to decode duration value: %w", err)
-	}
-
-	dur, err := time.ParseDuration(str)
+// UnmarshalText implements the encoding.TextUnmarshaler interface for Duration.
+func (d *Duration) UnmarshalText(text []byte) error {
+	dur, err := time.ParseDuration(string(text))
 	if err != nil {
-		return fmt.Errorf("invalid duration %q: %w", str, err)
+		return fmt.Errorf("invalid duration %q: %w", string(text), err)
 	}
 
 	*d = Duration(dur)

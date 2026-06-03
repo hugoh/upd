@@ -19,8 +19,8 @@ func setupTestServer(t *testing.T, opts ...func(*StatServerConfig)) *StatHandler
 
 	config := &StatServerConfig{
 		Port:      8080,
-		Reports:   []time.Duration{1 * time.Minute},
-		Retention: 1 * time.Hour,
+		Reports:   []time.Duration{time.Minute},
+		Retention: time.Hour,
 	}
 
 	for _, opt := range opts {
@@ -41,8 +41,8 @@ func TestNewStatHandler(t *testing.T) {
 
 	config := &StatServerConfig{
 		Port:      8080,
-		Reports:   []time.Duration{1 * time.Minute},
-		Retention: 1 * time.Hour,
+		Reports:   []time.Duration{time.Minute},
+		Retention: time.Hour,
 	}
 
 	server := &StatServer{
@@ -57,7 +57,10 @@ func TestNewStatHandler(t *testing.T) {
 
 func TestStatHandler_GenStatReport(t *testing.T) {
 	handler := setupTestServer(t, func(c *StatServerConfig) {
-		c.Reports = []time.Duration{1 * time.Minute, 5 * time.Minute}
+		c.Reports = []time.Duration{
+			time.Minute,
+			5 * time.Minute,
+		}
 	})
 	status := handler.statServer.status
 	status.Update(true)

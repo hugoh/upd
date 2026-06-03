@@ -30,7 +30,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --config value, -c value  use the specified YAML configuration file (default: ".upd.yaml")
+   --config value, -c value  use the specified TOML configuration file (default: ".upd.toml")
    --debug, -d               display debugging output in the console (default: false)
    --help, -h                show help
    --version, -v             print the version
@@ -38,47 +38,50 @@ GLOBAL OPTIONS:
 
 ## Configuration
 
-Configuration by default is located in `.upd.yaml` in the working directory.
+Configuration by default is located in `.upd.toml` in the working directory.
 
 An example is:
 
-```yaml
-checks:
-  every: # Will be retrieved from env vars
-    normal: ${UPD_NORMAL_CHECK}
-    down: ${UPD_DOWN_CHECK}
-  list:
-    ordered: # Sequential list of checks to run first
-      # From https://en.wikipedia.org/wiki/Captive_portal
-      - http://10.10.1.4/
-      - http://captive.apple.com/hotspot-detect.html
-      - http://connectivitycheck.gstatic.com/generate_204
-    shuffled: # Random list of checks to run if the sequential ones all failed
-      - http://clients3.google.com/generate_204
-      - http://www.msftconnecttest.com/connecttest.txt
-      - tcp://1.1.1.1:53/
-      - tcp://1.0.0.1:53/
-      - tcp://8.8.8.8:53/
-      - tcp://8.8.4.4:53/
-      - dns://1.1.1.1/www.google.com
-  timeout: 2s
-downAction:
-  exec: cowsay
-  everySec:
-    after: 1s
-    repeat: 3s
-  stopExec: ./testdata/echo-reboot-count.sh
-# Options = debug, info, warn, error
-logLevel: trace
-stats:
-  port: 8080
-  retention: 10080m
-  reports:
-    - 10s
-    - 15m
-    - 60m
-    - 1440m
-    - 10080m
+```toml
+logLevel = "trace"
+
+[checks]
+timeout = "2s"
+
+[checks.every]
+# Will be retrieved from env vars
+normal = "${UPD_NORMAL_CHECK}"
+down = "${UPD_DOWN_CHECK}"
+
+[checks.list]
+ordered = [
+  # From https://en.wikipedia.org/wiki/Captive_portal
+  "http://10.10.1.4/",
+  "http://captive.apple.com/hotspot-detect.html",
+  "http://connectivitycheck.gstatic.com/generate_204",
+]
+shuffled = [
+  "http://clients3.google.com/generate_204",
+  "http://www.msftconnecttest.com/connecttest.txt",
+  "tcp://1.1.1.1:53/",
+  "tcp://1.0.0.1:53/",
+  "tcp://8.8.8.8:53/",
+  "tcp://8.8.4.4:53/",
+  "dns://1.1.1.1/www.google.com",
+]
+
+[downAction]
+exec = "cowsay"
+stopExec = "./testdata/echo-reboot-count.sh"
+
+[downAction.every]
+after = "1s"
+repeat = "3s"
+
+[stats]
+port = 8080
+retention = "10080m"
+reports = ["10s", "15m", "60m", "1440m", "10080m"]
 ```
 
 ## Status

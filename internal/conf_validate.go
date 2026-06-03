@@ -62,8 +62,12 @@ func (c Configuration) validateChecks() error {
 func (c Configuration) validateDownAction() error {
 	var errs []error
 
-	errs = appendErr(errs, "every.after", checkPositive(time.Duration(c.DownAction.Every.After)))
-	errs = appendErr(errs, "every.repeat", checkPositive(time.Duration(c.DownAction.Every.Repeat)))
+	errs = appendErr(errs, "every.after", checkNonNegative(time.Duration(c.DownAction.Every.After)))
+	errs = appendErr(
+		errs,
+		"every.repeat",
+		checkNonNegative(time.Duration(c.DownAction.Every.Repeat)),
+	)
 	errs = appendErr(
 		errs,
 		"every.expBackoffLimit",
@@ -77,23 +81,15 @@ func (c Configuration) validateStats() error {
 	var errs []error
 
 	errs = appendErr(errs, "port", validatePort(c.Stats.Port))
-	errs = appendErr(errs, "readTimeout", checkNonNegative(c.Stats.ReadTimeout))
-	errs = appendErr(errs, "writeTimeout", checkNonNegative(c.Stats.WriteTimeout))
-	errs = appendErr(errs, "idleTimeout", checkNonNegative(c.Stats.IdleTimeout))
+	errs = appendErr(errs, "readTimeout", checkNonNegative(c.Stats.ReadTimeout.StdDuration()))
+	errs = appendErr(errs, "writeTimeout", checkNonNegative(c.Stats.WriteTimeout.StdDuration()))
+	errs = appendErr(errs, "idleTimeout", checkNonNegative(c.Stats.IdleTimeout.StdDuration()))
 
 	return errors.Join(errs...)
 }
 
 func validatePositiveDuration(d types.Duration) error {
 	if time.Duration(d) <= 0 {
-		return errDurationMustBePositive
-	}
-
-	return nil
-}
-
-func checkPositive(d time.Duration) error {
-	if d < 0 {
 		return errDurationMustBePositive
 	}
 

@@ -54,8 +54,7 @@ func SetupLoop(loop *logic.Loop, configPath string) (*Configuration, error) {
 	loop.Configure(checklist,
 		newConf.GetDelays(),
 		newConf.GetDownAction(),
-		newConf.Stats.Retention,
-		&newConf.Stats)
+		newConf.Stats.Retention.StdDuration())
 
 	return newConf, nil
 }
@@ -83,9 +82,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 		go func(ctx context.Context) {
 			defer close(done)
 
-			var err error
-
-			_, err = SetupLoop(loop, cmd.String(ConfigConfig))
+			newConf, err := SetupLoop(loop, cmd.String(ConfigConfig))
 			if err != nil {
 				errCh <- fmt.Errorf("cannot configure app: %w", err)
 
@@ -94,7 +91,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 
 			errCh <- nil
 
-			loop.Run(ctx)
+			loop.Run(ctx, newConf.GetStatServerConfig())
 			loop.Stop(ctx)
 		}(currentWorkerCtx)
 
@@ -128,7 +125,7 @@ func Cmd() error {
 		&cli.StringFlag{
 			Name:      ConfigConfig,
 			Aliases:   []string{"c"},
-			Usage:     "use the specified YAML configuration file",
+			Usage:     "use the specified TOML configuration file",
 			Value:     DefaultConfig,
 			TakesFile: true,
 		},
