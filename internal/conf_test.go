@@ -233,7 +233,7 @@ func TestLogSetup(t *testing.T) {
 		{"debug level", logLevelDebug},
 		{"info level", logLevelInfo},
 		{"warn level", logLevelWarn},
-		{"empty defaults to warn", ""},
+		{"empty defaults to info", ""},
 	}
 
 	for _, tt := range tests {

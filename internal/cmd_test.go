@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hugoh/upd/internal/logic"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
@@ -99,4 +100,18 @@ func TestCmd_Help(t *testing.T) {
 
 	err := Cmd()
 	require.NoError(t, err)
+}
+
+func TestSetupLoop_reload(t *testing.T) {
+	loop := logic.NewLoop()
+
+	conf, err := SetupLoop(loop, testConfigDir+"/upd_test_reload_a.toml")
+	require.NoError(t, err)
+	assert.Equal(t, 5*time.Second, conf.GetDelays()[true])
+	assert.Equal(t, 1*time.Second, conf.GetDelays()[false])
+
+	conf, err = SetupLoop(loop, testConfigDir+"/upd_test_reload_b.toml")
+	require.NoError(t, err)
+	assert.Equal(t, 10*time.Second, conf.GetDelays()[true])
+	assert.Equal(t, 2*time.Second, conf.GetDelays()[false])
 }

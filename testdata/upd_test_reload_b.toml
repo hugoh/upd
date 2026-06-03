@@ -1,0 +1,9 @@
+[checks]
+timeout = "2s"
+
+[checks.every]
+normal = "10s"
+down = "2s"
+
+[checks.list]
+ordered = ["http://captive.apple.com/hotspot-detect.html"]
