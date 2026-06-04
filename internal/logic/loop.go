@@ -206,7 +206,7 @@ func (l *Loop) Stop(ctx context.Context) {
 	l.DownActionStop(ctx)
 
 	if l.statServer != nil {
-		l.statServer.StopStatServer(ctx)
+		l.statServer.Shutdown(ctx)
 		l.statServer = nil
 	}
 }
