@@ -66,12 +66,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/hugoh/upd/internal/check"
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
 	"github.com/hugoh/upd/internal/status"
 	"github.com/hugoh/upd/internal/types"
+	"github.com/pelletier/go-toml/v2"
 )
 
 const (
