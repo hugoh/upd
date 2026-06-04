@@ -99,10 +99,11 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	cmdEnv := os.Environ()
 	cmdEnv = append(cmdEnv, fmt.Sprintf("UPD_ITERATION=%d", iteration))
 	cmd.Env = cmdEnv
-	logger.L.Info("[DownAction] executing command", "exec", cmd.String())
+	logger.L.Info("executing command", "component", "downaction", "exec", cmd.String())
 
 	if err = cmd.Start(); err != nil {
-		logger.L.Error("[DownAction] failed to run", "exec", cmd.String(), "error", err)
+		logger.L.Error("failed to run",
+			"component", "downaction", "exec", cmd.String(), "error", err)
 
 		return fmt.Errorf("failed to execute DownAction: %w", err)
 	}
@@ -121,8 +122,8 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 		dal.cmdMu.Unlock()
 
 		if waitErr != nil {
-			logger.L.Warn("[DownAction] error executing command",
-				"exec", cmd.String(), "error", waitErr,
+			logger.L.Warn("error executing command",
+				"component", "downaction", "exec", cmd.String(), "error", waitErr,
 				"stderr", string(bytes.TrimSpace(stderrBuf.Bytes())))
 		}
 	}()
@@ -154,7 +155,7 @@ func (da *DownAction) NewDownActionLoop(ctx context.Context) (*DownActionLoop, c
 func (da *DownAction) Start(ctx context.Context) *DownActionLoop {
 	dal, ctx := da.NewDownActionLoop(ctx)
 
-	logger.L.Debug("[DownAction] kicking off run loop")
+	logger.L.Debug("kicking off run loop", "component", "downaction")
 
 	go dal.run(ctx)
 
@@ -170,11 +171,11 @@ func (dal *DownActionLoop) Stop(_ context.Context) {
 		//nolint:contextcheck // loopCtx derived from the same hierarchy as ctx
 		err := dal.Execute(dal.loopCtx, dal.da.StopExec)
 		if err != nil && !errors.Is(err, ErrNoCommand) {
-			logger.L.Warn("[DownAction] failed to execute stop command", "error", err)
+			logger.L.Warn("failed to execute stop command", "component", "downaction", "error", err)
 		}
 	}
 
-	logger.L.Debug("[DownAction] sending shutdown signal")
+	logger.L.Debug("sending shutdown signal", "component", "downaction")
 	dal.cancelFunc()
 }
 
@@ -187,12 +188,12 @@ func (dal *DownActionLoop) killCurrentCmd() {
 		return
 	}
 
-	logger.L.Warn("[DownAction] killing current command",
-		"pid", dal.currentCmd.Process.Pid)
+	logger.L.Warn("killing current command",
+		"component", "downaction", "pid", dal.currentCmd.Process.Pid)
 
 	if dal.currentCmd.Process != nil {
 		if err := dal.currentCmd.Process.Kill(); err != nil {
-			logger.L.Warn("[DownAction] failed to kill current command", "error", err)
+			logger.L.Warn("failed to kill current command", "component", "downaction", "error", err)
 		}
 	}
 
@@ -219,8 +220,8 @@ func (dal *DownActionLoop) iterate() {
 		}
 	}
 
-	logger.L.Debug("[DownAction] iteration details",
-		"iteration", dal.it.iteration,
+	logger.L.Debug("iteration details",
+		"component", "downaction", "iteration", dal.it.iteration,
 		"sleepTime", dal.it.sleepTime,
 		"limitReached", dal.it.limitReached)
 }
@@ -238,7 +239,7 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			logger.L.Debug("[DownAction] canceled")
+			logger.L.Debug("canceled", "component", "downaction")
 
 			return
 		case <-timer.C:
@@ -249,7 +250,7 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 
 		err := dal.Execute(ctx, dal.da.Exec)
 		if err != nil {
-			logger.L.Error("[DownAction] failed to execute", "error", err)
+			logger.L.Error("failed to execute", "component", "downaction", "error", err)
 		}
 
 		if dal.da.Every > 0 {

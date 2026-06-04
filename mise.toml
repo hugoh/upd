@@ -50,7 +50,7 @@ depends = [
   "lint:mod",
   { task = "lint:deadcode", args = ["--test"] },
   "lint:go",
-  "lint:release"
+  "lint:release",
 ]
 
 [tasks.fix]

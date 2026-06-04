@@ -97,7 +97,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 
 		select {
 		case <-rootCtx.Done():
-			logger.L.Info("[App] shutting down")
+			logger.L.Info("shutting down", "component", "app")
 			cancelCurrentWorker()
 			<-done
 
@@ -112,7 +112,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 
 			<-done
 		case <-sighupCh:
-			logger.L.Info("[App] SIGHUP received: reloading configuration")
+			logger.L.Info("SIGHUP received: reloading configuration", "component", "app")
 			cancelCurrentWorker()
 			<-done
 		}

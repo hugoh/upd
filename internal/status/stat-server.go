@@ -41,7 +41,7 @@ type StatServer struct {
 // StartStatServer starts a new statistics server in a goroutine.
 func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 	if config.Port == 0 {
-		logger.L.Debug("no stat server specified")
+		logger.L.Debug("no stat server specified", "component", "stats")
 
 		return nil
 	}
@@ -88,17 +88,17 @@ func (s *StatServer) StopStatServer(ctx context.Context) {
 		return
 	}
 
-	logger.L.Info("[Stats] shutting down stats server")
+	logger.L.Info("shutting down stats server", "component", "stats")
 
 	err := s.server.Shutdown(ctx)
 	if err != nil {
-		logger.L.Error("[Stats] error shutting down stats server", "error", err)
+		logger.L.Error("error shutting down stats server", "component", "stats", "error", err)
 	}
 }
 
 func (s *StatServer) listenAndServe() {
-	logger.L.Info(
-		"[Stats] server started",
+	logger.L.Info("server started",
+		"component", "stats",
 		"statserver",
 		fmt.Sprintf("http://localhost%s%s", s.server.Addr, StatRoute),
 	)
@@ -109,6 +109,6 @@ func (s *StatServer) listenAndServe() {
 			return
 		}
 
-		logger.L.Error("[Stats] error starting stats server", "error", err)
+		logger.L.Error("error starting stats server", "component", "stats", "error", err)
 	}
 }

@@ -61,7 +61,7 @@ func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	logger.L.Info("[Stats] requested", "requester", req.RemoteAddr)
+	logger.L.Debug("requested", "component", "stats", "requester", req.RemoteAddr)
 
 	stats := h.GenStatReport()
 
@@ -69,7 +69,7 @@ func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 
 	jsonData, err := json.MarshalIndent(stats, "", JSONIndentSpaces)
 	if err != nil {
-		logger.L.Error("[Stats] error marshalling JSON stats", "error", err)
+		logger.L.Error("error marshalling JSON stats", "component", "stats", "error", err)
 		http.Error(writer, FailedToGenerateJSONMsg, http.StatusInternalServerError)
 
 		return
@@ -77,6 +77,6 @@ func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 
 	_, err = writer.Write(jsonData)
 	if err != nil {
-		logger.L.Error("[Stats] error returning JSON stats", "error", err)
+		logger.L.Error("error returning JSON stats", "component", "stats", "error", err)
 	}
 }

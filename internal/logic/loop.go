@@ -152,7 +152,7 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 		return
 	}
 
-	logger.L.Info("[Loop] connection status changed", "up", l.status.Up)
+	logger.L.Info("connection status changed", "component", "loop", "up", l.status.Up)
 
 	if !l.hasDownAction() {
 		return
@@ -163,7 +163,7 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 	} else {
 		err := l.DownActionStart(ctx)
 		if err != nil {
-			logger.L.Error("[Loop] could not start DownAction", "error", err)
+			logger.L.Error("could not start DownAction", "component", "loop", "error", err)
 		}
 	}
 }
@@ -181,17 +181,17 @@ func (l *Loop) Run(ctx context.Context, statServerConfig *status.StatServerConfi
 		if err == nil {
 			l.ProcessCheck(ctx, checkStatus)
 		} else {
-			logger.L.Error("[Loop] error", "error", err)
+			logger.L.Error("loop error", "component", "loop", "error", err)
 		}
 
 		sleepTime := l.delays[l.status.Up]
-		logger.L.Debug("[Loop] waiting for next loop iteration", "wait", sleepTime)
+		logger.L.Debug("waiting for next loop iteration", "component", "loop", "wait", sleepTime)
 
 		timer := time.NewTimer(sleepTime)
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			logger.L.Debug("[Loop] context canceled during sleep, exiting Run()")
+			logger.L.Debug("context canceled during sleep, exiting Run()", "component", "loop")
 
 			return
 		case <-timer.C:
@@ -220,8 +220,8 @@ type Checker struct{}
 
 // CheckRun logs the start of a check.
 func (Checker) CheckRun(chk check.Check) {
-	logger.L.Debug(
-		"[Check] running",
+	logger.L.Debug("running",
+		"component", "check",
 		"probe",
 		chk.Probe,
 		"protocol",
@@ -233,10 +233,10 @@ func (Checker) CheckRun(chk check.Check) {
 
 // ProbeSuccess logs successful probe results.
 func (Checker) ProbeSuccess(report *check.Report) {
-	logger.L.Debug("[Check] success", report.LogAttrs()...)
+	logger.L.Debug("success", append([]any{"component", "check"}, report.LogAttrs()...)...)
 }
 
 // ProbeFailure logs failed probe results.
 func (Checker) ProbeFailure(report *check.Report) {
-	logger.L.Warn("[Check] failed", report.LogAttrs()...)
+	logger.L.Warn("failed", append([]any{"component", "check"}, report.LogAttrs()...)...)
 }
