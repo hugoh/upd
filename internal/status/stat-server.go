@@ -2,12 +2,14 @@ package status
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/hugoh/upd/internal/logger"
+	"github.com/hugoh/upd/internal/version"
 )
 
 const (
@@ -41,24 +43,9 @@ type StatServer struct {
 // StartStatServer starts a new statistics server in a goroutine.
 func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 	if config.Port == 0 {
-		logger.L.Debug("no stat server specified")
+		logger.L.Debug("no stat server specified", "component", "stats")
 
 		return nil
-	}
-
-	readTimeout := config.ReadTimeout
-	if readTimeout == 0 {
-		readTimeout = DefaultStatServerReadTimeout
-	}
-
-	writeTimeout := config.WriteTimeout
-	if writeTimeout == 0 {
-		writeTimeout = DefaultStatServerWriteTimeout
-	}
-
-	idleTimeout := config.IdleTimeout
-	if idleTimeout == 0 {
-		idleTimeout = DefaultStatServerIdleTimeout
 	}
 
 	server := &StatServer{
@@ -66,49 +53,94 @@ func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 		config: config,
 		server: &http.Server{
 			Addr:         fmt.Sprintf(":%d", config.Port),
-			ReadTimeout:  readTimeout,
-			WriteTimeout: writeTimeout,
-			IdleTimeout:  idleTimeout,
+			ReadTimeout:  defaultTimeout(config.ReadTimeout, DefaultStatServerReadTimeout),
+			WriteTimeout: defaultTimeout(config.WriteTimeout, DefaultStatServerWriteTimeout),
+			IdleTimeout:  defaultTimeout(config.IdleTimeout, DefaultStatServerIdleTimeout),
 		},
 	}
 
 	mux := http.NewServeMux()
-	statHandler := NewStatHandler(server)
-	mux.Handle(StatRoute, statHandler)
-	server.server.Handler = mux
+	mux.Handle(StatRoute, &StatHandler{statServer: server})
+	server.server.Handler = serverHeader(mux)
 
 	go server.listenAndServe()
 
 	return server
 }
 
-// StopStatServer gracefully shuts down the statistics server.
-func (s *StatServer) StopStatServer(ctx context.Context) {
+// Shutdown gracefully shuts down the statistics server.
+func (s *StatServer) Shutdown(ctx context.Context) {
 	if s.server == nil {
 		return
 	}
 
-	logger.L.Info("[Stats] shutting down stats server")
+	logger.L.Info("shutting down stats server", "component", "stats")
 
-	err := s.server.Shutdown(ctx)
-	if err != nil {
-		logger.L.Error("[Stats] error shutting down stats server", "error", err)
+	if err := s.server.Shutdown(ctx); err != nil {
+		logger.L.Error("error shutting down stats server", "component", "stats", "error", err)
 	}
 }
 
 func (s *StatServer) listenAndServe() {
-	logger.L.Info(
-		"[Stats] server started",
-		"statserver",
-		fmt.Sprintf("http://localhost%s%s", s.server.Addr, StatRoute),
+	logger.L.Info("server started",
+		"component", "stats",
+		"statserver", fmt.Sprintf("http://localhost%s%s", s.server.Addr, StatRoute),
 	)
 
-	err := s.server.ListenAndServe()
-	if err != nil {
-		if errors.Is(err, http.ErrServerClosed) {
-			return
-		}
-
-		logger.L.Error("[Stats] error starting stats server", "error", err)
+	if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		logger.L.Error("error starting stats server", "component", "stats", "error", err)
 	}
+}
+
+// StatHandler handles HTTP requests for statistics.
+type StatHandler struct {
+	statServer *StatServer
+}
+
+// NewStatHandler creates a new statistics handler for the given server.
+func NewStatHandler(server *StatServer) *StatHandler {
+	return &StatHandler{statServer: server}
+}
+
+// GenStatReport generates a statistics report from the server's status.
+func (h *StatHandler) GenStatReport() *Report {
+	return h.statServer.status.GenStatReport(h.statServer.config.Reports)
+}
+
+func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet && req.Method != http.MethodHead {
+		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
+
+		return
+	}
+
+	logger.L.Debug("requested", "component", "stats", "requester", req.RemoteAddr)
+
+	writeJSON(writer, h.GenStatReport())
+}
+
+func writeJSON(w http.ResponseWriter, data any) {
+	w.Header().Set("Content-Type", "application/json")
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", JSONIndentSpaces)
+
+	if err := enc.Encode(data); err != nil {
+		logger.L.Error("error writing JSON response", "component", "stats", "error", err)
+	}
+}
+
+func serverHeader(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Server", "upd/"+version.Version())
+		next.ServeHTTP(w, r)
+	})
+}
+
+func defaultTimeout(d, def time.Duration) time.Duration {
+	if d == 0 {
+		return def
+	}
+
+	return d
 }

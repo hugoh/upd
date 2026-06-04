@@ -66,12 +66,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/hugoh/upd/internal/check"
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
 	"github.com/hugoh/upd/internal/status"
 	"github.com/hugoh/upd/internal/types"
+	"github.com/pelletier/go-toml/v2"
 )
 
 const (
@@ -120,7 +120,7 @@ type Configuration struct {
 }
 
 func configError(msg string, path string, err error) (*Configuration, error) {
-	slog.Error(msg, "file", path, "error", err)
+	logger.L.Error(msg, "component", "config", "file", path, "error", err)
 
 	return nil, fmt.Errorf("%s: %w", msg, err)
 }
@@ -147,7 +147,7 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 		return configError("Could not read config", absPath, err)
 	}
 
-	logger.L.Debug("[Config] config file used", "file", absPath)
+	logger.L.Debug("config file used", "component", "config", "file", absPath)
 
 	content, err = expandEnvVars(content)
 	if err != nil {
@@ -214,7 +214,8 @@ func (c Configuration) GetChecksCat(category []string) []*check.Check {
 	for _, checkStr := range category {
 		parsedURL, err := url.Parse(checkStr)
 		if err != nil {
-			logger.L.Error("could not parse check in config", "check", checkStr, "error", err)
+			logger.L.Error("could not parse check in config",
+				"component", "config", "check", checkStr, "error", err)
 
 			continue
 		}
@@ -225,13 +226,14 @@ func (c Configuration) GetChecksCat(category []string) []*check.Check {
 		case check.DNS:
 			domain := strings.TrimPrefix(parsedURL.Path, "/")
 			if domain == "" {
-				logger.L.Error("DNS check missing domain", "check", checkStr)
+				logger.L.Error("DNS check missing domain", "component", "config", "check", checkStr)
 
 				continue
 			}
 
 			if parsedURL.Host == "" {
-				logger.L.Error("DNS check missing resolver host", "check", checkStr)
+				logger.L.Error("DNS check missing resolver host",
+					"component", "config", "check", checkStr)
 
 				continue
 			}
@@ -249,13 +251,9 @@ func (c Configuration) GetChecksCat(category []string) []*check.Check {
 			hostPort := net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())
 			probe = check.NewTCPProbe(hostPort)
 		default:
-			logger.L.Error(
-				"unknown protocol in config",
-				"check",
-				checkStr,
-				"protocol",
-				parsedURL.Scheme,
-			)
+			logger.L.Error("unknown protocol in config",
+				"component", "config", "check", checkStr,
+				"protocol", parsedURL.Scheme)
 
 			continue
 		}
@@ -325,7 +323,7 @@ func (c Configuration) logSetup() {
 	case logLevelWarn:
 		level = slog.LevelWarn
 	default:
-		logger.L.Error("[Config] Unknown loglevel", "loglevel", c.LogLevel)
+		logger.L.Error("unknown loglevel", "component", "config", "loglevel", c.LogLevel)
 
 		return
 	}
