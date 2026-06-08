@@ -77,8 +77,6 @@ import (
 const (
 	// DefaultConfig is the default configuration file name.
 	DefaultConfig = ".upd.toml"
-	// DefaultDNSPort is the default DNS port.
-	DefaultDNSPort = "53"
 
 	logLevelTrace = "trace"
 	logLevelDebug = "debug"
@@ -120,15 +118,13 @@ type Configuration struct {
 }
 
 func configError(msg string, path string, err error) (*Configuration, error) {
-	logger.L.Error(msg, "component", "config", "file", path, "error", err)
+	logger.L.Error(msg, logger.LogComponent, logger.LogComponentConfig, "file", path, "error", err)
 
 	return nil, fmt.Errorf("%s: %w", msg, err)
 }
 
 // ReadConf loads and validates configuration from the given file.
 func ReadConf(cfgFile string) (*Configuration, error) {
-	var err error
-
 	if cfgFile == "" {
 		cfgFile = DefaultConfig
 	}
@@ -140,14 +136,18 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 
 	// Read file - cfgFile has been cleaned and resolved to absolute path
 	// #nosec G304 // Path is sanitized by filepath.Abs() and filepath.Clean(), and only reads admin-configured files
-	var content []byte
-
-	content, err = os.ReadFile(absPath) // #nosec G304
+	content, err := os.ReadFile(absPath) // #nosec G304
 	if err != nil {
 		return configError("Could not read config", absPath, err)
 	}
 
-	logger.L.Debug("config file used", "component", "config", "file", absPath)
+	logger.L.Debug(
+		"config file used",
+		logger.LogComponent,
+		logger.LogComponentConfig,
+		"file",
+		absPath,
+	)
 
 	content, err = expandEnvVars(content)
 	if err != nil {
@@ -208,6 +208,33 @@ func (c Configuration) GetChecks() (*check.List, error) {
 	return checkList, nil
 }
 
+//nolint:ireturn // intentionally returns interface to abstract probe creation
+func probeFromURL(parsedURL *url.URL, checkStr string) check.Probe {
+	switch parsedURL.Scheme {
+	case check.DNS:
+		probe, err := check.NewDNSProbe(parsedURL.Host, strings.TrimPrefix(parsedURL.Path, "/"))
+		if err != nil {
+			logger.L.Error("invalid DNS check",
+				logger.LogComponent, logger.LogComponentConfig,
+				"check", checkStr, "error", err)
+
+			return nil
+		}
+
+		return probe
+	case check.HTTP, check.HTTPS:
+		return check.NewHTTPProbe(parsedURL.String())
+	case check.TCP:
+		return check.NewTCPProbe(net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port()))
+	default:
+		logger.L.Error("unknown protocol in config",
+			logger.LogComponent, logger.LogComponentConfig, "check", checkStr,
+			"protocol", parsedURL.Scheme)
+
+		return nil
+	}
+}
+
 // GetChecksCat creates checks from a list of check URIs.
 func (c Configuration) GetChecksCat(category []string) []*check.Check {
 	checks := make([]*check.Check, 0, len(category))
@@ -215,46 +242,13 @@ func (c Configuration) GetChecksCat(category []string) []*check.Check {
 		parsedURL, err := url.Parse(checkStr)
 		if err != nil {
 			logger.L.Error("could not parse check in config",
-				"component", "config", "check", checkStr, "error", err)
+				logger.LogComponent, logger.LogComponentConfig, "check", checkStr, "error", err)
 
 			continue
 		}
 
-		var probe check.Probe
-
-		switch parsedURL.Scheme {
-		case check.DNS:
-			domain := strings.TrimPrefix(parsedURL.Path, "/")
-			if domain == "" {
-				logger.L.Error("DNS check missing domain", "component", "config", "check", checkStr)
-
-				continue
-			}
-
-			if parsedURL.Host == "" {
-				logger.L.Error("DNS check missing resolver host",
-					"component", "config", "check", checkStr)
-
-				continue
-			}
-
-			port := parsedURL.Port()
-			if port == "" {
-				port = DefaultDNSPort
-			}
-
-			dnsResolver := parsedURL.Host + ":" + port
-			probe = check.NewDNSProbe(dnsResolver, domain)
-		case check.HTTP, check.HTTPS:
-			probe = check.NewHTTPProbe(parsedURL.String())
-		case check.TCP:
-			hostPort := net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())
-			probe = check.NewTCPProbe(hostPort)
-		default:
-			logger.L.Error("unknown protocol in config",
-				"component", "config", "check", checkStr,
-				"protocol", parsedURL.Scheme)
-
+		probe := probeFromURL(parsedURL, checkStr)
+		if probe == nil {
 			continue
 		}
 
@@ -323,7 +317,13 @@ func (c Configuration) logSetup() {
 	case logLevelWarn:
 		level = slog.LevelWarn
 	default:
-		logger.L.Error("unknown loglevel", "component", "config", "loglevel", c.LogLevel)
+		logger.L.Error(
+			"unknown loglevel",
+			logger.LogComponent,
+			logger.LogComponentConfig,
+			"loglevel",
+			c.LogLevel,
+		)
 
 		return
 	}

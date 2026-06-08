@@ -6,6 +6,18 @@ import (
 	"os"
 )
 
+// LogComponent is the structured log key used for component identification.
+const LogComponent = "component"
+
+// Component values used across the codebase for log attribution.
+const (
+	LogComponentCheck      = "check"
+	LogComponentDownAction = "downaction"
+	LogComponentStats      = "stats"
+	LogComponentConfig     = "config"
+	LogComponentApp        = "app"
+)
+
 // L is the global logger instance for the application.
 //
 //nolint:gochecknoglobals,varnamelen // Standard pattern for application-wide logger

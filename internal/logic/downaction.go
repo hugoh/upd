@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/shlex"
@@ -24,23 +25,17 @@ type DownAction struct {
 	StopExec     string
 }
 
-// DownActionIteration tracks the current iteration state for exponential backoff.
-type DownActionIteration struct {
-	iteration    int
-	sleepTime    time.Duration
-	limitReached bool
-}
-
 // DownActionLoop manages execution of down action commands.
 type DownActionLoop struct {
 	da         *DownAction
-	it         *DownActionIteration
 	cancelFunc context.CancelFunc
 	//nolint:containedctx // loopCtx stored to bind StopExec commands on loop exit
-	loopCtx    context.Context
-	mu         sync.RWMutex
-	currentCmd *exec.Cmd
-	cmdMu      sync.Mutex
+	loopCtx      context.Context
+	iteration    atomic.Int64
+	sleepTime    time.Duration
+	limitReached bool
+	currentCmd   *exec.Cmd
+	cmdMu        sync.Mutex
 }
 
 // BackoffFactor is the multiplier for exponential backoff.
@@ -53,8 +48,6 @@ var (
 	ErrNoCommand = errors.New("no command to execute")
 	// ErrEmptyCommand is returned when the command name is empty.
 	ErrEmptyCommand = errors.New("command name cannot be empty")
-	// ErrInvalidCommand is returned when the command is invalid.
-	ErrInvalidCommand = errors.New("invalid command")
 )
 
 func validateCommand(command []string) error {
@@ -85,9 +78,7 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 		return fmt.Errorf("invalid command: %w", err)
 	}
 
-	dal.mu.RLock()
-	iteration := dal.it.iteration
-	dal.mu.RUnlock()
+	iteration := dal.iteration.Load()
 
 	// #nosec G204 // Command is validated by shlex.Split() and validateCommand() before execution
 	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
@@ -99,11 +90,16 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	cmdEnv := os.Environ()
 	cmdEnv = append(cmdEnv, fmt.Sprintf("UPD_ITERATION=%d", iteration))
 	cmd.Env = cmdEnv
-	logger.L.Info("executing command", "component", "downaction", "exec", cmd.String())
+	logger.L.Info(
+		"executing command",
+		logger.LogComponent, logger.LogComponentDownAction,
+		"exec", cmd.String(),
+		"iteration", iteration,
+	)
 
 	if err = cmd.Start(); err != nil {
 		logger.L.Error("failed to run",
-			"component", "downaction", "exec", cmd.String(), "error", err)
+			logger.LogComponent, logger.LogComponentDownAction, "exec", cmd.String(), "error", err)
 
 		return fmt.Errorf("failed to execute DownAction: %w", err)
 	}
@@ -112,30 +108,9 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	dal.currentCmd = cmd
 	dal.cmdMu.Unlock()
 
-	go func() {
-		waitErr := cmd.Wait()
-
-		dal.cmdMu.Lock()
-		if dal.currentCmd == cmd {
-			dal.currentCmd = nil
-		}
-		dal.cmdMu.Unlock()
-
-		if waitErr != nil {
-			logger.L.Warn("error executing command",
-				"component", "downaction", "exec", cmd.String(), "error", waitErr,
-				"stderr", string(bytes.TrimSpace(stderrBuf.Bytes())))
-		}
-	}()
+	go dal.waitForCmd(cmd, &stderrBuf)
 
 	return nil
-}
-
-// NewDownActionIteration creates a new iteration tracker.
-func NewDownActionIteration() *DownActionIteration {
-	return &DownActionIteration{
-		iteration: -1,
-	}
 }
 
 // NewDownActionLoop creates a new loop context for the down action.
@@ -143,9 +118,9 @@ func (da *DownAction) NewDownActionLoop(ctx context.Context) (*DownActionLoop, c
 	ctx, cancelFunc := context.WithCancel(ctx)
 	dal := &DownActionLoop{
 		da:         da,
-		it:         NewDownActionIteration(),
 		cancelFunc: cancelFunc,
 		loopCtx:    ctx,
+		sleepTime:  da.After,
 	}
 
 	return dal, ctx
@@ -155,7 +130,7 @@ func (da *DownAction) NewDownActionLoop(ctx context.Context) (*DownActionLoop, c
 func (da *DownAction) Start(ctx context.Context) *DownActionLoop {
 	dal, ctx := da.NewDownActionLoop(ctx)
 
-	logger.L.Debug("kicking off run loop", "component", "downaction")
+	logger.L.Debug("kicking off run loop", logger.LogComponent, logger.LogComponentDownAction)
 
 	go dal.run(ctx)
 
@@ -171,12 +146,38 @@ func (dal *DownActionLoop) Stop(_ context.Context) {
 		//nolint:contextcheck // loopCtx derived from the same hierarchy as ctx
 		err := dal.Execute(dal.loopCtx, dal.da.StopExec)
 		if err != nil && !errors.Is(err, ErrNoCommand) {
-			logger.L.Warn("failed to execute stop command", "component", "downaction", "error", err)
+			logger.L.Warn(
+				"failed to execute stop command",
+				logger.LogComponent,
+				logger.LogComponentDownAction,
+				"error",
+				err,
+			)
 		}
 	}
 
-	logger.L.Debug("sending shutdown signal", "component", "downaction")
+	logger.L.Debug("sending shutdown signal", logger.LogComponent, logger.LogComponentDownAction)
 	dal.cancelFunc()
+}
+
+func (dal *DownActionLoop) waitForCmd(cmd *exec.Cmd, stderrBuf *bytes.Buffer) {
+	waitErr := cmd.Wait()
+
+	dal.cmdMu.Lock()
+	if dal.currentCmd == cmd {
+		dal.currentCmd = nil
+	}
+	dal.cmdMu.Unlock()
+
+	if waitErr != nil {
+		logger.L.Warn(
+			"error executing command",
+			logger.LogComponent, logger.LogComponentDownAction,
+			"exec", cmd.String(),
+			"error", waitErr,
+			"stderr", string(bytes.TrimSpace(stderrBuf.Bytes())),
+		)
+	}
 }
 
 // killCurrentCmd kills any currently running command and clears the reference.
@@ -189,73 +190,96 @@ func (dal *DownActionLoop) killCurrentCmd() {
 	}
 
 	logger.L.Warn("killing current command",
-		"component", "downaction", "pid", dal.currentCmd.Process.Pid)
+		logger.LogComponent, logger.LogComponentDownAction, "pid", dal.currentCmd.Process.Pid)
 
 	if dal.currentCmd.Process != nil {
 		if err := dal.currentCmd.Process.Kill(); err != nil {
-			logger.L.Warn("failed to kill current command", "component", "downaction", "error", err)
+			logger.L.Warn(
+				"failed to kill current command",
+				logger.LogComponent,
+				logger.LogComponentDownAction,
+				"error",
+				err,
+			)
 		}
 	}
 
 	dal.currentCmd = nil
 }
 
-func (dal *DownActionLoop) iterate() {
-	dal.mu.Lock()
-	defer dal.mu.Unlock()
+func (dal *DownActionLoop) nextSleep() time.Duration {
+	dal.iteration.Add(1)
 
-	dal.it.iteration++
-	switch dal.it.iteration {
-	case 0:
-		dal.it.sleepTime = dal.da.After
+	switch dal.iteration.Load() {
 	case 1:
-		dal.it.sleepTime = dal.da.Every
+		dal.sleepTime = dal.da.Every
 	default:
-		if !dal.it.limitReached {
-			dal.it.sleepTime = time.Duration(BackoffFactor * float64(dal.it.sleepTime))
-			if dal.da.BackoffLimit != 0 && dal.it.sleepTime >= dal.da.BackoffLimit {
-				dal.it.sleepTime = dal.da.BackoffLimit
-				dal.it.limitReached = true
+		if !dal.limitReached {
+			next := time.Duration(BackoffFactor * float64(dal.sleepTime))
+			if dal.da.BackoffLimit != 0 && next >= dal.da.BackoffLimit {
+				next = dal.da.BackoffLimit
+				dal.limitReached = true
 			}
+
+			dal.sleepTime = next
 		}
 	}
 
 	logger.L.Debug("iteration details",
-		"component", "downaction", "iteration", dal.it.iteration,
-		"sleepTime", dal.it.sleepTime,
-		"limitReached", dal.it.limitReached)
+		logger.LogComponent, logger.LogComponentDownAction, "iteration", dal.iteration.Load(),
+		"sleepTime", dal.sleepTime,
+		"limitReached", dal.limitReached)
+
+	return dal.sleepTime
 }
 
 func (dal *DownActionLoop) run(ctx context.Context) {
-	dal.iterate()
+	logger.L.Debug("down action loop started",
+		logger.LogComponent, logger.LogComponentDownAction)
 
 	for {
-		dal.mu.RLock()
-		sleepTime := dal.it.sleepTime
-		dal.mu.RUnlock()
-
-		timer := time.NewTimer(sleepTime)
+		logger.L.Debug(
+			"sleeping",
+			logger.LogComponent,
+			logger.LogComponentDownAction,
+			"duration",
+			dal.sleepTime,
+		)
+		timer := time.NewTimer(dal.sleepTime)
 
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			logger.L.Debug("canceled", "component", "downaction")
+			logger.L.Debug("canceled", logger.LogComponent, logger.LogComponentDownAction)
 
 			return
 		case <-timer.C:
-			timer.Stop()
 		}
 
 		dal.killCurrentCmd()
 
 		err := dal.Execute(ctx, dal.da.Exec)
 		if err != nil {
-			logger.L.Error("failed to execute", "component", "downaction", "error", err)
+			logger.L.Error(
+				"failed to execute",
+				logger.LogComponent,
+				logger.LogComponentDownAction,
+				"iteration",
+				dal.iteration.Load(),
+				"error",
+				err,
+			)
+		} else {
+			logger.L.Debug("command succeeded",
+				logger.LogComponent, logger.LogComponentDownAction)
 		}
 
 		if dal.da.Every > 0 {
-			dal.iterate()
+			dal.sleepTime = dal.nextSleep()
 		} else {
+			logger.L.Debug("down action loop complete",
+				logger.LogComponent, logger.LogComponentDownAction)
+
 			break
 		}
 	}

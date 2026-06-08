@@ -7,11 +7,6 @@ import (
 	"github.com/hugoh/upd/internal/logger"
 )
 
-const (
-	// InvalidRangeMsg is the error message returned when the requested range exceeds retention.
-	InvalidRangeMsg = "range greater than the retention period"
-)
-
 // StateChange represents a single state transition in the tracker.
 type StateChange struct {
 	timestamp time.Time
@@ -78,7 +73,7 @@ func (tracker *StateChangeTracker) Prune(currentTime time.Time) {
 }
 
 // ErrInvalidRange is returned when the requested duration exceeds retention.
-var ErrInvalidRange = errors.New(InvalidRangeMsg)
+var ErrInvalidRange = errors.New("range greater than the retention period")
 
 // CalculateUptime computes availability percentage and downtime for a given period.
 func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
@@ -130,8 +125,8 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 		if err != nil {
 			logger.L.Debug(
 				"invalid range for stat report",
-				"component",
-				"stats",
+				logger.LogComponent,
+				logger.LogComponentStats,
 				"error",
 				err,
 				"period",

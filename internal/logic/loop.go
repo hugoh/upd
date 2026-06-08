@@ -98,6 +98,7 @@ type Loop struct {
 	downActionLoop *DownActionLoop
 	statServer     *status.StatServer
 	status         *status.Status
+	lastSuccess    time.Time
 }
 
 // NewLoop creates a new monitoring loop.
@@ -152,9 +153,9 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 		return
 	}
 
-	logger.L.Info("connection status changed", "component", "loop", "up", l.status.Up)
+	logger.L.Info("connection status changed", logger.LogComponent, "loop", "up", l.status.Up)
 
-	if !l.hasDownAction() {
+	if l.downAction == nil {
 		return
 	}
 
@@ -163,7 +164,7 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 	} else {
 		err := l.DownActionStart(ctx)
 		if err != nil {
-			logger.L.Error("could not start DownAction", "component", "loop", "error", err)
+			logger.L.Error("could not start DownAction", logger.LogComponent, "loop", "error", err)
 		}
 	}
 }
@@ -179,25 +180,39 @@ func (l *Loop) Run(ctx context.Context, statServerConfig *status.StatServerConfi
 	for {
 		checkStatus, err := check.CheckerRun(ctx, checker, l.checkList.GetIterator())
 		if err == nil {
+			l.lastSuccess = time.Now()
 			l.ProcessCheck(ctx, checkStatus)
 		} else {
-			logger.L.Error("loop error", "component", "loop", "error", err)
+			attrs := []any{logger.LogComponent, "loop", "error", err}
+			if !l.lastSuccess.IsZero() {
+				attrs = append(attrs, "sinceLastSuccess", time.Since(l.lastSuccess))
+			}
+
+			logger.L.Error("loop error", attrs...)
 		}
 
 		sleepTime := l.delays[l.status.Up]
-		logger.L.Debug("waiting for next loop iteration", "component", "loop", "wait", sleepTime)
+		logger.L.Debug(
+			"waiting for next loop iteration",
+			logger.LogComponent,
+			"loop",
+			"wait",
+			sleepTime,
+		)
 
 		timer := time.NewTimer(sleepTime)
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			logger.L.Debug("context canceled during sleep, exiting Run()", "component", "loop")
+			logger.L.Debug(
+				"context canceled during sleep, exiting Run()",
+				logger.LogComponent,
+				"loop",
+			)
 
 			return
 		case <-timer.C:
 		}
-
-		timer.Stop()
 	}
 }
 
@@ -211,17 +226,13 @@ func (l *Loop) Stop(ctx context.Context) {
 	}
 }
 
-func (l *Loop) hasDownAction() bool {
-	return l.downAction != nil
-}
-
 // Checker implements check.Checker for logging check lifecycle events.
 type Checker struct{}
 
 // CheckRun logs the start of a check.
 func (Checker) CheckRun(chk check.Check) {
 	logger.L.Debug("running",
-		"component", "check",
+		logger.LogComponent, logger.LogComponentCheck,
 		"probe",
 		chk.Probe,
 		"protocol",
@@ -233,10 +244,14 @@ func (Checker) CheckRun(chk check.Check) {
 
 // ProbeSuccess logs successful probe results.
 func (Checker) ProbeSuccess(report *check.Report) {
-	logger.L.Debug("success", append([]any{"component", "check"}, report.LogAttrs()...)...)
+	logger.L.Debug(
+		"success",
+		append([]any{logger.LogComponent, logger.LogComponentCheck}, report.LogAttrs()...)...)
 }
 
 // ProbeFailure logs failed probe results.
 func (Checker) ProbeFailure(report *check.Report) {
-	logger.L.Warn("failed", append([]any{"component", "check"}, report.LogAttrs()...)...)
+	logger.L.Warn(
+		"failed",
+		append([]any{logger.LogComponent, logger.LogComponentCheck}, report.LogAttrs()...)...)
 }

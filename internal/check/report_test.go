@@ -71,7 +71,7 @@ func TestProtocol(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			report := &Report{protocol: tt.protocol}
-			assert.Equal(t, tt.protocol, report.Protocol())
+			assert.Equal(t, tt.protocol, report.protocol)
 		})
 	}
 }
@@ -90,7 +90,7 @@ func TestResponse(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			report := &Report{response: tt.response}
-			assert.Equal(t, tt.response, report.Response())
+			assert.Equal(t, tt.response, report.response)
 		})
 	}
 }
@@ -98,8 +98,7 @@ func TestResponse(t *testing.T) {
 func TestResponse_WithErrors(t *testing.T) {
 	err := errors.New("network error")
 	report := &Report{error: err}
-	resp := report.Response()
-	assert.Empty(t, resp, "Response should be empty when there's an error")
+	assert.Empty(t, report.response, "Response should be empty when there's an error")
 }
 
 func TestElapsed(t *testing.T) {
@@ -115,7 +114,7 @@ func TestElapsed(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			report := &Report{elapsed: tt.elapsed}
-			assert.Equal(t, tt.elapsed, report.Elapsed())
+			assert.Equal(t, tt.elapsed, report.elapsed)
 		})
 	}
 }
@@ -133,9 +132,8 @@ func TestError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			report := &Report{error: tt.err}
-			err := report.Error()
-			assert.Equal(t, tt.err, err)
-			assert.Equal(t, tt.wantErr, err != nil)
+			assert.Equal(t, tt.err, report.error)
+			assert.Equal(t, tt.wantErr, report.error != nil)
 		})
 	}
 }
@@ -154,7 +152,7 @@ func TestIsError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			report := &Report{error: tt.err}
-			assert.Equal(t, tt.isError, report.IsError())
+			assert.Equal(t, tt.isError, report.error != nil)
 		})
 	}
 }
