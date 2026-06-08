@@ -48,8 +48,6 @@ var (
 	ErrNoCommand = errors.New("no command to execute")
 	// ErrEmptyCommand is returned when the command name is empty.
 	ErrEmptyCommand = errors.New("command name cannot be empty")
-	// ErrInvalidCommand is returned when the command is invalid.
-	ErrInvalidCommand = errors.New("invalid command")
 )
 
 func validateCommand(command []string) error {
@@ -261,7 +259,6 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 
 			return
 		case <-timer.C:
-			timer.Stop()
 		}
 
 		dal.killCurrentCmd()
