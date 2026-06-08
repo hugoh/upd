@@ -43,10 +43,7 @@ func (p ReadablePercent) MarshalJSON() ([]byte, error) {
 }
 
 func formatDuration(d time.Duration) string {
-	str := d.Truncate(time.Second).String()
-	if str == ZeroString {
-		return str
-	}
+	str := d.Round(time.Second).String()
 	// Remove trailing "0s" or "0m0s"
 	if strings.HasSuffix(str, TrailingZeroMSuffix) {
 		str = strings.TrimSuffix(str, TrailingZeroSSuffix)

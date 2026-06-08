@@ -79,6 +79,44 @@ func Test_ProcessCheck_StatusChanged_DownStatus_StartsDownAction(t *testing.T) {
 	assert.NotNil(t, loop.downActionLoop)
 }
 
+func Test_ProcessCheck_PopulatesLoopStatus(t *testing.T) {
+	loop := NewLoop()
+	loop.Configure(nil, Delays{true: time.Minute, false: 30 * time.Second}, nil, 0)
+
+	ctx := context.Background()
+
+	loop.lastSuccess = time.Now()
+	// Status.Up is false by default, so true changes it
+	loop.ProcessCheck(ctx, true)
+
+	report := loop.status.GenStatReport(nil)
+	require.NotNil(t, report.Loop)
+	assert.Equal(t, time.Minute, time.Duration(report.Loop.Interval))
+	nextCheck := time.Duration(report.Loop.NextCheck)
+	assert.Greater(t, nextCheck, 50*time.Second)
+	assert.LessOrEqual(t, nextCheck, time.Minute)
+	assert.NotZero(t, time.Duration(report.Loop.LastSuccess))
+}
+
+func Test_ProcessCheck_PopulatesDownActionStatus(t *testing.T) {
+	loop := NewLoop()
+	da := getTestDA()
+	loop.Configure(nil, Delays{true: time.Minute, false: 30 * time.Second}, da, 0)
+
+	ctx := context.Background()
+
+	// Transition to up first (initialized state)
+	loop.ProcessCheck(ctx, true)
+	assert.Nil(t, loop.status.GenStatReport(nil).DownAction)
+
+	// Transition to down — starts down action
+	loop.ProcessCheck(ctx, false)
+	report := loop.status.GenStatReport(nil)
+	require.NotNil(t, report.DownAction)
+	assert.Equal(t, int64(0), report.DownAction.Iteration)
+	assert.False(t, report.DownAction.BackoffCapped)
+}
+
 func Test_ProcessCheck_StatusChanged_DownStatus_StartsDownAction_Error(t *testing.T) {
 	loop := emptyNewLoop()
 	ctx := context.Background()

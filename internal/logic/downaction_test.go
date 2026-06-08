@@ -216,6 +216,48 @@ func Test_BackoffLimit(t *testing.T) {
 	testBackoff(t, true)
 }
 
+func Test_Status_Initial(t *testing.T) {
+	da := &DownAction{Exec: testTrue}
+	dal, _ := da.NewDownActionLoop(context.Background())
+
+	st := dal.Status()
+	assert.Equal(t, int64(0), st.Iteration)
+	assert.Zero(t, st.SleepTime)
+	assert.False(t, st.BackoffCapped)
+}
+
+func Test_Status_AfterIteration(t *testing.T) {
+	da := getTestDA()
+	dal, _ := da.NewDownActionLoop(context.Background())
+
+	dal.nextSleep()
+	st := dal.Status()
+	assert.Equal(t, int64(1), st.Iteration)
+	assert.Equal(t, da.Every, time.Duration(st.SleepTime))
+	assert.False(t, st.BackoffCapped)
+
+	dal.nextSleep()
+	st = dal.Status()
+	assert.Equal(t, int64(2), st.Iteration)
+	assert.InEpsilon(t, 1.5*float64(time.Second), float64(time.Duration(st.SleepTime)), 0.01)
+	assert.False(t, st.BackoffCapped)
+}
+
+func Test_Status_BackoffCapped(t *testing.T) {
+	da := getTestDA()
+	da.BackoffLimit = 2 * time.Second
+	dal, _ := da.NewDownActionLoop(context.Background())
+
+	// After enough iterations, backoff hits the limit
+	for range 5 {
+		dal.nextSleep()
+	}
+
+	st := dal.Status()
+	assert.True(t, st.BackoffCapped)
+	assert.Equal(t, da.BackoffLimit, time.Duration(st.SleepTime))
+}
+
 func TestValidateCommand(t *testing.T) {
 	tests := []struct {
 		name        string

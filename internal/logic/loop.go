@@ -99,6 +99,7 @@ type Loop struct {
 	statServer     *status.StatServer
 	status         *status.Status
 	lastSuccess    time.Time
+	nextCheckAt    time.Time
 }
 
 // NewLoop creates a new monitoring loop.
@@ -149,24 +150,14 @@ func (l *Loop) DownActionStop(ctx context.Context) {
 // ProcessCheck handles state changes and triggers down actions.
 func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 	changed := l.status.Update(upStatus)
-	if !changed {
-		return
+
+	if changed {
+		logger.L.Info("connection status changed", logger.LogComponent, "loop", "up", l.status.Up)
+		l.handleStateChange(ctx, upStatus)
 	}
 
-	logger.L.Info("connection status changed", logger.LogComponent, "loop", "up", l.status.Up)
-
-	if l.downAction == nil {
-		return
-	}
-
-	if upStatus {
-		l.DownActionStop(ctx)
-	} else {
-		err := l.DownActionStart(ctx)
-		if err != nil {
-			logger.L.Error("could not start DownAction", logger.LogComponent, "loop", "error", err)
-		}
-	}
+	l.nextCheckAt = time.Now().Add(l.delays[l.status.Up])
+	l.pushStatus()
 }
 
 // Run starts the monitoring loop with optional statistics server config.
@@ -189,6 +180,9 @@ func (l *Loop) Run(ctx context.Context, statServerConfig *status.StatServerConfi
 			}
 
 			logger.L.Error("loop error", attrs...)
+
+			l.nextCheckAt = time.Now().Add(l.delays[l.status.Up])
+			l.pushStatus()
 		}
 
 		sleepTime := l.delays[l.status.Up]
@@ -223,6 +217,40 @@ func (l *Loop) Stop(ctx context.Context) {
 	if l.statServer != nil {
 		l.statServer.Shutdown(ctx)
 		l.statServer = nil
+	}
+}
+
+func (l *Loop) handleStateChange(ctx context.Context, upStatus bool) {
+	if l.downAction == nil {
+		return
+	}
+
+	if upStatus {
+		l.DownActionStop(ctx)
+	} else {
+		err := l.DownActionStart(ctx)
+		if err != nil {
+			logger.L.Error("could not start DownAction", logger.LogComponent, "loop", "error", err)
+		}
+	}
+}
+
+func (l *Loop) pushStatus() {
+	loopSt := status.LoopStatus{
+		Interval: status.ReadableDuration(l.delays[l.status.Up]),
+	}
+
+	l.status.SetLoopStatus(loopSt)
+	l.status.SetNextCheckAt(l.nextCheckAt)
+
+	if !l.lastSuccess.IsZero() {
+		l.status.SetLastSuccessAt(l.lastSuccess)
+	}
+
+	if l.downActionLoop != nil {
+		l.status.SetDownActionStatus(l.downActionLoop.Status())
+	} else {
+		l.status.SetDownActionStatus(status.DownActionStatus{})
 	}
 }
 

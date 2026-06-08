@@ -94,6 +94,10 @@ type Status struct {
 	initialized        bool
 	mutex              sync.Mutex
 	stateChangeTracker *StateChangeTracker
+	downActionStatus   DownActionStatus
+	loopStatus         LoopStatus
+	lastSuccessAt      time.Time
+	nextCheckAt        time.Time
 }
 
 // NewStatus creates a new Status instance.
@@ -122,6 +126,38 @@ func (s *Status) SetRetention(retention time.Duration) {
 		s.stateChangeTracker.retention = retention
 		s.stateChangeTracker.Prune(time.Now())
 	}
+}
+
+// SetDownActionStatus stores a snapshot of the down action loop state.
+func (s *Status) SetDownActionStatus(das DownActionStatus) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.downActionStatus = das
+}
+
+// SetLoopStatus stores a snapshot of the monitoring loop state.
+func (s *Status) SetLoopStatus(ls LoopStatus) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.loopStatus = ls
+}
+
+// SetLastSuccessAt stores the timestamp of the last successful check.
+func (s *Status) SetLastSuccessAt(t time.Time) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.lastSuccessAt = t
+}
+
+// SetNextCheckAt stores the timestamp of the next scheduled check.
+func (s *Status) SetNextCheckAt(t time.Time) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.nextCheckAt = t
 }
 
 // Update updates the connection status and records the state change if necessary.
@@ -165,27 +201,41 @@ func (s *Status) GenStatReport(periods []time.Duration) *Report {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	if s.stateChangeTracker == nil {
-		return &Report{
-			Generated:  generated,
-			Uptime:     ReadableDuration(0),
-			Up:         s.Up,
-			Version:    version.Version(),
-			Stats:      nil,
-			CheckCount: 0,
-			LastUpdate: ReadableDuration(0),
-		}
-	}
+	das := s.downActionStatus
+	loopSt := s.loopStatus
 
-	return &Report{
+	rpt := &Report{
 		Generated:  generated,
-		Uptime:     ReadableDuration(generated.Sub(s.stateChangeTracker.started)),
 		Up:         s.Up,
 		Version:    version.Version(),
-		Stats:      s.stateChangeTracker.GenReports(s.Up, generated, periods),
-		CheckCount: s.stateChangeTracker.updateCount,
-		LastUpdate: ReadableDuration(generated.Sub(s.stateChangeTracker.lastUpdated)),
+		Loop:       &loopSt,
+		DownAction: nil,
 	}
+
+	if das.Iteration > 0 || das.SleepTime > 0 {
+		rpt.DownAction = &das
+	}
+
+	if !s.lastSuccessAt.IsZero() {
+		rpt.Loop.LastSuccess = ReadableDuration(generated.Sub(s.lastSuccessAt))
+	}
+
+	if !s.nextCheckAt.IsZero() {
+		remaining := max(s.nextCheckAt.Sub(generated), 0)
+
+		rpt.Loop.NextCheck = ReadableDuration(remaining)
+	}
+
+	if s.stateChangeTracker == nil {
+		return rpt
+	}
+
+	rpt.Uptime = ReadableDuration(generated.Sub(s.stateChangeTracker.started))
+	rpt.Stats = s.stateChangeTracker.GenReports(s.Up, generated, periods)
+	rpt.Loop.TimeSinceUpdate = ReadableDuration(generated.Sub(s.stateChangeTracker.lastUpdated))
+	rpt.Loop.TotalChecksRun = s.stateChangeTracker.updateCount
+
+	return rpt
 }
 
 func (s *Status) set(up bool) {

@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/shlex"
 	"github.com/hugoh/upd/internal/logger"
+	"github.com/hugoh/upd/internal/status"
 )
 
 // DownAction holds configuration for actions executed when connection is down.
@@ -158,6 +159,15 @@ func (dal *DownActionLoop) Stop(_ context.Context) {
 
 	logger.L.Debug("sending shutdown signal", logger.LogComponent, logger.LogComponentDownAction)
 	dal.cancelFunc()
+}
+
+// Status returns a snapshot of the current down action loop state.
+func (dal *DownActionLoop) Status() status.DownActionStatus {
+	return status.DownActionStatus{
+		Iteration:     dal.iteration.Load(),
+		SleepTime:     status.ReadableDuration(dal.sleepTime),
+		BackoffCapped: dal.limitReached,
+	}
 }
 
 func (dal *DownActionLoop) waitForCmd(cmd *exec.Cmd, stderrBuf *bytes.Buffer) {
