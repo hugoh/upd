@@ -74,7 +74,7 @@ func TestSetDownActionStatus(t *testing.T) {
 
 	rpt := s.GenStatReport([]time.Duration{time.Minute})
 	require.NotNil(t, rpt.DownAction)
-	assert.Equal(t, int64(7), rpt.DownAction.Iteration)
+	assert.Equal(t, uint64(7), rpt.DownAction.Iteration)
 	assert.Equal(t, ReadableDuration(30*time.Second), rpt.DownAction.SleepTime)
 	assert.True(t, rpt.DownAction.BackoffCapped)
 }

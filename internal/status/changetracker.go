@@ -17,7 +17,7 @@ type StateChangeTracker struct {
 	head        *StateChange
 	tail        *StateChange
 	retention   time.Duration
-	updateCount int64
+	updateCount uint64
 	lastUpdated time.Time
 	started     time.Time
 }

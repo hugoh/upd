@@ -47,7 +47,7 @@ func TestRecordChange_UpdatesCurrentTimeFields(t *testing.T) {
 	now := time.Now()
 	tracker.RecordChange(now, true)
 	assert.Equal(t, now, tracker.lastUpdated)
-	assert.Equal(t, int64(1), tracker.updateCount)
+	assert.Equal(t, uint64(1), tracker.updateCount)
 }
 
 func TestRecordChange_HeadAndTailSetCorrectly(t *testing.T) {

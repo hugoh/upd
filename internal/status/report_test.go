@@ -86,7 +86,7 @@ func TestStatHandler_GenStatReport_WithChanges(t *testing.T) {
 	require.NotNil(t, report)
 	require.NotNil(t, report.Loop)
 	assert.True(t, report.Up)
-	assert.GreaterOrEqual(t, report.Loop.TotalChecksRun, int64(3))
+	assert.GreaterOrEqual(t, report.Loop.TotalChecksRun, uint64(3))
 }
 
 func TestStatHandler_ServeHTTP(t *testing.T) {
