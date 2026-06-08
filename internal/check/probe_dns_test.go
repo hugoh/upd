@@ -82,43 +82,35 @@ func TestDnsProbe(t *testing.T) {
 		resolver := &fakeResolver{result: []string{"1.2.3.4"}}
 		dnsProbe := &DNSProbe{Domain: "example.com", resolver: resolver}
 
-		report := dnsProbe.Execute(context.Background(), testTimeout)
-		if report.error != nil {
-			t.Fatal(report.error)
-		}
+		report := dnsProbe.Execute(t.Context(), testTimeout)
+		require.NoError(t, report.error)
 
 		got := report.response
 
 		var ip string
 
 		_, err := fmt.Sscanf(got, "%s @", &ip)
-		if err != nil {
-			t.Fatalf("the output is not ip @ service: %s: %v", got, err)
-		}
+		require.NoError(t, err, "the output is not ip @ service: %s", got)
 
 		ipAddr := net.ParseIP(ip)
-		if ipAddr == nil {
-			t.Fatalf("invalid IP address %s: %v", got, err)
-		}
+		require.NotNil(t, ipAddr, "invalid IP address %s", got)
 	})
 	t.Run("returns an error if the request fails", func(t *testing.T) {
 		resolver := &fakeResolver{err: errors.New("no such host")}
 		dnsProbe := &DNSProbe{Domain: "invalid.aa", resolver: resolver}
 
-		report := dnsProbe.Execute(context.Background(), testTimeout)
+		report := dnsProbe.Execute(t.Context(), testTimeout)
 		err := checkError(t, report)
 		got := err.Error()
 
-		prefix := "error resolving invalid.aa"
-		if !strings.HasPrefix(got, prefix) {
-			t.Fatalf("got %q, want prefix %q", got, prefix)
-		}
+		assert.True(t, strings.HasPrefix(got, "error resolving invalid.aa"),
+			"got %q, want prefix %q", got, "error resolving invalid.aa")
 	})
 	t.Run("returns an error if the request times out", func(t *testing.T) {
 		resolver := &fakeResolver{err: context.DeadlineExceeded}
 		dnsProbe := &DNSProbe{Domain: "example.com", resolver: resolver}
 
-		report := dnsProbe.Execute(context.Background(), testTimeout)
+		report := dnsProbe.Execute(t.Context(), testTimeout)
 		checkTimeout(t, report, "context deadline exceeded")
 	})
 }

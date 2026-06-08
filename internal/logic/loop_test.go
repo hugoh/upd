@@ -1,7 +1,6 @@
 package logic
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -18,7 +17,7 @@ func emptyNewLoop() *Loop {
 }
 
 func Test_DownActionStartStop(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	da := getTestDA()
 	loop := emptyNewLoop()
 	loop.downAction = da
@@ -37,7 +36,7 @@ func Test_DownActionStartStop(t *testing.T) {
 func Test_ProcessCheck_StatusNotChanged(t *testing.T) {
 	loop := emptyNewLoop()
 	// Status.Up is false by default, so passing false should not change it
-	ctx := context.Background()
+	ctx := t.Context()
 	loop.ProcessCheck(ctx, false)
 	// No change, so DownAction should not be started/stopped
 	assert.Nil(t, loop.downActionLoop)
@@ -46,7 +45,7 @@ func Test_ProcessCheck_StatusNotChanged(t *testing.T) {
 func Test_ProcessCheck_StatusChanged_NoDownAction(t *testing.T) {
 	loop := emptyNewLoop()
 	// Status.Up is false by default, so passing true should change it
-	ctx := context.Background()
+	ctx := t.Context()
 	loop.downAction = nil // explicitly no DownAction
 	loop.ProcessCheck(ctx, true)
 	// DownAction is nil, so nothing should be started/stopped
@@ -55,7 +54,7 @@ func Test_ProcessCheck_StatusChanged_NoDownAction(t *testing.T) {
 
 func Test_ProcessCheck_StatusChanged_UpStatus_StopsDownAction(t *testing.T) {
 	loop := emptyNewLoop()
-	ctx := context.Background()
+	ctx := t.Context()
 	da := getTestDA()
 	loop.downAction = da
 	// Simulate DownAction already running
@@ -68,7 +67,7 @@ func Test_ProcessCheck_StatusChanged_UpStatus_StopsDownAction(t *testing.T) {
 
 func Test_ProcessCheck_StatusChanged_DownStatus_StartsDownAction(t *testing.T) {
 	loop := emptyNewLoop()
-	ctx := context.Background()
+	ctx := t.Context()
 	da := getTestDA()
 	loop.downAction = da
 	// Status.Up is false by default, so first call with true to set Up=true
@@ -83,7 +82,7 @@ func Test_ProcessCheck_PopulatesLoopStatus(t *testing.T) {
 	loop := NewLoop()
 	loop.Configure(nil, Delays{true: time.Minute, false: 30 * time.Second}, nil, 0)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	loop.lastSuccess = time.Now()
 	// Status.Up is false by default, so true changes it
@@ -103,7 +102,7 @@ func Test_ProcessCheck_PopulatesDownActionStatus(t *testing.T) {
 	da := getTestDA()
 	loop.Configure(nil, Delays{true: time.Minute, false: 30 * time.Second}, da, 0)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Transition to up first (initialized state)
 	loop.ProcessCheck(ctx, true)
@@ -119,7 +118,7 @@ func Test_ProcessCheck_PopulatesDownActionStatus(t *testing.T) {
 
 func Test_ProcessCheck_StatusChanged_DownStatus_StartsDownAction_Error(t *testing.T) {
 	loop := emptyNewLoop()
-	ctx := context.Background()
+	ctx := t.Context()
 	// Use a DownAction that will simulate already running
 	da := getTestDA()
 	loop.downAction = da

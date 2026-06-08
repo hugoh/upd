@@ -1,7 +1,6 @@
 package logic
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -18,9 +17,9 @@ func newRunningDAL(t *testing.T) *DownActionLoop {
 	t.Helper()
 
 	da := &DownAction{}
-	dal, _ := da.NewDownActionLoop(context.Background())
+	dal, _ := da.NewDownActionLoop(t.Context())
 
-	err := dal.Execute(context.Background(), "sleep 10")
+	err := dal.Execute(t.Context(), "sleep 10")
 	require.NoError(t, err)
 
 	return dal
@@ -30,8 +29,8 @@ func Test_ExecuteSucceed(t *testing.T) {
 	da := &DownAction{
 		Exec: testTrue,
 	}
-	dal, _ := da.NewDownActionLoop(context.Background())
-	err := dal.Execute(context.Background(), da.Exec)
+	dal, _ := da.NewDownActionLoop(t.Context())
+	err := dal.Execute(t.Context(), da.Exec)
 	require.NoError(t, err)
 }
 
@@ -39,8 +38,8 @@ func Test_ExecuteFail(t *testing.T) {
 	da := &DownAction{
 		Exec: testFalse,
 	}
-	dal, _ := da.NewDownActionLoop(context.Background())
-	err := dal.Execute(context.Background(), da.Exec)
+	dal, _ := da.NewDownActionLoop(t.Context())
+	err := dal.Execute(t.Context(), da.Exec)
 	require.NoError(t, err, "Success in starting a command that fails")
 }
 
@@ -48,16 +47,16 @@ func Test_ExecuteNonExistent(t *testing.T) {
 	da := &DownAction{
 		Exec: "/DOES-NOT-EXIST",
 	}
-	dal, _ := da.NewDownActionLoop(context.Background())
-	err := dal.Execute(context.Background(), da.Exec)
+	dal, _ := da.NewDownActionLoop(t.Context())
+	err := dal.Execute(t.Context(), da.Exec)
 	require.Error(t, err)
 }
 
 func Test_ExecuteStderrCapture(t *testing.T) {
 	da := &DownAction{}
-	dal, _ := da.NewDownActionLoop(context.Background())
+	dal, _ := da.NewDownActionLoop(t.Context())
 
-	err := dal.Execute(context.Background(), "sh -c 'echo stderr-output >&2; exit 1'")
+	err := dal.Execute(t.Context(), "sh -c 'echo stderr-output >&2; exit 1'")
 	require.NoError(t, err)
 
 	time.Sleep(200 * time.Millisecond)
@@ -65,9 +64,9 @@ func Test_ExecuteStderrCapture(t *testing.T) {
 
 func Test_ExecuteStderrCapture_Trimmed(t *testing.T) {
 	da := &DownAction{}
-	dal, _ := da.NewDownActionLoop(context.Background())
+	dal, _ := da.NewDownActionLoop(t.Context())
 
-	err := dal.Execute(context.Background(),
+	err := dal.Execute(t.Context(),
 		"sh -c 'printf \"\n\n  spaced-stderr  \n\n\" >&2; exit 1'")
 	require.NoError(t, err)
 
@@ -76,7 +75,7 @@ func Test_ExecuteStderrCapture_Trimmed(t *testing.T) {
 
 func Test_killCurrentCmd_nilCmd(t *testing.T) {
 	da := &DownAction{}
-	dal, _ := da.NewDownActionLoop(context.Background())
+	dal, _ := da.NewDownActionLoop(t.Context())
 
 	require.NotPanics(t, func() { dal.killCurrentCmd() })
 
@@ -112,7 +111,7 @@ func Test_ExecuteReplacesStaleCmd(t *testing.T) {
 	assert.Nil(t, dal.currentCmd)
 	dal.cmdMu.Unlock()
 
-	err := dal.Execute(context.Background(), "true")
+	err := dal.Execute(t.Context(), "true")
 	require.NoError(t, err)
 
 	dal.cmdMu.Lock()
@@ -125,12 +124,12 @@ func Test_ExecuteReplacesStaleCmd(t *testing.T) {
 
 func Test_StopUsesLoopCtx(t *testing.T) {
 	da := &DownAction{}
-	dal, ctx := da.NewDownActionLoop(context.Background())
+	dal, ctx := da.NewDownActionLoop(t.Context())
 
 	assert.NotNil(t, dal.loopCtx, "loopCtx should be stored")
 	assert.Equal(t, ctx, dal.loopCtx, "loopCtx matches returned child context")
 
-	dal.Stop(context.Background())
+	dal.Stop(t.Context())
 
 	timer := time.NewTimer(time.Second)
 	defer timer.Stop()
@@ -157,7 +156,7 @@ func getTestDA() *DownAction {
 
 func Test_Start(t *testing.T) {
 	da := getTestDA()
-	dal := da.Start(context.Background())
+	dal := da.Start(t.Context())
 	assert.Equal(t, da, dal.da)
 	assert.NotNil(t, dal.cancelFunc)
 	dal.cancelFunc()
@@ -171,10 +170,10 @@ func Test_StartAndStop(t *testing.T) {
 		Exec:     testTrue,
 		StopExec: testTrue,
 	}
-	dal := da.Start(context.Background())
+	dal := da.Start(t.Context())
 	assert.NotNil(t, dal, "DownAction loop is running")
 	time.Sleep(50 * time.Millisecond)
-	dal.Stop(context.Background())
+	dal.Stop(t.Context())
 }
 
 func testBackoff(t *testing.T, hasLimit bool) {
@@ -189,7 +188,7 @@ func testBackoff(t *testing.T, hasLimit bool) {
 
 	assert.InEpsilon(t, 1.5, BackoffFactor, 0.01, "Ensuring we have the right values")
 
-	dal, _ := da.NewDownActionLoop(context.Background())
+	dal, _ := da.NewDownActionLoop(t.Context())
 	assert.Equal(t, uint64(0), dal.iteration.Load())
 	assert.Equal(t, da.After, dal.sleepTime)
 	assert.False(t, dal.limitReached)
@@ -224,7 +223,7 @@ func Test_BackoffLimit(t *testing.T) {
 
 func Test_Status_Initial(t *testing.T) {
 	da := &DownAction{Exec: testTrue}
-	dal, _ := da.NewDownActionLoop(context.Background())
+	dal, _ := da.NewDownActionLoop(t.Context())
 
 	st := dal.Status()
 	assert.Equal(t, uint64(0), st.Iteration)
@@ -234,7 +233,7 @@ func Test_Status_Initial(t *testing.T) {
 
 func Test_Status_AfterIteration(t *testing.T) {
 	da := getTestDA()
-	dal, _ := da.NewDownActionLoop(context.Background())
+	dal, _ := da.NewDownActionLoop(t.Context())
 
 	dal.nextSleep()
 	st := dal.Status()
@@ -252,7 +251,7 @@ func Test_Status_AfterIteration(t *testing.T) {
 func Test_Status_BackoffCapped(t *testing.T) {
 	da := getTestDA()
 	da.BackoffLimit = 2 * time.Second
-	dal, _ := da.NewDownActionLoop(context.Background())
+	dal, _ := da.NewDownActionLoop(t.Context())
 
 	// After enough iterations, backoff hits the limit
 	for range 5 {

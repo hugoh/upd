@@ -17,7 +17,7 @@ import (
 const testConfigDir = "../testdata"
 
 func TestRun_NoMultipleRestartsOnSuccess(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 500*time.Millisecond)
 	defer cancel()
 
 	cmd := &cli.Command{
@@ -40,7 +40,7 @@ func TestRun_NoMultipleRestartsOnSuccess(t *testing.T) {
 }
 
 func TestRun_WaitsForWorkerCompletion(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	cmd := &cli.Command{
 		Flags: []cli.Flag{

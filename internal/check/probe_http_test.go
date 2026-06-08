@@ -42,7 +42,7 @@ func TestHttpProbe_Success(t *testing.T) {
 		},
 	}
 
-	report := probe.Execute(context.Background(), testTimeout)
+	report := probe.Execute(t.Context(), testTimeout)
 	require.NoError(t, report.error)
 	assert.Equal(t, testOKStatus, report.response)
 }
@@ -69,7 +69,7 @@ func TestHttpProbe_UserAgentHeader(t *testing.T) {
 		},
 	}
 
-	report := probe.Execute(context.Background(), testTimeout)
+	report := probe.Execute(t.Context(), testTimeout)
 	require.NoError(t, report.error)
 	assert.Equal(t, "upd/dev", gotUA)
 }
@@ -84,7 +84,7 @@ func TestHttpProbe_RequestFails(t *testing.T) {
 		},
 	}
 
-	report := probe.Execute(context.Background(), testTimeout)
+	report := probe.Execute(t.Context(), testTimeout)
 	err := checkError(t, report)
 	assert.Contains(
 		t,
@@ -103,7 +103,7 @@ func TestHttpProbe_Timeout(t *testing.T) {
 		},
 	}
 
-	report := probe.Execute(context.Background(), testTimeout)
+	report := probe.Execute(t.Context(), testTimeout)
 	checkTimeout(t, report, "context deadline exceeded")
 }
 
@@ -149,7 +149,7 @@ func TestHTTPProbe_RoundTrip_NetworkFailure(t *testing.T) {
 
 func TestHTTPProbe_ProbeWithTimeout(t *testing.T) {
 	httpProbe := &HTTPProbe{URL: "://invalid", client: http.DefaultClient}
-	report := httpProbe.Execute(context.Background(), time.Second)
+	report := httpProbe.Execute(t.Context(), time.Second)
 	require.Error(t, report.error)
 	assert.Contains(t, report.error.Error(), "error building request")
 }

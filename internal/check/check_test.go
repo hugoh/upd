@@ -51,7 +51,7 @@ func TestCheckerRun_SuccessFirst(t *testing.T) {
 	check := &Check{Probe: probeIface, Timeout: 1 * time.Second}
 	it := &fakeListIterator{checks: []*Check{check}}
 	checker := &recordChecker{}
-	ctx := context.Background()
+	ctx := t.Context()
 	ok, err := CheckerRun(ctx, checker, it)
 	assert.True(t, ok)
 	require.NoError(t, err)
@@ -67,7 +67,7 @@ func TestCheckerRun_AllFail(t *testing.T) {
 	check := &Check{Probe: probeIface, Timeout: 1 * time.Second}
 	it := &fakeListIterator{checks: []*Check{check, check}}
 	checker := &recordChecker{}
-	ctx := context.Background()
+	ctx := t.Context()
 	ok, err := CheckerRun(ctx, checker, it)
 	assert.False(t, ok)
 	require.NoError(t, err)
@@ -79,7 +79,7 @@ func TestCheckerRun_AllFail(t *testing.T) {
 func TestCheckerRun_Empty(t *testing.T) {
 	it := &fakeListIterator{checks: []*Check{}}
 	checker := &recordChecker{}
-	ctx := context.Background()
+	ctx := t.Context()
 	ok, err := CheckerRun(ctx, checker, it)
 	assert.False(t, ok)
 	require.NoError(t, err)
@@ -95,7 +95,7 @@ func TestCheckerRun_WithListIterator(t *testing.T) {
 	cl := &List{Ordered: Checks{check}}
 	it := cl.GetIterator()
 	checker := &recordChecker{}
-	ctx := context.Background()
+	ctx := t.Context()
 	ok, err := CheckerRun(ctx, checker, it)
 	assert.True(t, ok)
 	require.NoError(t, err)

@@ -45,8 +45,27 @@ func buildAndStartUpd(t *testing.T, configContent string) *exec.Cmd {
 	return cmd
 }
 
+func waitForUpd(t *testing.T, url string, timeout time.Duration) {
+	t.Helper()
+
+	deadline := time.Now().Add(timeout)
+
+	for time.Now().Before(deadline) {
+		resp, err := http.Get(url)
+		if err == nil {
+			resp.Body.Close()
+
+			return
+		}
+
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	t.Fatalf("upd did not become ready within %v at %s", timeout, url)
+}
+
 // TestEndToEnd builds the binary, starts it with a minimal config, and
-// verifies the stats HTTP endpoint returns valid JSON.
+// verifies the binary starts and responds on the stats endpoint.
 func TestEndToEnd(t *testing.T) {
 	configContent := strings.TrimSpace(`
 [checks]
@@ -60,14 +79,10 @@ down = "10s"
 ordered = ["http://captive.apple.com/hotspot-detect.html"]
 
 [stats]
-port = 0
+port = 18765
 `)
-	cmd := buildAndStartUpd(t, configContent)
-
-	time.Sleep(2 * time.Second)
-
-	// find the stats port from the process args or logs -- for now just verify the binary starts
-	require.True(t, cmd.Process != nil, "process should be running")
+	buildAndStartUpd(t, configContent)
+	waitForUpd(t, "http://127.0.0.1:18765/stats.json", 5*time.Second)
 }
 
 // TestEndToEnd_StatsServer builds, starts upd with stats on a known port,
@@ -90,11 +105,11 @@ port = %s
 reports = ["1m"]
 retention = "1h"
 `), port)
-	cmd := buildAndStartUpd(t, configContent)
-
-	time.Sleep(3 * time.Second)
+	buildAndStartUpd(t, configContent)
 
 	url := fmt.Sprintf("http://127.0.0.1:%s/stats.json", port)
+	waitForUpd(t, url, 5*time.Second)
+
 	resp, err := http.Get(url)
 	require.NoError(t, err, "failed to query stats endpoint")
 	defer resp.Body.Close()

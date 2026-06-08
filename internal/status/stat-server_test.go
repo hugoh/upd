@@ -23,7 +23,7 @@ func startStatServer(t *testing.T, config *StatServerConfig) *StatServer {
 	time.Sleep(50 * time.Millisecond)
 
 	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 		defer cancel()
 
 		server.Shutdown(ctx)
@@ -87,12 +87,12 @@ func TestStatServer_Start_UsesDefaultTimeouts(t *testing.T) {
 	assert.Equal(t, DefaultStatServerIdleTimeout, server.server.IdleTimeout)
 }
 
-func TestShutdown_NilServer(_ *testing.T) {
+func TestShutdown_NilServer(t *testing.T) {
 	server := &StatServer{
 		server: nil,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	server.Shutdown(ctx)
 }
 

@@ -32,7 +32,7 @@ func TestRun_StopsOnContextCancel(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 }
 
-func TestRun_ProcessesChecks(_ *testing.T) {
+func TestRun_ProcessesChecks(t *testing.T) {
 	loop := NewLoop()
 	probe := check.Probe(check.NewHTTPProbe("http://example.invalid"))
 	dummyCheck := &check.Check{
@@ -50,7 +50,7 @@ func TestRun_ProcessesChecks(_ *testing.T) {
 		0,
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	go func() {
@@ -70,7 +70,7 @@ func TestStop_StopsStatServer(t *testing.T) {
 		0,
 	)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	assert.Nil(t, loop.statServer)
 
