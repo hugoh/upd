@@ -1,6 +1,7 @@
 package status
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -53,14 +54,14 @@ func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 		config: config,
 		server: &http.Server{
 			Addr:         fmt.Sprintf(":%d", config.Port),
-			ReadTimeout:  defaultTimeout(config.ReadTimeout, DefaultStatServerReadTimeout),
-			WriteTimeout: defaultTimeout(config.WriteTimeout, DefaultStatServerWriteTimeout),
-			IdleTimeout:  defaultTimeout(config.IdleTimeout, DefaultStatServerIdleTimeout),
+			ReadTimeout:  cmp.Or(config.ReadTimeout, DefaultStatServerReadTimeout),
+			WriteTimeout: cmp.Or(config.WriteTimeout, DefaultStatServerWriteTimeout),
+			IdleTimeout:  cmp.Or(config.IdleTimeout, DefaultStatServerIdleTimeout),
 		},
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle(StatRoute, &StatHandler{statServer: server})
+	mux.Handle("GET "+StatRoute, &StatHandler{statServer: server})
 	server.server.Handler = serverHeader(mux)
 
 	go server.listenAndServe()
@@ -102,12 +103,6 @@ func (h *StatHandler) GenStatReport() *Report {
 }
 
 func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodGet && req.Method != http.MethodHead {
-		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
-
-		return
-	}
-
 	logger.Stats().Debug("requested", "requester", req.RemoteAddr)
 
 	writeJSON(writer, h.GenStatReport())

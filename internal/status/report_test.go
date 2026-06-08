@@ -115,10 +115,12 @@ func TestStatHandler_ServeHTTP_MethodNotAllowed(t *testing.T) {
 	status := handler.statServer.status
 	status.Update(true)
 
-	req := httptest.NewRequest(http.MethodPost, StatRoute, http.NoBody)
+	mux := http.NewServeMux()
+	mux.Handle("GET "+StatRoute, handler)
+
 	rec := httptest.NewRecorder()
 
-	handler.ServeHTTP(rec, req)
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, StatRoute, http.NoBody))
 
 	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
 }

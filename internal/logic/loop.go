@@ -261,10 +261,10 @@ func (LoopChecker) CheckRun(chk check.Check) {
 
 // ProbeSuccess logs successful probe results.
 func (LoopChecker) ProbeSuccess(report *check.Report) {
-	logger.Check().Debug("success", report.LogAttrs()...)
+	logger.Check().Debug("success", report.LogAttrs())
 }
 
 // ProbeFailure logs failed probe results.
 func (LoopChecker) ProbeFailure(report *check.Report) {
-	logger.Check().Warn("failed", report.LogAttrs()...)
+	logger.Check().Warn("failed", report.LogAttrs())
 }

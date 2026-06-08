@@ -67,10 +67,6 @@ import (
 const (
 	// DefaultConfig is the default configuration file name.
 	DefaultConfig = ".upd.toml"
-
-	logLevelDebug = "debug"
-	logLevelInfo  = "info"
-	logLevelWarn  = "warn"
 )
 
 // Configuration holds all application settings.
@@ -285,23 +281,14 @@ func (c Configuration) GetStatServerConfig() *status.StatServerConfig {
 }
 
 func (c Configuration) logSetup() {
+	if c.LogLevel == "" {
+		return
+	}
+
 	var level slog.Level
 
-	switch c.LogLevel {
-	case "":
-		level = slog.LevelInfo
-	case logLevelDebug:
-		level = slog.LevelDebug
-	case logLevelInfo:
-		level = slog.LevelInfo
-	case logLevelWarn:
-		level = slog.LevelWarn
-	default:
-		logger.Config().Error(
-			"unknown loglevel",
-			"loglevel",
-			c.LogLevel,
-		)
+	if err := level.UnmarshalText([]byte(c.LogLevel)); err != nil {
+		logger.Config().Error("unknown loglevel", "loglevel", c.LogLevel)
 
 		return
 	}

@@ -112,7 +112,7 @@ func validatePort(port int) error {
 
 func validateLogLevel(level string) error {
 	switch level {
-	case logLevelDebug, logLevelInfo, logLevelWarn:
+	case "debug", "info", "warn":
 		return nil
 	default:
 		return errInvalidLogLevel

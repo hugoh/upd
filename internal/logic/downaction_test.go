@@ -129,9 +129,12 @@ func Test_StopUsesLoopCtx(t *testing.T) {
 
 	dal.Stop(context.Background())
 
+	timer := time.NewTimer(time.Second)
+	defer timer.Stop()
+
 	select {
 	case <-dal.loopCtx.Done():
-	case <-time.After(time.Second):
+	case <-timer.C:
 		t.Fatal("loopCtx should be cancelled after Stop")
 	}
 }

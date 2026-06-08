@@ -1,7 +1,8 @@
 package check
 
 import (
-	"reflect"
+	"maps"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,8 +27,7 @@ func TestChecksIterator_Fetch(t *testing.T) {
 
 func TestChecksIterator_ShuffleIfNeeded(t *testing.T) {
 	orig := Checks{newCheck(1), newCheck(2), newCheck(3), newCheck(4)}
-	checks := make(Checks, len(orig))
-	copy(checks, orig)
+	checks := slices.Clone(orig)
 	it := NewChecksIterator(checks)
 
 	// Should shuffle since index == 0
@@ -37,16 +37,15 @@ func TestChecksIterator_ShuffleIfNeeded(t *testing.T) {
 
 	// Should NOT shuffle since index > 0
 	it.index = 1
-	before := make(Checks, len(checks))
-	copy(before, checks)
+	before := slices.Clone(checks)
+
 	it.ShuffleIfNeeded()
-	assert.True(t, reflect.DeepEqual(before, checks), "ShuffleIfNeeded shuffled when index > 0")
+	assert.True(t, slices.Equal(before, checks), "ShuffleIfNeeded shuffled when index > 0")
 }
 
 func TestChecks_Shuffle(t *testing.T) {
 	orig := Checks{newCheck(1), newCheck(2), newCheck(3), newCheck(4)}
-	checks := make(Checks, len(orig))
-	copy(checks, orig)
+	checks := slices.Clone(orig)
 	checks.Shuffle()
 	assert.True(t, sameElements(checks, orig), "Shuffle lost elements")
 	// Not guaranteed to change order, but likely
@@ -98,5 +97,5 @@ func sameElements(a, b Checks) bool {
 		mb[x]++
 	}
 
-	return reflect.DeepEqual(ma, mb)
+	return maps.Equal(ma, mb)
 }

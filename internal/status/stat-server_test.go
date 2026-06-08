@@ -213,7 +213,7 @@ func TestServerHeader_SetsHeaderOnNonExistentRoute(t *testing.T) {
 
 func TestServerHeader_SetsHeaderOnMethodNotAllowed(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.Handle(StatRoute, &StatHandler{statServer: &StatServer{}})
+	mux.Handle("GET "+StatRoute, &StatHandler{statServer: &StatServer{}})
 	handler := serverHeader(mux)
 
 	req := httptest.NewRequest(http.MethodPost, StatRoute, http.NoBody)

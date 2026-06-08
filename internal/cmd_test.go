@@ -66,9 +66,12 @@ func TestRun_WaitsForWorkerCompletion(t *testing.T) {
 
 	cancel()
 
+	timer := time.NewTimer(2 * time.Second)
+	defer timer.Stop()
+
 	select {
 	case <-done:
-	case <-time.After(2 * time.Second):
+	case <-timer.C:
 		t.Fatal("Run did not exit after context cancellation")
 	}
 }
