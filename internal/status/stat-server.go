@@ -109,11 +109,6 @@ type StatHandler struct {
 	statServer *StatServer
 }
 
-// NewStatHandler creates a new statistics handler for the given server.
-func NewStatHandler(server *StatServer) *StatHandler {
-	return &StatHandler{statServer: server}
-}
-
 // GenStatReport generates a statistics report from the server's status.
 func (h *StatHandler) GenStatReport() *Report {
 	return h.statServer.status.GenStatReport(h.statServer.config.Reports)

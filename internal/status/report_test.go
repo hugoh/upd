@@ -32,10 +32,10 @@ func setupTestServer(t *testing.T, opts ...func(*StatServerConfig)) *StatHandler
 		config: config,
 	}
 
-	return NewStatHandler(server)
+	return &StatHandler{statServer: server}
 }
 
-func TestNewStatHandler(t *testing.T) {
+func TestStatHandlerInit(t *testing.T) {
 	status := NewStatus()
 	status.SetRetention(1 * time.Hour)
 
@@ -50,7 +50,7 @@ func TestNewStatHandler(t *testing.T) {
 		config: config,
 	}
 
-	handler := NewStatHandler(server)
+	handler := &StatHandler{statServer: server}
 	require.NotNil(t, handler)
 	assert.Equal(t, server, handler.statServer)
 }
