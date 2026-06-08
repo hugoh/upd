@@ -127,8 +127,6 @@ func configError(msg string, path string, err error) (*Configuration, error) {
 
 // ReadConf loads and validates configuration from the given file.
 func ReadConf(cfgFile string) (*Configuration, error) {
-	var err error
-
 	if cfgFile == "" {
 		cfgFile = DefaultConfig
 	}
@@ -140,9 +138,7 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 
 	// Read file - cfgFile has been cleaned and resolved to absolute path
 	// #nosec G304 // Path is sanitized by filepath.Abs() and filepath.Clean(), and only reads admin-configured files
-	var content []byte
-
-	content, err = os.ReadFile(absPath) // #nosec G304
+	content, err := os.ReadFile(absPath) // #nosec G304
 	if err != nil {
 		return configError("Could not read config", absPath, err)
 	}
