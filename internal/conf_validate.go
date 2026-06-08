@@ -6,8 +6,6 @@ import (
 	"net/url"
 	"reflect"
 	"time"
-
-	"github.com/hugoh/upd/internal/types"
 )
 
 var (
@@ -88,7 +86,7 @@ func (c Configuration) validateStats() error {
 	return errors.Join(errs...)
 }
 
-func validatePositiveDuration(d types.Duration) error {
+func validatePositiveDuration(d Duration) error {
 	if time.Duration(d) <= 0 {
 		return errDurationMustBePositive
 	}

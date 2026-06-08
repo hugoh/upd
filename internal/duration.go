@@ -1,5 +1,4 @@
-// Package types provides shared types for configuration handling.
-package types
+package internal
 
 import (
 	"fmt"

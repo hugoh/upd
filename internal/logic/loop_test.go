@@ -132,7 +132,7 @@ func Test_ProcessCheck_StatusChanged_DownStatus_StartsDownAction_Error(t *testin
 }
 
 func TestChecker_CheckRun(t *testing.T) {
-	checker := Checker{}
+	checker := LoopChecker{}
 	probe := check.Probe(check.NewHTTPProbe("http://example.com"))
 	check := check.Check{Probe: probe, Timeout: time.Second}
 
@@ -142,7 +142,7 @@ func TestChecker_CheckRun(t *testing.T) {
 }
 
 func TestChecker_ProbeSuccess(t *testing.T) {
-	checker := Checker{}
+	checker := LoopChecker{}
 	report := &check.Report{}
 
 	assert.NotPanics(t, func() {
@@ -151,7 +151,7 @@ func TestChecker_ProbeSuccess(t *testing.T) {
 }
 
 func TestChecker_ProbeFailure(t *testing.T) {
-	checker := Checker{}
+	checker := LoopChecker{}
 	report := &check.Report{}
 
 	assert.NotPanics(t, func() {

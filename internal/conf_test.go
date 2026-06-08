@@ -7,7 +7,6 @@ import (
 
 	"github.com/hugoh/upd/internal/check"
 	"github.com/hugoh/upd/internal/logic"
-	"github.com/hugoh/upd/internal/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -141,7 +140,7 @@ func TestReadConf_envsubst(t *testing.T) {
 
 	conf, err := readTestConfig("upd_test_envvar.toml")
 	require.NoError(t, err)
-	assert.Equal(t, types.Duration(3*time.Second), conf.Checks.TimeOut)
+	assert.Equal(t, Duration(3*time.Second), conf.Checks.TimeOut)
 }
 
 func TestReadConf_envsubst_missing(t *testing.T) {

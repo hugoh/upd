@@ -70,7 +70,6 @@ import (
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
 	"github.com/hugoh/upd/internal/status"
-	"github.com/hugoh/upd/internal/types"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -87,31 +86,31 @@ const (
 type Configuration struct {
 	Checks struct {
 		Every struct {
-			Normal types.Duration `toml:"normal"`
-			Down   types.Duration `toml:"down"`
+			Normal Duration `toml:"normal"`
+			Down   Duration `toml:"down"`
 		} `toml:"every"`
 		List struct {
 			Ordered  []string `toml:"ordered"`
 			Shuffled []string `toml:"shuffled"`
 		} `toml:"list"`
-		TimeOut types.Duration `toml:"timeout"`
+		TimeOut Duration `toml:"timeout"`
 	} `toml:"checks"`
 	DownAction struct {
 		Exec  string `toml:"exec"`
 		Every struct {
-			After        types.Duration `toml:"after"`
-			Repeat       types.Duration `toml:"repeat"`
-			BackoffLimit types.Duration `toml:"expBackoffLimit"`
+			After        Duration `toml:"after"`
+			Repeat       Duration `toml:"repeat"`
+			BackoffLimit Duration `toml:"expBackoffLimit"`
 		} `toml:"every"`
 		StopExec string `toml:"stopExec"`
 	} `toml:"downAction"`
 	Stats struct {
-		Port         int              `toml:"port"`
-		Reports      []types.Duration `toml:"reports"`
-		Retention    types.Duration   `toml:"retention"`
-		ReadTimeout  types.Duration   `toml:"readTimeout"`
-		WriteTimeout types.Duration   `toml:"writeTimeout"`
-		IdleTimeout  types.Duration   `toml:"idleTimeout"`
+		Port         int        `toml:"port"`
+		Reports      []Duration `toml:"reports"`
+		Retention    Duration   `toml:"retention"`
+		ReadTimeout  Duration   `toml:"readTimeout"`
+		WriteTimeout Duration   `toml:"writeTimeout"`
+		IdleTimeout  Duration   `toml:"idleTimeout"`
 	} `toml:"stats"`
 	LogLevel string `toml:"logLevel"`
 }

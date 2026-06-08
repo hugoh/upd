@@ -162,7 +162,7 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 
 // Run starts the monitoring loop with optional statistics server config.
 func (l *Loop) Run(ctx context.Context, statServerConfig *status.StatServerConfig) {
-	var checker Checker
+	var checker LoopChecker
 
 	if l.statServer == nil {
 		l.statServer = status.StartStatServer(l.status, statServerConfig)
@@ -254,11 +254,11 @@ func (l *Loop) pushStatus() {
 	}
 }
 
-// Checker implements check.Checker for logging check lifecycle events.
-type Checker struct{}
+// LoopChecker implements check.Checker for logging check lifecycle events.
+type LoopChecker struct{}
 
 // CheckRun logs the start of a check.
-func (Checker) CheckRun(chk check.Check) {
+func (LoopChecker) CheckRun(chk check.Check) {
 	logger.L.Debug("running",
 		logger.LogComponent, logger.LogComponentCheck,
 		"probe",
@@ -271,14 +271,14 @@ func (Checker) CheckRun(chk check.Check) {
 }
 
 // ProbeSuccess logs successful probe results.
-func (Checker) ProbeSuccess(report *check.Report) {
+func (LoopChecker) ProbeSuccess(report *check.Report) {
 	logger.L.Debug(
 		"success",
 		append([]any{logger.LogComponent, logger.LogComponentCheck}, report.LogAttrs()...)...)
 }
 
 // ProbeFailure logs failed probe results.
-func (Checker) ProbeFailure(report *check.Report) {
+func (LoopChecker) ProbeFailure(report *check.Report) {
 	logger.L.Warn(
 		"failed",
 		append([]any{logger.LogComponent, logger.LogComponentCheck}, report.LogAttrs()...)...)
