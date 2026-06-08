@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/shlex"
@@ -24,23 +25,17 @@ type DownAction struct {
 	StopExec     string
 }
 
-// DownActionIteration tracks the current iteration state for exponential backoff.
-type DownActionIteration struct {
-	iteration    int
-	sleepTime    time.Duration
-	limitReached bool
-}
-
 // DownActionLoop manages execution of down action commands.
 type DownActionLoop struct {
 	da         *DownAction
-	it         *DownActionIteration
 	cancelFunc context.CancelFunc
 	//nolint:containedctx // loopCtx stored to bind StopExec commands on loop exit
-	loopCtx    context.Context
-	mu         sync.RWMutex
-	currentCmd *exec.Cmd
-	cmdMu      sync.Mutex
+	loopCtx      context.Context
+	iteration    atomic.Int64
+	sleepTime    time.Duration
+	limitReached bool
+	currentCmd   *exec.Cmd
+	cmdMu        sync.Mutex
 }
 
 // BackoffFactor is the multiplier for exponential backoff.
@@ -85,9 +80,7 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 		return fmt.Errorf("invalid command: %w", err)
 	}
 
-	dal.mu.RLock()
-	iteration := dal.it.iteration
-	dal.mu.RUnlock()
+	iteration := dal.iteration.Load()
 
 	// #nosec G204 // Command is validated by shlex.Split() and validateCommand() before execution
 	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
@@ -147,21 +140,14 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	return nil
 }
 
-// NewDownActionIteration creates a new iteration tracker.
-func NewDownActionIteration() *DownActionIteration {
-	return &DownActionIteration{
-		iteration: -1,
-	}
-}
-
 // NewDownActionLoop creates a new loop context for the down action.
 func (da *DownAction) NewDownActionLoop(ctx context.Context) (*DownActionLoop, context.Context) {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	dal := &DownActionLoop{
 		da:         da,
-		it:         NewDownActionIteration(),
 		cancelFunc: cancelFunc,
 		loopCtx:    ctx,
+		sleepTime:  da.After,
 	}
 
 	return dal, ctx
@@ -228,50 +214,45 @@ func (dal *DownActionLoop) killCurrentCmd() {
 	dal.currentCmd = nil
 }
 
-func (dal *DownActionLoop) iterate() {
-	dal.mu.Lock()
-	defer dal.mu.Unlock()
+func (dal *DownActionLoop) nextSleep() time.Duration {
+	dal.iteration.Add(1)
 
-	dal.it.iteration++
-	switch dal.it.iteration {
-	case 0:
-		dal.it.sleepTime = dal.da.After
+	switch dal.iteration.Load() {
 	case 1:
-		dal.it.sleepTime = dal.da.Every
+		dal.sleepTime = dal.da.Every
 	default:
-		if !dal.it.limitReached {
-			dal.it.sleepTime = time.Duration(BackoffFactor * float64(dal.it.sleepTime))
-			if dal.da.BackoffLimit != 0 && dal.it.sleepTime >= dal.da.BackoffLimit {
-				dal.it.sleepTime = dal.da.BackoffLimit
-				dal.it.limitReached = true
+		if !dal.limitReached {
+			next := time.Duration(BackoffFactor * float64(dal.sleepTime))
+			if dal.da.BackoffLimit != 0 && next >= dal.da.BackoffLimit {
+				next = dal.da.BackoffLimit
+				dal.limitReached = true
 			}
+
+			dal.sleepTime = next
 		}
 	}
 
 	logger.L.Debug("iteration details",
-		logger.LogComponent, logger.LogComponentDownAction, "iteration", dal.it.iteration,
-		"sleepTime", dal.it.sleepTime,
-		"limitReached", dal.it.limitReached)
+		logger.LogComponent, logger.LogComponentDownAction, "iteration", dal.iteration.Load(),
+		"sleepTime", dal.sleepTime,
+		"limitReached", dal.limitReached)
+
+	return dal.sleepTime
 }
 
 func (dal *DownActionLoop) run(ctx context.Context) {
 	logger.L.Debug("down action loop started",
 		logger.LogComponent, logger.LogComponentDownAction)
-	dal.iterate()
 
 	for {
-		dal.mu.RLock()
-		sleepTime := dal.it.sleepTime
-		dal.mu.RUnlock()
-
 		logger.L.Debug(
 			"sleeping",
 			logger.LogComponent,
 			logger.LogComponentDownAction,
 			"duration",
-			sleepTime,
+			dal.sleepTime,
 		)
-		timer := time.NewTimer(sleepTime)
+		timer := time.NewTimer(dal.sleepTime)
 
 		select {
 		case <-ctx.Done():
@@ -292,7 +273,7 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 				logger.LogComponent,
 				logger.LogComponentDownAction,
 				"iteration",
-				dal.it.iteration,
+				dal.iteration.Load(),
 				"error",
 				err,
 			)
@@ -302,10 +283,11 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 		}
 
 		if dal.da.Every > 0 {
-			dal.iterate()
+			dal.sleepTime = dal.nextSleep()
 		} else {
 			logger.L.Debug("down action loop complete",
 				logger.LogComponent, logger.LogComponentDownAction)
+
 			break
 		}
 	}
