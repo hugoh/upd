@@ -20,6 +20,18 @@ func writeTestConfig(t *testing.T, content string) string {
 	return path
 }
 
+func validConfigBase() string {
+	return `[checks]
+timeout = "2000ms"
+
+[checks.every]
+normal = "120s"
+down = "20s"
+
+[checks.list]
+ordered = ["http://example.com/"]`
+}
+
 func TestValidate_missingChecks(t *testing.T) {
 	path := writeTestConfig(t, `logLevel = "debug"`)
 
@@ -109,22 +121,15 @@ shuffled = ["http://example.com/", "://invalid"]`)
 }
 
 func TestValidate_afterNegative(t *testing.T) {
-	path := writeTestConfig(t, `[checks]
-timeout = "2000ms"
-
-[checks.every]
-normal = "120s"
-down = "20s"
-
-[checks.list]
-ordered = ["http://example.com/"]
+	config := validConfigBase() + `
 
 [downAction]
 exec = "echo"
 
 [downAction.every]
 after = "-5s"
-repeat = "300s"`)
+repeat = "300s"`
+	path := writeTestConfig(t, config)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
@@ -132,22 +137,15 @@ repeat = "300s"`)
 }
 
 func TestValidate_repeatNegative(t *testing.T) {
-	path := writeTestConfig(t, `[checks]
-timeout = "2000ms"
-
-[checks.every]
-normal = "120s"
-down = "20s"
-
-[checks.list]
-ordered = ["http://example.com/"]
+	config := validConfigBase() + `
 
 [downAction]
 exec = "echo"
 
 [downAction.every]
 after = "60s"
-repeat = "-5s"`)
+repeat = "-5s"`
+	path := writeTestConfig(t, config)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
@@ -155,15 +153,7 @@ repeat = "-5s"`)
 }
 
 func TestValidate_backoffLimitNegative(t *testing.T) {
-	path := writeTestConfig(t, `[checks]
-timeout = "2000ms"
-
-[checks.every]
-normal = "120s"
-down = "20s"
-
-[checks.list]
-ordered = ["http://example.com/"]
+	config := validConfigBase() + `
 
 [downAction]
 exec = "echo"
@@ -171,7 +161,8 @@ exec = "echo"
 [downAction.every]
 after = "60s"
 repeat = "300s"
-expBackoffLimit = "-5s"`)
+expBackoffLimit = "-5s"`
+	path := writeTestConfig(t, config)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
@@ -179,15 +170,7 @@ expBackoffLimit = "-5s"`)
 }
 
 func TestValidate_portTooHigh(t *testing.T) {
-	path := writeTestConfig(t, `[checks]
-timeout = "2000ms"
-
-[checks.every]
-normal = "120s"
-down = "20s"
-
-[checks.list]
-ordered = ["http://example.com/"]
+	config := validConfigBase() + `
 
 [downAction]
 exec = "echo"
@@ -197,7 +180,8 @@ after = "60s"
 repeat = "300s"
 
 [stats]
-port = 99999`)
+port = 99999`
+	path := writeTestConfig(t, config)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
@@ -205,19 +189,12 @@ port = 99999`)
 }
 
 func TestValidate_readTimeoutNegative(t *testing.T) {
-	path := writeTestConfig(t, `[checks]
-timeout = "2000ms"
-
-[checks.every]
-normal = "120s"
-down = "20s"
-
-[checks.list]
-ordered = ["http://example.com/"]
+	config := validConfigBase() + `
 
 [stats]
 port = 8080
-readTimeout = "-5s"`)
+readTimeout = "-5s"`
+	path := writeTestConfig(t, config)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
@@ -225,19 +202,12 @@ readTimeout = "-5s"`)
 }
 
 func TestValidate_writeTimeoutNegative(t *testing.T) {
-	path := writeTestConfig(t, `[checks]
-timeout = "2000ms"
-
-[checks.every]
-normal = "120s"
-down = "20s"
-
-[checks.list]
-ordered = ["http://example.com/"]
+	config := validConfigBase() + `
 
 [stats]
 port = 8080
-writeTimeout = "-5s"`)
+writeTimeout = "-5s"`
+	path := writeTestConfig(t, config)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
@@ -245,19 +215,12 @@ writeTimeout = "-5s"`)
 }
 
 func TestValidate_idleTimeoutNegative(t *testing.T) {
-	path := writeTestConfig(t, `[checks]
-timeout = "2000ms"
-
-[checks.every]
-normal = "120s"
-down = "20s"
-
-[checks.list]
-ordered = ["http://example.com/"]
+	config := validConfigBase() + `
 
 [stats]
 port = 8080
-idleTimeout = "-5s"`)
+idleTimeout = "-5s"`
+	path := writeTestConfig(t, config)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)

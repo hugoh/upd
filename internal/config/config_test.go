@@ -25,6 +25,24 @@ func readTestConfig(cfgFile string) (*Configuration, error) {
 	return ReadConf(fmt.Sprintf("%s/%s", testConfigDir, cfgFile))
 }
 
+func countProbes[T any](list *check.List) int {
+	n := 0
+
+	for _, chk := range list.Ordered {
+		if _, ok := chk.Probe.(T); ok {
+			n++
+		}
+	}
+
+	for _, chk := range list.Shuffled {
+		if _, ok := chk.Probe.(T); ok {
+			n++
+		}
+	}
+
+	return n
+}
+
 func (suite *TestSuite) SetupTest() {
 	var err error
 
@@ -155,23 +173,12 @@ func TestDNSCheckValidation_MissingDomain(t *testing.T) {
 	checklist, checkErr := conf.GetChecks()
 	require.NoError(t, checkErr)
 
-	dnsChecks := 0
-
-	for _, chk := range checklist.Ordered {
-		_, ok := chk.Probe.(*check.DNSProbe)
-		if ok {
-			dnsChecks++
-		}
-	}
-
-	for _, chk := range checklist.Shuffled {
-		_, ok := chk.Probe.(*check.DNSProbe)
-		if ok {
-			dnsChecks++
-		}
-	}
-
-	assert.Equal(t, 0, dnsChecks, "DNS check with missing domain should be ignored")
+	assert.Equal(
+		t,
+		0,
+		countProbes[*check.DNSProbe](checklist),
+		"DNS check with missing domain should be ignored",
+	)
 }
 
 func TestDNSCheckValidation_MissingResolver(t *testing.T) {
@@ -181,23 +188,12 @@ func TestDNSCheckValidation_MissingResolver(t *testing.T) {
 	checklist, checkErr := conf.GetChecks()
 	require.NoError(t, checkErr)
 
-	dnsChecks := 0
-
-	for _, chk := range checklist.Ordered {
-		_, ok := chk.Probe.(*check.DNSProbe)
-		if ok {
-			dnsChecks++
-		}
-	}
-
-	for _, chk := range checklist.Shuffled {
-		_, ok := chk.Probe.(*check.DNSProbe)
-		if ok {
-			dnsChecks++
-		}
-	}
-
-	assert.Equal(t, 0, dnsChecks, "DNS check with missing resolver host should be ignored")
+	assert.Equal(
+		t,
+		0,
+		countProbes[*check.DNSProbe](checklist),
+		"DNS check with missing resolver host should be ignored",
+	)
 
 	httpChecks := 0
 

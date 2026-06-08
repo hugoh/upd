@@ -12,6 +12,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func startStatServer(t *testing.T, config *StatServerConfig) *StatServer {
+	t.Helper()
+
+	status := NewStatus()
+	status.SetRetention(1 * time.Hour)
+	server := StartStatServer(status, config)
+	require.NotNil(t, server)
+
+	time.Sleep(50 * time.Millisecond)
+
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		server.Shutdown(ctx)
+	})
+
+	return server
+}
+
 func TestStartStatServer_NoPort(t *testing.T) {
 	status := NewStatus()
 	status.SetRetention(1 * time.Hour)
@@ -25,33 +45,18 @@ func TestStartStatServer_NoPort(t *testing.T) {
 }
 
 func TestStartStatServer_WithPort(t *testing.T) {
-	status := NewStatus()
-	status.SetRetention(1 * time.Hour)
-
 	config := &StatServerConfig{
 		Port:      18765,
 		Reports:   []time.Duration{time.Minute},
 		Retention: time.Hour,
 	}
 
-	server := StartStatServer(status, config)
-	require.NotNil(t, server)
+	server := startStatServer(t, config)
 	require.NotNil(t, server.status)
 	require.NotNil(t, server.config)
-
-	time.Sleep(50 * time.Millisecond)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	server.Shutdown(ctx)
 }
 
 func TestStatServer_Start_WithTimeouts(t *testing.T) {
-	status := NewStatus()
-	status.SetRetention(1 * time.Hour)
-	status.Update(true)
-
 	config := &StatServerConfig{
 		Port:         18765,
 		Reports:      []time.Duration{time.Minute},
@@ -61,47 +66,25 @@ func TestStatServer_Start_WithTimeouts(t *testing.T) {
 		IdleTimeout:  2 * time.Second,
 	}
 
-	server := StartStatServer(status, config)
-	require.NotNil(t, server)
-
-	time.Sleep(50 * time.Millisecond)
-
+	server := startStatServer(t, config)
 	require.NotNil(t, server.server)
 	assert.Equal(t, 2*time.Second, server.server.ReadTimeout)
 	assert.Equal(t, 2*time.Second, server.server.WriteTimeout)
 	assert.Equal(t, 2*time.Second, server.server.IdleTimeout)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	server.Shutdown(ctx)
 }
 
 func TestStatServer_Start_UsesDefaultTimeouts(t *testing.T) {
-	status := NewStatus()
-	status.SetRetention(1 * time.Hour)
-	status.Update(true)
-
 	config := &StatServerConfig{
 		Port:      18765,
 		Reports:   []time.Duration{time.Minute},
 		Retention: time.Hour,
 	}
 
-	server := StartStatServer(status, config)
-	require.NotNil(t, server)
-
-	time.Sleep(50 * time.Millisecond)
-
+	server := startStatServer(t, config)
 	require.NotNil(t, server.server)
 	assert.Equal(t, DefaultStatServerReadTimeout, server.server.ReadTimeout)
 	assert.Equal(t, DefaultStatServerWriteTimeout, server.server.WriteTimeout)
 	assert.Equal(t, DefaultStatServerIdleTimeout, server.server.IdleTimeout)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	server.Shutdown(ctx)
 }
 
 func TestShutdown_NilServer(_ *testing.T) {
@@ -114,44 +97,24 @@ func TestShutdown_NilServer(_ *testing.T) {
 }
 
 func TestShutdown_GracefulShutdown(t *testing.T) {
-	status := NewStatus()
-	status.SetRetention(1 * time.Hour)
-
 	config := &StatServerConfig{
 		Port:      18765,
 		Reports:   []time.Duration{time.Minute},
 		Retention: time.Hour,
 	}
 
-	server := StartStatServer(status, config)
-	require.NotNil(t, server)
-
-	time.Sleep(50 * time.Millisecond)
-
+	server := startStatServer(t, config)
 	require.NotNil(t, server.server)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	server.Shutdown(ctx)
 }
 
 func TestStatServer_Route(t *testing.T) {
-	status := NewStatus()
-	status.SetRetention(1 * time.Hour)
-	status.Update(true)
-
 	config := &StatServerConfig{
 		Port:      18765,
 		Reports:   []time.Duration{time.Minute},
 		Retention: time.Hour,
 	}
 
-	server := StartStatServer(status, config)
-	require.NotNil(t, server)
-
-	time.Sleep(50 * time.Millisecond)
-
+	server := startStatServer(t, config)
 	require.NotNil(t, server.server)
 
 	url := "http://localhost" + server.server.Addr + StatRoute
@@ -164,11 +127,6 @@ func TestStatServer_Route(t *testing.T) {
 	t.Cleanup(func() { _ = resp.Body.Close() })
 
 	assert.Equal(t, "upd/"+version.Version(), resp.Header.Get("Server"))
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	server.Shutdown(ctx)
 }
 
 func TestStatServerConfigDefaults(t *testing.T) {

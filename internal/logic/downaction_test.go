@@ -14,6 +14,18 @@ const (
 	testFalse = "false"
 )
 
+func newRunningDAL(t *testing.T) *DownActionLoop {
+	t.Helper()
+
+	da := &DownAction{}
+	dal, _ := da.NewDownActionLoop(context.Background())
+
+	err := dal.Execute(context.Background(), "sleep 10")
+	require.NoError(t, err)
+
+	return dal
+}
+
 func Test_ExecuteSucceed(t *testing.T) {
 	da := &DownAction{
 		Exec: testTrue,
@@ -74,11 +86,7 @@ func Test_killCurrentCmd_nilCmd(t *testing.T) {
 }
 
 func Test_killCurrentCmd_killsRunning(t *testing.T) {
-	da := &DownAction{}
-	dal, _ := da.NewDownActionLoop(context.Background())
-
-	err := dal.Execute(context.Background(), "sleep 10")
-	require.NoError(t, err)
+	dal := newRunningDAL(t)
 
 	dal.cmdMu.Lock()
 	require.NotNil(t, dal.currentCmd)
@@ -92,14 +100,9 @@ func Test_killCurrentCmd_killsRunning(t *testing.T) {
 }
 
 func Test_ExecuteReplacesStaleCmd(t *testing.T) {
-	da := &DownAction{}
-	dal, _ := da.NewDownActionLoop(context.Background())
-
-	err := dal.Execute(context.Background(), "sleep 10")
-	require.NoError(t, err)
+	dal := newRunningDAL(t)
 
 	dal.cmdMu.Lock()
-	require.NotNil(t, dal.currentCmd)
 	firstPid := dal.currentCmd.Process.Pid
 	dal.cmdMu.Unlock()
 
@@ -109,7 +112,7 @@ func Test_ExecuteReplacesStaleCmd(t *testing.T) {
 	assert.Nil(t, dal.currentCmd)
 	dal.cmdMu.Unlock()
 
-	err = dal.Execute(context.Background(), "true")
+	err := dal.Execute(context.Background(), "true")
 	require.NoError(t, err)
 
 	dal.cmdMu.Lock()

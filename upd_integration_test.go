@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestEndToEnd builds the binary, starts it with a minimal config, and
-// verifies the stats HTTP endpoint returns valid JSON.
-func TestEndToEnd(t *testing.T) {
+func buildAndStartUpd(t *testing.T, configContent string) *exec.Cmd {
+	t.Helper()
+
 	tmpDir := t.TempDir()
 	binaryPath := filepath.Join(tmpDir, "upd")
 
@@ -27,6 +27,27 @@ func TestEndToEnd(t *testing.T) {
 	require.NoError(t, err, "failed to build binary")
 
 	configPath := filepath.Join(tmpDir, "upd.toml")
+	err = os.WriteFile(configPath, []byte(configContent), 0o600)
+	require.NoError(t, err)
+
+	ctx := t.Context()
+	cmd := exec.CommandContext(ctx, binaryPath, "-c", configPath)
+	cmd.Stderr = os.Stderr
+
+	err = cmd.Start()
+	require.NoError(t, err, "failed to start upd")
+
+	t.Cleanup(func() {
+		_ = cmd.Process.Signal(os.Interrupt)
+		_ = cmd.Wait()
+	})
+
+	return cmd
+}
+
+// TestEndToEnd builds the binary, starts it with a minimal config, and
+// verifies the stats HTTP endpoint returns valid JSON.
+func TestEndToEnd(t *testing.T) {
 	configContent := strings.TrimSpace(`
 [checks]
 timeout = "10s"
@@ -41,22 +62,7 @@ ordered = ["http://captive.apple.com/hotspot-detect.html"]
 [stats]
 port = 0
 `)
-
-	err = os.WriteFile(configPath, []byte(configContent), 0o600)
-	require.NoError(t, err)
-
-	ctx := t.Context()
-
-	cmd := exec.CommandContext(ctx, binaryPath, "-c", configPath)
-	cmd.Stderr = os.Stderr
-
-	err = cmd.Start()
-	require.NoError(t, err, "failed to start upd")
-
-	defer func() {
-		_ = cmd.Process.Signal(os.Interrupt)
-		_ = cmd.Wait()
-	}()
+	cmd := buildAndStartUpd(t, configContent)
 
 	time.Sleep(2 * time.Second)
 
@@ -67,15 +73,7 @@ port = 0
 // TestEndToEnd_StatsServer builds, starts upd with stats on a known port,
 // then queries the /stats endpoint.
 func TestEndToEnd_StatsServer(t *testing.T) {
-	tmpDir := t.TempDir()
-	binaryPath := filepath.Join(tmpDir, "upd")
-
-	buildCmd := exec.Command("go", "build", "-o", binaryPath, ".")
-	err := buildCmd.Run()
-	require.NoError(t, err, "failed to build binary")
-
 	port := "19789"
-	configPath := filepath.Join(tmpDir, "upd.toml")
 	configContent := fmt.Sprintf(strings.TrimSpace(`
 [checks]
 timeout = "10s"
@@ -92,22 +90,7 @@ port = %s
 reports = ["1m"]
 retention = "1h"
 `), port)
-
-	err = os.WriteFile(configPath, []byte(configContent), 0o600)
-	require.NoError(t, err)
-
-	ctx := t.Context()
-
-	cmd := exec.CommandContext(ctx, binaryPath, "-c", configPath)
-	cmd.Stderr = os.Stderr
-
-	err = cmd.Start()
-	require.NoError(t, err, "failed to start upd")
-
-	defer func() {
-		_ = cmd.Process.Signal(os.Interrupt)
-		_ = cmd.Wait()
-	}()
+	cmd := buildAndStartUpd(t, configContent)
 
 	time.Sleep(3 * time.Second)
 
