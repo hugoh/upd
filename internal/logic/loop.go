@@ -155,7 +155,7 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 
 	logger.L.Info("connection status changed", logger.LogComponent, "loop", "up", l.status.Up)
 
-	if !l.hasDownAction() {
+	if l.downAction == nil {
 		return
 	}
 
@@ -213,8 +213,6 @@ func (l *Loop) Run(ctx context.Context, statServerConfig *status.StatServerConfi
 			return
 		case <-timer.C:
 		}
-
-		timer.Stop()
 	}
 }
 
@@ -226,10 +224,6 @@ func (l *Loop) Stop(ctx context.Context) {
 		l.statServer.Shutdown(ctx)
 		l.statServer = nil
 	}
-}
-
-func (l *Loop) hasDownAction() bool {
-	return l.downAction != nil
 }
 
 // Checker implements check.Checker for logging check lifecycle events.
