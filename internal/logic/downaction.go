@@ -92,12 +92,9 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	cmd.Env = cmdEnv
 	logger.L.Info(
 		"executing command",
-		logger.LogComponent,
-		logger.LogComponentDownAction,
-		"exec",
-		cmd.String(),
-		"iteration",
-		iteration,
+		logger.LogComponent, logger.LogComponentDownAction,
+		"exec", cmd.String(),
+		"iteration", iteration,
 	)
 
 	if err = cmd.Start(); err != nil {
@@ -111,29 +108,7 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	dal.currentCmd = cmd
 	dal.cmdMu.Unlock()
 
-	go func() {
-		waitErr := cmd.Wait()
-
-		dal.cmdMu.Lock()
-		if dal.currentCmd == cmd {
-			dal.currentCmd = nil
-		}
-		dal.cmdMu.Unlock()
-
-		if waitErr != nil {
-			logger.L.Warn(
-				"error executing command",
-				logger.LogComponent,
-				logger.LogComponentDownAction,
-				"exec",
-				cmd.String(),
-				"error",
-				waitErr,
-				"stderr",
-				string(bytes.TrimSpace(stderrBuf.Bytes())),
-			)
-		}
-	}()
+	go dal.waitForCmd(cmd, &stderrBuf)
 
 	return nil
 }
@@ -183,6 +158,26 @@ func (dal *DownActionLoop) Stop(_ context.Context) {
 
 	logger.L.Debug("sending shutdown signal", logger.LogComponent, logger.LogComponentDownAction)
 	dal.cancelFunc()
+}
+
+func (dal *DownActionLoop) waitForCmd(cmd *exec.Cmd, stderrBuf *bytes.Buffer) {
+	waitErr := cmd.Wait()
+
+	dal.cmdMu.Lock()
+	if dal.currentCmd == cmd {
+		dal.currentCmd = nil
+	}
+	dal.cmdMu.Unlock()
+
+	if waitErr != nil {
+		logger.L.Warn(
+			"error executing command",
+			logger.LogComponent, logger.LogComponentDownAction,
+			"exec", cmd.String(),
+			"error", waitErr,
+			"stderr", string(bytes.TrimSpace(stderrBuf.Bytes())),
+		)
+	}
 }
 
 // killCurrentCmd kills any currently running command and clears the reference.

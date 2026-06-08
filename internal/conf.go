@@ -210,6 +210,47 @@ func (c Configuration) GetChecks() (*check.List, error) {
 	return checkList, nil
 }
 
+//nolint:ireturn // intentionally returns interface to abstract probe creation
+func probeFromURL(parsedURL *url.URL, checkStr string) check.Probe {
+	switch parsedURL.Scheme {
+	case check.DNS:
+		domain := strings.TrimPrefix(parsedURL.Path, "/")
+		if domain == "" {
+			logger.L.Error(
+				"DNS check missing domain",
+				logger.LogComponent, logger.LogComponentConfig,
+				"check", checkStr,
+			)
+
+			return nil
+		}
+
+		if parsedURL.Host == "" {
+			logger.L.Error("DNS check missing resolver host",
+				logger.LogComponent, logger.LogComponentConfig, "check", checkStr)
+
+			return nil
+		}
+
+		port := parsedURL.Port()
+		if port == "" {
+			port = DefaultDNSPort
+		}
+
+		return check.NewDNSProbe(parsedURL.Host+":"+port, domain)
+	case check.HTTP, check.HTTPS:
+		return check.NewHTTPProbe(parsedURL.String())
+	case check.TCP:
+		return check.NewTCPProbe(net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port()))
+	default:
+		logger.L.Error("unknown protocol in config",
+			logger.LogComponent, logger.LogComponentConfig, "check", checkStr,
+			"protocol", parsedURL.Scheme)
+
+		return nil
+	}
+}
+
 // GetChecksCat creates checks from a list of check URIs.
 func (c Configuration) GetChecksCat(category []string) []*check.Check {
 	checks := make([]*check.Check, 0, len(category))
@@ -222,47 +263,8 @@ func (c Configuration) GetChecksCat(category []string) []*check.Check {
 			continue
 		}
 
-		var probe check.Probe
-
-		switch parsedURL.Scheme {
-		case check.DNS:
-			domain := strings.TrimPrefix(parsedURL.Path, "/")
-			if domain == "" {
-				logger.L.Error(
-					"DNS check missing domain",
-					logger.LogComponent,
-					logger.LogComponentConfig,
-					"check",
-					checkStr,
-				)
-
-				continue
-			}
-
-			if parsedURL.Host == "" {
-				logger.L.Error("DNS check missing resolver host",
-					logger.LogComponent, logger.LogComponentConfig, "check", checkStr)
-
-				continue
-			}
-
-			port := parsedURL.Port()
-			if port == "" {
-				port = DefaultDNSPort
-			}
-
-			dnsResolver := parsedURL.Host + ":" + port
-			probe = check.NewDNSProbe(dnsResolver, domain)
-		case check.HTTP, check.HTTPS:
-			probe = check.NewHTTPProbe(parsedURL.String())
-		case check.TCP:
-			hostPort := net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())
-			probe = check.NewTCPProbe(hostPort)
-		default:
-			logger.L.Error("unknown protocol in config",
-				logger.LogComponent, logger.LogComponentConfig, "check", checkStr,
-				"protocol", parsedURL.Scheme)
-
+		probe := probeFromURL(parsedURL, checkStr)
+		if probe == nil {
 			continue
 		}
 
