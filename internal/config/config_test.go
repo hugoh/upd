@@ -18,6 +18,7 @@ type TestSuite struct {
 	conf *Configuration
 }
 
+// Must match internal/cmd_test.go.
 const testConfigDir = "../../testdata"
 
 func readTestConfig(cfgFile string) (*Configuration, error) {

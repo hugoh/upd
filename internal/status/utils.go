@@ -21,8 +21,6 @@ const (
 	NotComputedMsg = "Not computed"
 	// PercentFormat is the format string for percentage display.
 	PercentFormat = "%.2f %%"
-	// ZeroString is the string representation of zero duration.
-	ZeroString = "0s"
 	// TrailingZeroSSuffix is the trailing zero seconds suffix.
 	TrailingZeroSSuffix = "0s"
 	// TrailingZeroMSuffix is the trailing zero minutes suffix.

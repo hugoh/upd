@@ -127,25 +127,25 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 	// #nosec G304 // Path is sanitized by filepath.Abs() and filepath.Clean(), and only reads admin-configured files
 	content, err := os.ReadFile(absPath) // #nosec G304
 	if err != nil {
-		return configError("Could not read config", absPath, err)
+		return configError("could not read config", absPath, err)
 	}
 
 	logger.Config().Debug("config file used", "file", absPath)
 
 	content, err = expandEnvVars(content)
 	if err != nil {
-		return configError("Unable to parse the config", absPath, err)
+		return configError("unable to parse the config", absPath, err)
 	}
 
 	var conf Configuration
 
 	err = toml.Unmarshal(content, &conf)
 	if err != nil {
-		return configError("Invalid TOML", absPath, err)
+		return configError("invalid TOML", absPath, err)
 	}
 
 	if err := conf.Validate(); err != nil {
-		return configError("Missing required attributes", cfgFile, err)
+		return configError("missing required attributes", cfgFile, err)
 	}
 
 	conf.logSetup()
@@ -306,7 +306,5 @@ func (c Configuration) logSetup() {
 		return
 	}
 
-	logger.L = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: level,
-	}))
+	logger.SetLevel(level)
 }

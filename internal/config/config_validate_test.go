@@ -25,7 +25,7 @@ func TestValidate_missingChecks(t *testing.T) {
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing required attributes")
+	assert.Contains(t, err.Error(), "missing required attributes")
 }
 
 func TestValidate_normalZero(t *testing.T) {
@@ -41,7 +41,7 @@ ordered = ["http://example.com/"]`)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing required attributes")
+	assert.Contains(t, err.Error(), "missing required attributes")
 }
 
 func TestValidate_downZero(t *testing.T) {
@@ -57,7 +57,7 @@ ordered = ["http://example.com/"]`)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing required attributes")
+	assert.Contains(t, err.Error(), "missing required attributes")
 }
 
 func TestValidate_timeoutZero(t *testing.T) {
@@ -73,7 +73,7 @@ ordered = ["http://example.com/"]`)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing required attributes")
+	assert.Contains(t, err.Error(), "missing required attributes")
 }
 
 func TestValidate_orderedInvalidURI(t *testing.T) {
@@ -89,7 +89,7 @@ ordered = ["http://example.com/", "://invalid"]`)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing required attributes")
+	assert.Contains(t, err.Error(), "missing required attributes")
 }
 
 func TestValidate_shuffledInvalidURI(t *testing.T) {
@@ -105,7 +105,7 @@ shuffled = ["http://example.com/", "://invalid"]`)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing required attributes")
+	assert.Contains(t, err.Error(), "missing required attributes")
 }
 
 func TestValidate_afterNegative(t *testing.T) {
@@ -128,7 +128,7 @@ repeat = "300s"`)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing required attributes")
+	assert.Contains(t, err.Error(), "missing required attributes")
 }
 
 func TestValidate_repeatNegative(t *testing.T) {
@@ -151,7 +151,7 @@ repeat = "-5s"`)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing required attributes")
+	assert.Contains(t, err.Error(), "missing required attributes")
 }
 
 func TestValidate_backoffLimitNegative(t *testing.T) {
@@ -175,7 +175,7 @@ expBackoffLimit = "-5s"`)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing required attributes")
+	assert.Contains(t, err.Error(), "missing required attributes")
 }
 
 func TestValidate_portTooHigh(t *testing.T) {
@@ -201,7 +201,7 @@ port = 99999`)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing required attributes")
+	assert.Contains(t, err.Error(), "missing required attributes")
 }
 
 func TestValidate_readTimeoutNegative(t *testing.T) {
@@ -221,7 +221,7 @@ readTimeout = "-5s"`)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing required attributes")
+	assert.Contains(t, err.Error(), "missing required attributes")
 }
 
 func TestValidate_writeTimeoutNegative(t *testing.T) {
@@ -241,7 +241,7 @@ writeTimeout = "-5s"`)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing required attributes")
+	assert.Contains(t, err.Error(), "missing required attributes")
 }
 
 func TestValidate_idleTimeoutNegative(t *testing.T) {
@@ -261,7 +261,7 @@ idleTimeout = "-5s"`)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing required attributes")
+	assert.Contains(t, err.Error(), "missing required attributes")
 }
 
 func TestValidate_logLevelInvalid(t *testing.T) {
@@ -279,5 +279,5 @@ ordered = ["http://example.com/"]`)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Missing required attributes")
+	assert.Contains(t, err.Error(), "missing required attributes")
 }

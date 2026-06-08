@@ -8,8 +8,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const TestVersion = "test"
-
 type TestSuiteStats struct {
 	suite.Suite
 

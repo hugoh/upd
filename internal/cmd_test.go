@@ -13,6 +13,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// Must match internal/config/config_test.go.
 const testConfigDir = "../testdata"
 
 func TestRun_NoMultipleRestartsOnSuccess(t *testing.T) {
