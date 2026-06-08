@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/hugoh/upd/internal/config"
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
 	"github.com/hugoh/upd/internal/version"
@@ -36,8 +37,8 @@ const (
 )
 
 // SetupLoop initializes the loop with configuration from the given file.
-func SetupLoop(loop *logic.Loop, configPath string) (*Configuration, error) {
-	newConf, err := ReadConf(configPath)
+func SetupLoop(loop *logic.Loop, configPath string) (*config.Configuration, error) {
+	newConf, err := config.ReadConf(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading configuration: %w", err)
 	}
@@ -126,7 +127,7 @@ func Cmd() error {
 			Name:      ConfigConfig,
 			Aliases:   []string{"c"},
 			Usage:     "use the specified TOML configuration file",
-			Value:     DefaultConfig,
+			Value:     config.DefaultConfig,
 			TakesFile: true,
 		},
 		&cli.BoolFlag{

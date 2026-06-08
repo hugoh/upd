@@ -1,9 +1,9 @@
-// Package internal provides internal configuration, command, and logic
-// handling for the upd application.
+// Package config provides configuration loading, validation, and factory methods
+// for the upd application.
 //
 // Configuration:
 //
-// The Configuration struct is loaded from YAML files and contains all
+// The Configuration struct is loaded from TOML files and contains all
 // settings for the application including:
 // - Network connectivity checks (HTTP, TCP, DNS)
 // - Check intervals (normal and down states)
@@ -33,25 +33,16 @@
 //	logLevel: debug
 //
 // Configuration values support environment variable substitution using
-// the ${VAR} syntax in YAML string values:
+// the ${VAR} syntax in TOML string values:
 //
 //	checks:
 //	 timeout: ${UPD_TIMEOUT} // Set UPD_TIMEOUT env var to override
-//
-// Command Handling:
-//
-// The Cmd function provides the main CLI interface using the urfave/cli
-// library. It supports:
-// - Configuration file specification via `-c` or `--config` flag
-// - Debug logging via `-d` or `--debug` flag
-// - SIGHUP signal handling for configuration reload
-// - Graceful shutdown on SIGINT or SIGTERM
 //
 // Network Security:
 //
 // Configuration paths are sanitized to prevent path traversal attacks.
 // Command execution in DownActions is validated to prevent injection.
-package internal
+package config
 
 import (
 	"errors"

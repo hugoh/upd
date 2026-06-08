@@ -13,6 +13,8 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+const testConfigDir = "../testdata"
+
 func TestRun_NoMultipleRestartsOnSuccess(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()

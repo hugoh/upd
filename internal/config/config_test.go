@@ -1,4 +1,4 @@
-package internal
+package config
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ type TestSuite struct {
 	conf *Configuration
 }
 
-const testConfigDir = "../testdata"
+const testConfigDir = "../../testdata"
 
 func readTestConfig(cfgFile string) (*Configuration, error) {
 	return ReadConf(fmt.Sprintf("%s/%s", testConfigDir, cfgFile))
@@ -28,7 +28,7 @@ func (suite *TestSuite) SetupTest() {
 	var err error
 
 	suite.conf, err = readTestConfig("upd_test_good.toml")
-	suite.NoError(err)
+	suite.Require().NoError(err)
 }
 
 func TestSuiteRun(t *testing.T) {
@@ -67,10 +67,7 @@ func TestGetChecksIgnored(t *testing.T) {
 
 	checklist, checkErr := conf.GetChecks()
 	require.NoError(t, checkErr)
-	// There should be 1 valid check in total (Ordered + Shuffled)
-	// - http://captive.apple.com/hotspot-detect.html is valid
-	// - ftp://foo.bar/ is ignored (unknown protocol)
-	// - dns://8.8.4.4/ is ignored (missing domain)
+
 	totalChecks := 0
 	if checklist != nil {
 		totalChecks = len(checklist.Ordered) + len(checklist.Shuffled)
@@ -90,7 +87,7 @@ func TestGetChecksFromConfFail(t *testing.T) {
 func (suite *TestSuite) TestGetChecks() {
 	checklist, err := suite.conf.GetChecks()
 	suite.Require().NoError(err)
-	// Collect all checks from both Ordered and Shuffled
+
 	allChecks := append([]*check.Check{}, checklist.Ordered...)
 	allChecks = append(allChecks, checklist.Shuffled...)
 
@@ -157,7 +154,6 @@ func TestDNSCheckValidation_MissingDomain(t *testing.T) {
 	checklist, checkErr := conf.GetChecks()
 	require.NoError(t, checkErr)
 
-	// Check that dns://8.8.4.4/ is ignored due to missing domain
 	dnsChecks := 0
 
 	for _, chk := range checklist.Ordered {
@@ -184,7 +180,6 @@ func TestDNSCheckValidation_MissingResolver(t *testing.T) {
 	checklist, checkErr := conf.GetChecks()
 	require.NoError(t, checkErr)
 
-	// Check that dns:///google.com is ignored due to missing resolver host
 	dnsChecks := 0
 
 	for _, chk := range checklist.Ordered {
@@ -203,7 +198,6 @@ func TestDNSCheckValidation_MissingResolver(t *testing.T) {
 
 	assert.Equal(t, 0, dnsChecks, "DNS check with missing resolver host should be ignored")
 
-	// Verify we still have the HTTP check
 	httpChecks := 0
 
 	for _, chk := range checklist.Ordered {
