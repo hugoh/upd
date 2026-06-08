@@ -43,7 +43,7 @@ type StatServer struct {
 // StartStatServer starts a new statistics server in a goroutine.
 func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 	if config.Port == 0 {
-		logger.L.Debug("no stat server specified", logger.LogComponent, logger.LogComponentStats)
+		logger.Stats().Debug("no stat server specified")
 
 		return nil
 	}
@@ -74,33 +74,20 @@ func (s *StatServer) Shutdown(ctx context.Context) {
 		return
 	}
 
-	logger.L.Info("shutting down stats server", logger.LogComponent, logger.LogComponentStats)
+	logger.Stats().Info("shutting down stats server")
 
 	if err := s.server.Shutdown(ctx); err != nil {
-		logger.L.Error(
-			"error shutting down stats server",
-			logger.LogComponent,
-			logger.LogComponentStats,
-			"error",
-			err,
-		)
+		logger.Stats().Error("error shutting down stats server", "error", err)
 	}
 }
 
 func (s *StatServer) listenAndServe() {
-	logger.L.Info("server started",
-		logger.LogComponent, logger.LogComponentStats,
+	logger.Stats().Info("server started",
 		"statserver", fmt.Sprintf("http://localhost%s%s", s.server.Addr, StatRoute),
 	)
 
 	if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.L.Error(
-			"error starting stats server",
-			logger.LogComponent,
-			logger.LogComponentStats,
-			"error",
-			err,
-		)
+		logger.Stats().Error("error starting stats server", "error", err)
 	}
 }
 
@@ -121,13 +108,7 @@ func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	logger.L.Debug(
-		"requested",
-		logger.LogComponent,
-		logger.LogComponentStats,
-		"requester",
-		req.RemoteAddr,
-	)
+	logger.Stats().Debug("requested", "requester", req.RemoteAddr)
 
 	writeJSON(writer, h.GenStatReport())
 }
@@ -139,13 +120,7 @@ func writeJSON(w http.ResponseWriter, data any) {
 	enc.SetIndent("", JSONIndentSpaces)
 
 	if err := enc.Encode(data); err != nil {
-		logger.L.Error(
-			"error writing JSON response",
-			logger.LogComponent,
-			logger.LogComponentStats,
-			"error",
-			err,
-		)
+		logger.Stats().Error("error writing JSON response", "error", err)
 	}
 }
 

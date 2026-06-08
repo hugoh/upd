@@ -13,10 +13,32 @@ const LogComponent = "component"
 const (
 	LogComponentCheck      = "check"
 	LogComponentDownAction = "downaction"
+	LogComponentLoop       = "loop"
 	LogComponentStats      = "stats"
 	LogComponentConfig     = "config"
 	LogComponentApp        = "app"
 )
+
+// Component returns a logger pre-configured with the given component attribute.
+func Component(name string) *slog.Logger { return L.With(LogComponent, name) }
+
+// Check returns a logger for the check component.
+func Check() *slog.Logger { return Component(LogComponentCheck) }
+
+// DownAction returns a logger for the down action component.
+func DownAction() *slog.Logger { return Component(LogComponentDownAction) }
+
+// Loop returns a logger for the loop component.
+func Loop() *slog.Logger { return Component(LogComponentLoop) }
+
+// Stats returns a logger for the stats component.
+func Stats() *slog.Logger { return Component(LogComponentStats) }
+
+// Config returns a logger for the config component.
+func Config() *slog.Logger { return Component(LogComponentConfig) }
+
+// App returns a logger for the app component.
+func App() *slog.Logger { return Component(LogComponentApp) }
 
 // L is the global logger instance for the application.
 //

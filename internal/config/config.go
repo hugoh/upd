@@ -107,7 +107,7 @@ type Configuration struct {
 }
 
 func configError(msg string, path string, err error) (*Configuration, error) {
-	logger.L.Error(msg, logger.LogComponent, logger.LogComponentConfig, "file", path, "error", err)
+	logger.Config().Error(msg, "file", path, "error", err)
 
 	return nil, fmt.Errorf("%s: %w", msg, err)
 }
@@ -130,13 +130,7 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 		return configError("Could not read config", absPath, err)
 	}
 
-	logger.L.Debug(
-		"config file used",
-		logger.LogComponent,
-		logger.LogComponentConfig,
-		"file",
-		absPath,
-	)
+	logger.Config().Debug("config file used", "file", absPath)
 
 	content, err = expandEnvVars(content)
 	if err != nil {
@@ -203,8 +197,7 @@ func probeFromURL(parsedURL *url.URL, checkStr string) check.Probe {
 	case check.DNS:
 		probe, err := check.NewDNSProbe(parsedURL.Host, strings.TrimPrefix(parsedURL.Path, "/"))
 		if err != nil {
-			logger.L.Error("invalid DNS check",
-				logger.LogComponent, logger.LogComponentConfig,
+			logger.Config().Error("invalid DNS check",
 				"check", checkStr, "error", err)
 
 			return nil
@@ -216,8 +209,8 @@ func probeFromURL(parsedURL *url.URL, checkStr string) check.Probe {
 	case check.TCP:
 		return check.NewTCPProbe(net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port()))
 	default:
-		logger.L.Error("unknown protocol in config",
-			logger.LogComponent, logger.LogComponentConfig, "check", checkStr,
+		logger.Config().Error("unknown protocol in config",
+			"check", checkStr,
 			"protocol", parsedURL.Scheme)
 
 		return nil
@@ -230,8 +223,8 @@ func (c Configuration) GetChecksCat(category []string) []*check.Check {
 	for _, checkStr := range category {
 		parsedURL, err := url.Parse(checkStr)
 		if err != nil {
-			logger.L.Error("could not parse check in config",
-				logger.LogComponent, logger.LogComponentConfig, "check", checkStr, "error", err)
+			logger.Config().Error("could not parse check in config",
+				"check", checkStr, "error", err)
 
 			continue
 		}
@@ -304,10 +297,8 @@ func (c Configuration) logSetup() {
 	case logLevelWarn:
 		level = slog.LevelWarn
 	default:
-		logger.L.Error(
+		logger.Config().Error(
 			"unknown loglevel",
-			logger.LogComponent,
-			logger.LogComponentConfig,
 			"loglevel",
 			c.LogLevel,
 		)

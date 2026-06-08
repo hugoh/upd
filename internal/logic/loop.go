@@ -152,7 +152,7 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 	changed := l.status.Update(upStatus)
 
 	if changed {
-		logger.L.Info("connection status changed", logger.LogComponent, "loop", "up", l.status.Up)
+		logger.Loop().Info("connection status changed", "up", l.status.Up)
 		l.handleStateChange(ctx, upStatus)
 	}
 
@@ -174,35 +174,25 @@ func (l *Loop) Run(ctx context.Context, statServerConfig *status.StatServerConfi
 			l.lastSuccess = time.Now()
 			l.ProcessCheck(ctx, checkStatus)
 		} else {
-			attrs := []any{logger.LogComponent, "loop", "error", err}
+			attrs := []any{"error", err}
 			if !l.lastSuccess.IsZero() {
 				attrs = append(attrs, "sinceLastSuccess", time.Since(l.lastSuccess))
 			}
 
-			logger.L.Error("loop error", attrs...)
+			logger.Loop().Error("loop error", attrs...)
 
 			l.nextCheckAt = time.Now().Add(l.delays[l.status.Up])
 			l.pushStatus()
 		}
 
 		sleepTime := l.delays[l.status.Up]
-		logger.L.Debug(
-			"waiting for next loop iteration",
-			logger.LogComponent,
-			"loop",
-			"wait",
-			sleepTime,
-		)
+		logger.Loop().Debug("waiting for next loop iteration", "wait", sleepTime)
 
 		timer := time.NewTimer(sleepTime)
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			logger.L.Debug(
-				"context canceled during sleep, exiting Run()",
-				logger.LogComponent,
-				"loop",
-			)
+			logger.Loop().Debug("context canceled during sleep, exiting Run()")
 
 			return
 		case <-timer.C:
@@ -230,7 +220,7 @@ func (l *Loop) handleStateChange(ctx context.Context, upStatus bool) {
 	} else {
 		err := l.DownActionStart(ctx)
 		if err != nil {
-			logger.L.Error("could not start DownAction", logger.LogComponent, "loop", "error", err)
+			logger.Loop().Error("could not start DownAction", "error", err)
 		}
 	}
 }
@@ -259,8 +249,7 @@ type LoopChecker struct{}
 
 // CheckRun logs the start of a check.
 func (LoopChecker) CheckRun(chk check.Check) {
-	logger.L.Debug("running",
-		logger.LogComponent, logger.LogComponentCheck,
+	logger.Check().Debug("running",
 		"probe",
 		chk.Probe,
 		"protocol",
@@ -272,14 +261,10 @@ func (LoopChecker) CheckRun(chk check.Check) {
 
 // ProbeSuccess logs successful probe results.
 func (LoopChecker) ProbeSuccess(report *check.Report) {
-	logger.L.Debug(
-		"success",
-		append([]any{logger.LogComponent, logger.LogComponentCheck}, report.LogAttrs()...)...)
+	logger.Check().Debug("success", report.LogAttrs()...)
 }
 
 // ProbeFailure logs failed probe results.
 func (LoopChecker) ProbeFailure(report *check.Report) {
-	logger.L.Warn(
-		"failed",
-		append([]any{logger.LogComponent, logger.LogComponentCheck}, report.LogAttrs()...)...)
+	logger.Check().Warn("failed", report.LogAttrs()...)
 }
