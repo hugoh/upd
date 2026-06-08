@@ -229,7 +229,6 @@ func TestLogSetup(t *testing.T) {
 		name     string
 		logLevel string
 	}{
-		{"trace level", logLevelTrace},
 		{"debug level", logLevelDebug},
 		{"info level", logLevelInfo},
 		{"warn level", logLevelWarn},

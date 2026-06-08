@@ -15,7 +15,7 @@ var (
 	errInvalidURI             = errors.New("must be a valid URI")
 	errMustNotBeNegative      = errors.New("must not be negative")
 	errPortOutOfRange         = errors.New("must be between 1 and 65535")
-	errInvalidLogLevel        = errors.New("must be one of: trace, debug, info, warn")
+	errInvalidLogLevel        = errors.New("must be one of: debug, info, warn")
 )
 
 func appendErr(errs []error, key string, err error) []error {
@@ -114,7 +114,7 @@ func validatePort(port int) error {
 
 func validateLogLevel(level string) error {
 	switch level {
-	case logLevelTrace, logLevelDebug, logLevelInfo, logLevelWarn:
+	case logLevelDebug, logLevelInfo, logLevelWarn:
 		return nil
 	default:
 		return errInvalidLogLevel

@@ -78,7 +78,6 @@ const (
 	// DefaultConfig is the default configuration file name.
 	DefaultConfig = ".upd.toml"
 
-	logLevelTrace = "trace"
 	logLevelDebug = "debug"
 	logLevelInfo  = "info"
 	logLevelWarn  = "warn"
@@ -308,8 +307,6 @@ func (c Configuration) logSetup() {
 	switch c.LogLevel {
 	case "":
 		level = slog.LevelInfo
-	case logLevelTrace:
-		level = slog.LevelDebug - 4 //nolint:mnd // slog doesn't have LevelTrace, use LevelDebug - 4
 	case logLevelDebug:
 		level = slog.LevelDebug
 	case logLevelInfo:

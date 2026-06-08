@@ -43,8 +43,6 @@ Configuration by default is located in `.upd.toml` in the working directory.
 An example is:
 
 ```toml
-logLevel = "trace"
-
 [checks]
 timeout = "2s"
 

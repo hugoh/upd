@@ -3,8 +3,6 @@ package status
 import (
 	"errors"
 	"time"
-
-	"github.com/hugoh/upd/internal/logger"
 )
 
 // StateChange represents a single state transition in the tracker.
@@ -121,18 +119,7 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 	for idx := range periods {
 		period := periods[idx]
 
-		availability, downtime, err := tracker.CalculateUptime(currentState, period, end)
-		if err != nil {
-			logger.L.Debug(
-				"invalid range for stat report",
-				logger.LogComponent,
-				logger.LogComponentStats,
-				"error",
-				err,
-				"period",
-				period,
-			)
-		}
+		availability, downtime, _ := tracker.CalculateUptime(currentState, period, end)
 
 		reports[idx] = ReportByPeriod{
 			Period:       ReadableDuration(period),
