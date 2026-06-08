@@ -43,8 +43,8 @@ func TestHttpProbe_Success(t *testing.T) {
 	}
 
 	report := probe.Execute(context.Background(), testTimeout)
-	require.NoError(t, report.Error())
-	assert.Equal(t, testOKStatus, report.Response())
+	require.NoError(t, report.error)
+	assert.Equal(t, testOKStatus, report.response)
 }
 
 func TestHttpProbe_UserAgentHeader(t *testing.T) {
@@ -70,7 +70,7 @@ func TestHttpProbe_UserAgentHeader(t *testing.T) {
 	}
 
 	report := probe.Execute(context.Background(), testTimeout)
-	require.NoError(t, report.Error())
+	require.NoError(t, report.error)
 	assert.Equal(t, "upd/dev", gotUA)
 }
 
