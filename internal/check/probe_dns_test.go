@@ -7,6 +7,9 @@ import (
 	"net"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeResolver struct {
@@ -16,6 +19,62 @@ type fakeResolver struct {
 
 func (r *fakeResolver) LookupHost(_ context.Context, _ string) ([]string, error) {
 	return r.result, r.err
+}
+
+const testDomain = "example.com"
+
+func TestNewDNSProbe_Valid(t *testing.T) {
+	tests := []struct {
+		name       string
+		host       string
+		domain     string
+		wantAddr   string
+		wantDomain string
+	}{
+		{host: "1.1.1.1", domain: testDomain, wantAddr: "1.1.1.1:53", wantDomain: testDomain},
+		{
+			host:       "1.1.1.1:5353",
+			domain:     testDomain,
+			wantAddr:   "1.1.1.1:5353",
+			wantDomain: testDomain,
+		},
+		{
+			host:       "[::1]:5353",
+			domain:     testDomain,
+			wantAddr:   "[::1]:5353",
+			wantDomain: testDomain,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.host, func(t *testing.T) {
+			probe, err := NewDNSProbe(tt.host, tt.domain)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantAddr, probe.DNSResolver)
+			assert.Equal(t, tt.wantDomain, probe.Domain)
+		})
+	}
+}
+
+func TestNewDNSProbe_Error(t *testing.T) {
+	tests := []struct {
+		name    string
+		host    string
+		domain  string
+		wantErr error
+	}{
+		{name: "missing domain", host: "1.1.1.1", domain: "", wantErr: ErrDNSMissingDomain},
+		{name: "missing resolver", host: "", domain: testDomain, wantErr: ErrDNSMissingResolver},
+		{name: "port only", host: ":53", domain: testDomain, wantErr: ErrDNSMissingResolver},
+		{name: "both missing", host: "", domain: "", wantErr: ErrDNSMissingDomain},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewDNSProbe(tt.host, tt.domain)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
 }
 
 func TestDnsProbe(t *testing.T) {

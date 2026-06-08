@@ -2,6 +2,7 @@ package check
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -19,12 +20,37 @@ type DNSProbe struct {
 	resolver    DNSResolver
 }
 
-// NewDNSProbe creates a new DNS probe for the given resolver and domain.
-func NewDNSProbe(dnsResolver, domain string) *DNSProbe {
-	return &DNSProbe{
-		DNSResolver: dnsResolver,
-		Domain:      domain,
+// DefaultDNSPort is the default DNS resolver port.
+const DefaultDNSPort = "53"
+
+var (
+	// ErrDNSMissingDomain is returned when no domain is specified.
+	ErrDNSMissingDomain = errors.New("DNS probe missing domain")
+	// ErrDNSMissingResolver is returned when no resolver is specified.
+	ErrDNSMissingResolver = errors.New("DNS probe missing resolver")
+)
+
+// NewDNSProbe creates a new DNS probe for the given resolver host (host:port
+// or host-only, port defaults to 53) and domain.
+func NewDNSProbe(host, domain string) (*DNSProbe, error) {
+	if domain == "" {
+		return nil, ErrDNSMissingDomain
 	}
+
+	hostname, port, err := net.SplitHostPort(host)
+	if err != nil {
+		hostname = host
+		port = DefaultDNSPort
+	}
+
+	if hostname == "" {
+		return nil, ErrDNSMissingResolver
+	}
+
+	return &DNSProbe{
+		DNSResolver: net.JoinHostPort(hostname, port),
+		Domain:      domain,
+	}, nil
 }
 
 // Scheme returns the protocol scheme (dns).

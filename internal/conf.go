@@ -77,8 +77,6 @@ import (
 const (
 	// DefaultConfig is the default configuration file name.
 	DefaultConfig = ".upd.toml"
-	// DefaultDNSPort is the default DNS port.
-	DefaultDNSPort = "53"
 
 	logLevelTrace = "trace"
 	logLevelDebug = "debug"
@@ -214,30 +212,16 @@ func (c Configuration) GetChecks() (*check.List, error) {
 func probeFromURL(parsedURL *url.URL, checkStr string) check.Probe {
 	switch parsedURL.Scheme {
 	case check.DNS:
-		domain := strings.TrimPrefix(parsedURL.Path, "/")
-		if domain == "" {
-			logger.L.Error(
-				"DNS check missing domain",
+		probe, err := check.NewDNSProbe(parsedURL.Host, strings.TrimPrefix(parsedURL.Path, "/"))
+		if err != nil {
+			logger.L.Error("invalid DNS check",
 				logger.LogComponent, logger.LogComponentConfig,
-				"check", checkStr,
-			)
+				"check", checkStr, "error", err)
 
 			return nil
 		}
 
-		if parsedURL.Host == "" {
-			logger.L.Error("DNS check missing resolver host",
-				logger.LogComponent, logger.LogComponentConfig, "check", checkStr)
-
-			return nil
-		}
-
-		port := parsedURL.Port()
-		if port == "" {
-			port = DefaultDNSPort
-		}
-
-		return check.NewDNSProbe(parsedURL.Host+":"+port, domain)
+		return probe
 	case check.HTTP, check.HTTPS:
 		return check.NewHTTPProbe(parsedURL.String())
 	case check.TCP:
