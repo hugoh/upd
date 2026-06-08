@@ -1,9 +1,9 @@
-// Package internal provides internal configuration, command, and logic
-// handling for the upd application.
+// Package config provides configuration loading, validation, and factory methods
+// for the upd application.
 //
 // Configuration:
 //
-// The Configuration struct is loaded from YAML files and contains all
+// The Configuration struct is loaded from TOML files and contains all
 // settings for the application including:
 // - Network connectivity checks (HTTP, TCP, DNS)
 // - Check intervals (normal and down states)
@@ -33,25 +33,16 @@
 //	logLevel: debug
 //
 // Configuration values support environment variable substitution using
-// the ${VAR} syntax in YAML string values:
+// the ${VAR} syntax in TOML string values:
 //
 //	checks:
 //	 timeout: ${UPD_TIMEOUT} // Set UPD_TIMEOUT env var to override
-//
-// Command Handling:
-//
-// The Cmd function provides the main CLI interface using the urfave/cli
-// library. It supports:
-// - Configuration file specification via `-c` or `--config` flag
-// - Debug logging via `-d` or `--debug` flag
-// - SIGHUP signal handling for configuration reload
-// - Graceful shutdown on SIGINT or SIGTERM
 //
 // Network Security:
 //
 // Configuration paths are sanitized to prevent path traversal attacks.
 // Command execution in DownActions is validated to prevent injection.
-package internal
+package config
 
 import (
 	"errors"
@@ -70,55 +61,49 @@ import (
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
 	"github.com/hugoh/upd/internal/status"
-	"github.com/hugoh/upd/internal/types"
 	"github.com/pelletier/go-toml/v2"
 )
 
 const (
 	// DefaultConfig is the default configuration file name.
 	DefaultConfig = ".upd.toml"
-
-	logLevelTrace = "trace"
-	logLevelDebug = "debug"
-	logLevelInfo  = "info"
-	logLevelWarn  = "warn"
 )
 
 // Configuration holds all application settings.
 type Configuration struct {
 	Checks struct {
 		Every struct {
-			Normal types.Duration `toml:"normal"`
-			Down   types.Duration `toml:"down"`
+			Normal Duration `toml:"normal"`
+			Down   Duration `toml:"down"`
 		} `toml:"every"`
 		List struct {
 			Ordered  []string `toml:"ordered"`
 			Shuffled []string `toml:"shuffled"`
 		} `toml:"list"`
-		TimeOut types.Duration `toml:"timeout"`
+		TimeOut Duration `toml:"timeout"`
 	} `toml:"checks"`
 	DownAction struct {
 		Exec  string `toml:"exec"`
 		Every struct {
-			After        types.Duration `toml:"after"`
-			Repeat       types.Duration `toml:"repeat"`
-			BackoffLimit types.Duration `toml:"expBackoffLimit"`
+			After        Duration `toml:"after"`
+			Repeat       Duration `toml:"repeat"`
+			BackoffLimit Duration `toml:"expBackoffLimit"`
 		} `toml:"every"`
 		StopExec string `toml:"stopExec"`
 	} `toml:"downAction"`
 	Stats struct {
-		Port         int              `toml:"port"`
-		Reports      []types.Duration `toml:"reports"`
-		Retention    types.Duration   `toml:"retention"`
-		ReadTimeout  types.Duration   `toml:"readTimeout"`
-		WriteTimeout types.Duration   `toml:"writeTimeout"`
-		IdleTimeout  types.Duration   `toml:"idleTimeout"`
+		Port         int        `toml:"port"`
+		Reports      []Duration `toml:"reports"`
+		Retention    Duration   `toml:"retention"`
+		ReadTimeout  Duration   `toml:"readTimeout"`
+		WriteTimeout Duration   `toml:"writeTimeout"`
+		IdleTimeout  Duration   `toml:"idleTimeout"`
 	} `toml:"stats"`
 	LogLevel string `toml:"logLevel"`
 }
 
 func configError(msg string, path string, err error) (*Configuration, error) {
-	logger.L.Error(msg, logger.LogComponent, logger.LogComponentConfig, "file", path, "error", err)
+	logger.Config().Error(msg, "file", path, "error", err)
 
 	return nil, fmt.Errorf("%s: %w", msg, err)
 }
@@ -138,31 +123,25 @@ func ReadConf(cfgFile string) (*Configuration, error) {
 	// #nosec G304 // Path is sanitized by filepath.Abs() and filepath.Clean(), and only reads admin-configured files
 	content, err := os.ReadFile(absPath) // #nosec G304
 	if err != nil {
-		return configError("Could not read config", absPath, err)
+		return configError("could not read config", absPath, err)
 	}
 
-	logger.L.Debug(
-		"config file used",
-		logger.LogComponent,
-		logger.LogComponentConfig,
-		"file",
-		absPath,
-	)
+	logger.Config().Debug("config file used", "file", absPath)
 
 	content, err = expandEnvVars(content)
 	if err != nil {
-		return configError("Unable to parse the config", absPath, err)
+		return configError("unable to parse the config", absPath, err)
 	}
 
 	var conf Configuration
 
 	err = toml.Unmarshal(content, &conf)
 	if err != nil {
-		return configError("Invalid TOML", absPath, err)
+		return configError("invalid TOML", absPath, err)
 	}
 
 	if err := conf.Validate(); err != nil {
-		return configError("Missing required attributes", cfgFile, err)
+		return configError("missing required attributes", cfgFile, err)
 	}
 
 	conf.logSetup()
@@ -214,8 +193,7 @@ func probeFromURL(parsedURL *url.URL, checkStr string) check.Probe {
 	case check.DNS:
 		probe, err := check.NewDNSProbe(parsedURL.Host, strings.TrimPrefix(parsedURL.Path, "/"))
 		if err != nil {
-			logger.L.Error("invalid DNS check",
-				logger.LogComponent, logger.LogComponentConfig,
+			logger.Config().Error("invalid DNS check",
 				"check", checkStr, "error", err)
 
 			return nil
@@ -227,8 +205,8 @@ func probeFromURL(parsedURL *url.URL, checkStr string) check.Probe {
 	case check.TCP:
 		return check.NewTCPProbe(net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port()))
 	default:
-		logger.L.Error("unknown protocol in config",
-			logger.LogComponent, logger.LogComponentConfig, "check", checkStr,
+		logger.Config().Error("unknown protocol in config",
+			"check", checkStr,
 			"protocol", parsedURL.Scheme)
 
 		return nil
@@ -241,8 +219,8 @@ func (c Configuration) GetChecksCat(category []string) []*check.Check {
 	for _, checkStr := range category {
 		parsedURL, err := url.Parse(checkStr)
 		if err != nil {
-			logger.L.Error("could not parse check in config",
-				logger.LogComponent, logger.LogComponentConfig, "check", checkStr, "error", err)
+			logger.Config().Error("could not parse check in config",
+				"check", checkStr, "error", err)
 
 			continue
 		}
@@ -303,32 +281,17 @@ func (c Configuration) GetStatServerConfig() *status.StatServerConfig {
 }
 
 func (c Configuration) logSetup() {
+	if c.LogLevel == "" {
+		return
+	}
+
 	var level slog.Level
 
-	switch c.LogLevel {
-	case "":
-		level = slog.LevelInfo
-	case logLevelTrace:
-		level = slog.LevelDebug - 4 //nolint:mnd // slog doesn't have LevelTrace, use LevelDebug - 4
-	case logLevelDebug:
-		level = slog.LevelDebug
-	case logLevelInfo:
-		level = slog.LevelInfo
-	case logLevelWarn:
-		level = slog.LevelWarn
-	default:
-		logger.L.Error(
-			"unknown loglevel",
-			logger.LogComponent,
-			logger.LogComponentConfig,
-			"loglevel",
-			c.LogLevel,
-		)
+	if err := level.UnmarshalText([]byte(c.LogLevel)); err != nil {
+		logger.Config().Error("unknown loglevel", "loglevel", c.LogLevel)
 
 		return
 	}
 
-	logger.L = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: level,
-	}))
+	logger.SetLevel(level)
 }

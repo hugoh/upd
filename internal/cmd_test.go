@@ -13,8 +13,11 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// Must match internal/config/config_test.go.
+const testConfigDir = "../testdata"
+
 func TestRun_NoMultipleRestartsOnSuccess(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 500*time.Millisecond)
 	defer cancel()
 
 	cmd := &cli.Command{
@@ -37,7 +40,7 @@ func TestRun_NoMultipleRestartsOnSuccess(t *testing.T) {
 }
 
 func TestRun_WaitsForWorkerCompletion(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	cmd := &cli.Command{
 		Flags: []cli.Flag{
@@ -63,9 +66,12 @@ func TestRun_WaitsForWorkerCompletion(t *testing.T) {
 
 	cancel()
 
+	timer := time.NewTimer(2 * time.Second)
+	defer timer.Stop()
+
 	select {
 	case <-done:
-	case <-time.After(2 * time.Second):
+	case <-timer.C:
 		t.Fatal("Run did not exit after context cancellation")
 	}
 }

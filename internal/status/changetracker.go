@@ -1,10 +1,7 @@
 package status
 
 import (
-	"errors"
 	"time"
-
-	"github.com/hugoh/upd/internal/logger"
 )
 
 // StateChange represents a single state transition in the tracker.
@@ -20,7 +17,7 @@ type StateChangeTracker struct {
 	head        *StateChange
 	tail        *StateChange
 	retention   time.Duration
-	updateCount int64
+	updateCount uint64
 	lastUpdated time.Time
 	started     time.Time
 }
@@ -72,24 +69,15 @@ func (tracker *StateChangeTracker) Prune(currentTime time.Time) {
 	}
 }
 
-// ErrInvalidRange is returned when the requested duration exceeds retention.
-var ErrInvalidRange = errors.New("range greater than the retention period")
-
 // CalculateUptime computes availability percentage and downtime for a given period.
 func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 	last time.Duration, end time.Time,
-) (float64, time.Duration, error) {
-	if last > tracker.retention {
-		return -1, 0, ErrInvalidRange
+) (float64, time.Duration) {
+	if last > tracker.retention || end.Sub(tracker.started) < last {
+		return -1, 0
 	}
 
-	if end.Sub(tracker.started) < last {
-		return -1, 0, ErrInvalidRange
-	}
-
-	availability, downtime := tracker.uptimeCalculation(currentState, last, end)
-
-	return availability, downtime, nil
+	return tracker.uptimeCalculation(currentState, last, end)
 }
 
 // RecordsCount returns the number of state changes in the tracker.
@@ -121,18 +109,7 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 	for idx := range periods {
 		period := periods[idx]
 
-		availability, downtime, err := tracker.CalculateUptime(currentState, period, end)
-		if err != nil {
-			logger.L.Debug(
-				"invalid range for stat report",
-				logger.LogComponent,
-				logger.LogComponentStats,
-				"error",
-				err,
-				"period",
-				period,
-			)
-		}
+		availability, downtime := tracker.CalculateUptime(currentState, period, end)
 
 		reports[idx] = ReportByPeriod{
 			Period:       ReadableDuration(period),

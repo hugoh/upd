@@ -5,11 +5,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
-
-const TestVersion = "test"
 
 type TestSuiteStats struct {
 	suite.Suite
@@ -48,7 +45,7 @@ func TestRecordChange_UpdatesCurrentTimeFields(t *testing.T) {
 	now := time.Now()
 	tracker.RecordChange(now, true)
 	assert.Equal(t, now, tracker.lastUpdated)
-	assert.Equal(t, int64(1), tracker.updateCount)
+	assert.Equal(t, uint64(1), tracker.updateCount)
 }
 
 func TestRecordChange_HeadAndTailSetCorrectly(t *testing.T) {
@@ -232,19 +229,18 @@ func (suite *TestSuiteStats) TestCalc_EmptyWithRecordChange() {
 	assert.Equal(t, 2*time.Hour, downtime)
 
 	empty.started = suite.Now.Add(-1 * time.Minute)
-	v, w, err := empty.CalculateUptime(false, 1*time.Hour, suite.Now)
+	v, w := empty.CalculateUptime(false, 1*time.Hour, suite.Now)
 	assert.InDelta(t, -1.0, v, 0.0001)
 	assert.Equal(t, time.Duration(0), w)
-	require.Error(t, err)
 }
 
 func (suite *TestSuiteStats) TestCalcError() {
 	empty := GetTracker()
 
-	var err error
-
-	_, _, err = empty.CalculateUptime(true, 72*time.Hour, suite.Now)
-	suite.Require().Error(err)
-	_, _, err = empty.CalculateUptime(true, 24*time.Hour, suite.Now)
-	suite.NoError(err)
+	v, d := empty.CalculateUptime(true, 72*time.Hour, suite.Now)
+	suite.InDelta(-1.0, v, 0.0001)
+	suite.Equal(time.Duration(0), d)
+	v, d = empty.CalculateUptime(true, 24*time.Hour, suite.Now)
+	suite.InDelta(1.0, v, 0.0001)
+	suite.Equal(time.Duration(0), d)
 }

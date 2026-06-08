@@ -1,4 +1,4 @@
-package internal
+package config
 
 import (
 	"errors"
@@ -6,8 +6,6 @@ import (
 	"net/url"
 	"reflect"
 	"time"
-
-	"github.com/hugoh/upd/internal/types"
 )
 
 var (
@@ -15,7 +13,7 @@ var (
 	errInvalidURI             = errors.New("must be a valid URI")
 	errMustNotBeNegative      = errors.New("must not be negative")
 	errPortOutOfRange         = errors.New("must be between 1 and 65535")
-	errInvalidLogLevel        = errors.New("must be one of: trace, debug, info, warn")
+	errInvalidLogLevel        = errors.New("must be one of: debug, info, warn")
 )
 
 func appendErr(errs []error, key string, err error) []error {
@@ -88,7 +86,7 @@ func (c Configuration) validateStats() error {
 	return errors.Join(errs...)
 }
 
-func validatePositiveDuration(d types.Duration) error {
+func validatePositiveDuration(d Duration) error {
 	if time.Duration(d) <= 0 {
 		return errDurationMustBePositive
 	}
@@ -114,7 +112,7 @@ func validatePort(port int) error {
 
 func validateLogLevel(level string) error {
 	switch level {
-	case logLevelTrace, logLevelDebug, logLevelInfo, logLevelWarn:
+	case "debug", "info", "warn":
 		return nil
 	default:
 		return errInvalidLogLevel

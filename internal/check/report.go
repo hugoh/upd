@@ -5,6 +5,7 @@
 package check
 
 import (
+	"log/slog"
 	"time"
 )
 
@@ -30,14 +31,17 @@ func BuildReport(p Probe, startTime time.Time) *Report {
 	}
 }
 
-// LogAttrs returns log attributes for logging the report.
-func (r *Report) LogAttrs() []any {
-	attrs := []any{"protocol", r.protocol, "elapsed", r.elapsed}
+// LogAttrs returns structured log attributes for the report.
+func (r *Report) LogAttrs() slog.Attr {
+	attrs := []any{
+		slog.String("protocol", r.protocol),
+		slog.Duration("elapsed", r.elapsed),
+	}
 	if r.response != "" {
-		attrs = append(attrs, "response", r.response)
+		attrs = append(attrs, slog.String("response", r.response))
 	} else if r.error != nil {
-		attrs = append(attrs, "error", r.error.Error())
+		attrs = append(attrs, slog.Any("error", r.error))
 	}
 
-	return attrs
+	return slog.Group("report", attrs...)
 }

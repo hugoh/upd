@@ -32,7 +32,7 @@ func TestRun_StopsOnContextCancel(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 }
 
-func TestRun_ProcessesChecks(_ *testing.T) {
+func TestRun_ProcessesChecks(t *testing.T) {
 	loop := NewLoop()
 	probe := check.Probe(check.NewHTTPProbe("http://example.invalid"))
 	dummyCheck := &check.Check{
@@ -50,7 +50,7 @@ func TestRun_ProcessesChecks(_ *testing.T) {
 		0,
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	go func() {
@@ -70,7 +70,7 @@ func TestStop_StopsStatServer(t *testing.T) {
 		0,
 	)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	assert.Nil(t, loop.statServer)
 
@@ -104,8 +104,13 @@ func TestRun_StopsTimerOnContextCancel(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	cancel()
 
+	timer := time.NewTimer(1 * time.Second)
+	defer timer.Stop()
+
 	select {
 	case <-done:
+		timer.Stop()
+
 		elapsed := time.Since(start)
 		assert.Less(
 			t,
@@ -113,7 +118,8 @@ func TestRun_StopsTimerOnContextCancel(t *testing.T) {
 			500*time.Millisecond,
 			"Run() should exit quickly after context cancel, not wait for timer",
 		)
-	case <-time.After(1 * time.Second):
+
+	case <-timer.C:
 		t.Fatal("Run() did not exit within expected time - timer may not be stopped properly")
 	}
 }

@@ -5,6 +5,9 @@ import (
 	"errors"
 	"net"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeDialer struct {
@@ -37,53 +40,36 @@ func TestTcpProbe_Success(t *testing.T) {
 	dialer := &fakeDialer{conn: conn}
 	tcpProbe := &TCPProbe{HostPort: "127.0.0.1:12345", dialer: dialer}
 
-	report := tcpProbe.Execute(context.Background(), testTimeout)
-	if report.error != nil {
-		t.Fatal(report.error)
-	}
+	report := tcpProbe.Execute(t.Context(), testTimeout)
+	require.NoError(t, report.error)
 
 	got := report.response
 
 	localHost, localPort, err := net.SplitHostPort(got)
-	if err != nil {
-		t.Fatalf("invalid host/port %s: %v", got, err)
-	}
+	require.NoError(t, err, "invalid host/port %s", got)
 
-	if localHost != "127.0.0.1" {
-		t.Fatalf("got %q, want %q", localHost, "127.0.0.1")
-	}
-
-	if localPort < "1024" || localPort > "65535" {
-		t.Fatalf("invalid port %s", localPort)
-	}
+	assert.Equal(t, "127.0.0.1", localHost)
+	assert.True(t, localPort >= "1024" && localPort <= "65535", "invalid port %s", localPort)
 }
 
 func TestTcpProbe_RequestFails(t *testing.T) {
 	dialer := &fakeDialer{err: errors.New("connection refused")}
 	tcpProbe := &TCPProbe{HostPort: "localhost:80", dialer: dialer}
 
-	report := tcpProbe.Execute(context.Background(), 1)
-	if report.error == nil {
-		t.Fatal("got nil, want an error")
-	}
+	report := tcpProbe.Execute(t.Context(), 1)
+	require.Error(t, report.error)
 
 	got := report.response
-	if got != "" {
-		t.Fatalf("got %q should be zero", got)
-	}
+	assert.Empty(t, got)
 
 	got = report.error.Error()
-
-	want := "error making request to localhost:80: connection refused"
-	if got != want {
-		t.Fatalf("got %q, want %q", got, want)
-	}
+	assert.Equal(t, "error making request to localhost:80: connection refused", got)
 }
 
 func TestTcpProbe_Timeout(t *testing.T) {
 	dialer := &fakeDialer{err: context.DeadlineExceeded}
 	tcpProbe := &TCPProbe{HostPort: "192.0.2.1:53", dialer: dialer}
 
-	report := tcpProbe.Execute(context.Background(), testTimeout)
+	report := tcpProbe.Execute(t.Context(), testTimeout)
 	checkTimeout(t, report, "context deadline exceeded")
 }

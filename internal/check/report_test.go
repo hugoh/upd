@@ -14,15 +14,17 @@ func TestLogAttrs_Response(t *testing.T) {
 		response: "OK",
 		elapsed:  123 * time.Millisecond,
 	}
-	attrs := report.LogAttrs()
+	attr := report.LogAttrs()
 
-	assert.Len(t, attrs, 6, "should have 3 key-value pairs (6 items)")
-	assert.Equal(t, "protocol", attrs[0])
-	assert.Equal(t, "http", attrs[1])
-	assert.Equal(t, "elapsed", attrs[2])
-	assert.Equal(t, 123*time.Millisecond, attrs[3])
-	assert.Equal(t, "response", attrs[4])
-	assert.Equal(t, "OK", attrs[5])
+	assert.Equal(t, "report", attr.Key)
+	group := attr.Value.Group()
+	assert.Len(t, group, 3)
+	assert.Equal(t, "protocol", group[0].Key)
+	assert.Equal(t, "http", group[0].Value.String())
+	assert.Equal(t, "elapsed", group[1].Key)
+	assert.Equal(t, 123*time.Millisecond, group[1].Value.Duration())
+	assert.Equal(t, "response", group[2].Key)
+	assert.Equal(t, "OK", group[2].Value.String())
 }
 
 func TestLogAttrs_Error(t *testing.T) {
@@ -32,15 +34,17 @@ func TestLogAttrs_Error(t *testing.T) {
 		elapsed:  456 * time.Millisecond,
 		error:    err,
 	}
-	attrs := report.LogAttrs()
+	attr := report.LogAttrs()
 
-	assert.Len(t, attrs, 6, "should have 3 key-value pairs (6 items)")
-	assert.Equal(t, "protocol", attrs[0])
-	assert.Equal(t, "tcp", attrs[1])
-	assert.Equal(t, "elapsed", attrs[2])
-	assert.Equal(t, 456*time.Millisecond, attrs[3])
-	assert.Equal(t, "error", attrs[4])
-	assert.Equal(t, "network error", attrs[5])
+	assert.Equal(t, "report", attr.Key)
+	group := attr.Value.Group()
+	assert.Len(t, group, 3)
+	assert.Equal(t, "protocol", group[0].Key)
+	assert.Equal(t, "tcp", group[0].Value.String())
+	assert.Equal(t, "elapsed", group[1].Key)
+	assert.Equal(t, 456*time.Millisecond, group[1].Value.Duration())
+	assert.Equal(t, "error", group[2].Key)
+	assert.Equal(t, err, group[2].Value.Any())
 }
 
 func TestLogAttrs_Empty(t *testing.T) {
@@ -48,13 +52,15 @@ func TestLogAttrs_Empty(t *testing.T) {
 		protocol: "udp",
 		elapsed:  789 * time.Millisecond,
 	}
-	attrs := report.LogAttrs()
+	attr := report.LogAttrs()
 
-	assert.Len(t, attrs, 4, "should have 2 key-value pairs (4 items)")
-	assert.Equal(t, "protocol", attrs[0])
-	assert.Equal(t, "udp", attrs[1])
-	assert.Equal(t, "elapsed", attrs[2])
-	assert.Equal(t, 789*time.Millisecond, attrs[3])
+	assert.Equal(t, "report", attr.Key)
+	group := attr.Value.Group()
+	assert.Len(t, group, 2)
+	assert.Equal(t, "protocol", group[0].Key)
+	assert.Equal(t, "udp", group[0].Value.String())
+	assert.Equal(t, "elapsed", group[1].Key)
+	assert.Equal(t, 789*time.Millisecond, group[1].Value.Duration())
 }
 
 func TestProtocol(t *testing.T) {

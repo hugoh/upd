@@ -21,8 +21,6 @@ const (
 	NotComputedMsg = "Not computed"
 	// PercentFormat is the format string for percentage display.
 	PercentFormat = "%.2f %%"
-	// ZeroString is the string representation of zero duration.
-	ZeroString = "0s"
 	// TrailingZeroSSuffix is the trailing zero seconds suffix.
 	TrailingZeroSSuffix = "0s"
 	// TrailingZeroMSuffix is the trailing zero minutes suffix.
@@ -43,10 +41,7 @@ func (p ReadablePercent) MarshalJSON() ([]byte, error) {
 }
 
 func formatDuration(d time.Duration) string {
-	str := d.Truncate(time.Second).String()
-	if str == ZeroString {
-		return str
-	}
+	str := d.Round(time.Second).String()
 	// Remove trailing "0s" or "0m0s"
 	if strings.HasSuffix(str, TrailingZeroMSuffix) {
 		str = strings.TrimSuffix(str, TrailingZeroSSuffix)

@@ -1,4 +1,4 @@
-package internal
+package config
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/hugoh/upd/internal/check"
 	"github.com/hugoh/upd/internal/logic"
-	"github.com/hugoh/upd/internal/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -19,17 +18,36 @@ type TestSuite struct {
 	conf *Configuration
 }
 
-const testConfigDir = "../testdata"
+// Must match internal/cmd_test.go.
+const testConfigDir = "../../testdata"
 
 func readTestConfig(cfgFile string) (*Configuration, error) {
 	return ReadConf(fmt.Sprintf("%s/%s", testConfigDir, cfgFile))
+}
+
+func countProbes[T any](list *check.List) int {
+	n := 0
+
+	for _, chk := range list.Ordered {
+		if _, ok := chk.Probe.(T); ok {
+			n++
+		}
+	}
+
+	for _, chk := range list.Shuffled {
+		if _, ok := chk.Probe.(T); ok {
+			n++
+		}
+	}
+
+	return n
 }
 
 func (suite *TestSuite) SetupTest() {
 	var err error
 
 	suite.conf, err = readTestConfig("upd_test_good.toml")
-	suite.NoError(err)
+	suite.Require().NoError(err)
 }
 
 func TestSuiteRun(t *testing.T) {
@@ -68,10 +86,7 @@ func TestGetChecksIgnored(t *testing.T) {
 
 	checklist, checkErr := conf.GetChecks()
 	require.NoError(t, checkErr)
-	// There should be 1 valid check in total (Ordered + Shuffled)
-	// - http://captive.apple.com/hotspot-detect.html is valid
-	// - ftp://foo.bar/ is ignored (unknown protocol)
-	// - dns://8.8.4.4/ is ignored (missing domain)
+
 	totalChecks := 0
 	if checklist != nil {
 		totalChecks = len(checklist.Ordered) + len(checklist.Shuffled)
@@ -91,7 +106,7 @@ func TestGetChecksFromConfFail(t *testing.T) {
 func (suite *TestSuite) TestGetChecks() {
 	checklist, err := suite.conf.GetChecks()
 	suite.Require().NoError(err)
-	// Collect all checks from both Ordered and Shuffled
+
 	allChecks := append([]*check.Check{}, checklist.Ordered...)
 	allChecks = append(allChecks, checklist.Shuffled...)
 
@@ -141,7 +156,7 @@ func TestReadConf_envsubst(t *testing.T) {
 
 	conf, err := readTestConfig("upd_test_envvar.toml")
 	require.NoError(t, err)
-	assert.Equal(t, types.Duration(3*time.Second), conf.Checks.TimeOut)
+	assert.Equal(t, Duration(3*time.Second), conf.Checks.TimeOut)
 }
 
 func TestReadConf_envsubst_missing(t *testing.T) {
@@ -158,24 +173,12 @@ func TestDNSCheckValidation_MissingDomain(t *testing.T) {
 	checklist, checkErr := conf.GetChecks()
 	require.NoError(t, checkErr)
 
-	// Check that dns://8.8.4.4/ is ignored due to missing domain
-	dnsChecks := 0
-
-	for _, chk := range checklist.Ordered {
-		_, ok := chk.Probe.(*check.DNSProbe)
-		if ok {
-			dnsChecks++
-		}
-	}
-
-	for _, chk := range checklist.Shuffled {
-		_, ok := chk.Probe.(*check.DNSProbe)
-		if ok {
-			dnsChecks++
-		}
-	}
-
-	assert.Equal(t, 0, dnsChecks, "DNS check with missing domain should be ignored")
+	assert.Equal(
+		t,
+		0,
+		countProbes[*check.DNSProbe](checklist),
+		"DNS check with missing domain should be ignored",
+	)
 }
 
 func TestDNSCheckValidation_MissingResolver(t *testing.T) {
@@ -185,26 +188,13 @@ func TestDNSCheckValidation_MissingResolver(t *testing.T) {
 	checklist, checkErr := conf.GetChecks()
 	require.NoError(t, checkErr)
 
-	// Check that dns:///google.com is ignored due to missing resolver host
-	dnsChecks := 0
+	assert.Equal(
+		t,
+		0,
+		countProbes[*check.DNSProbe](checklist),
+		"DNS check with missing resolver host should be ignored",
+	)
 
-	for _, chk := range checklist.Ordered {
-		_, ok := chk.Probe.(*check.DNSProbe)
-		if ok {
-			dnsChecks++
-		}
-	}
-
-	for _, chk := range checklist.Shuffled {
-		_, ok := chk.Probe.(*check.DNSProbe)
-		if ok {
-			dnsChecks++
-		}
-	}
-
-	assert.Equal(t, 0, dnsChecks, "DNS check with missing resolver host should be ignored")
-
-	// Verify we still have the HTTP check
 	httpChecks := 0
 
 	for _, chk := range checklist.Ordered {
@@ -229,10 +219,9 @@ func TestLogSetup(t *testing.T) {
 		name     string
 		logLevel string
 	}{
-		{"trace level", logLevelTrace},
-		{"debug level", logLevelDebug},
-		{"info level", logLevelInfo},
-		{"warn level", logLevelWarn},
+		{"debug level", "debug"},
+		{"info level", "info"},
+		{"warn level", "warn"},
 		{"empty defaults to info", ""},
 	}
 
