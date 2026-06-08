@@ -43,7 +43,7 @@ type StatServer struct {
 // StartStatServer starts a new statistics server in a goroutine.
 func StartStatServer(status *Status, config *StatServerConfig) *StatServer {
 	if config.Port == 0 {
-		logger.L.Debug("no stat server specified", "component", "stats")
+		logger.L.Debug("no stat server specified", logger.LogComponent, logger.LogComponentStats)
 
 		return nil
 	}
@@ -74,21 +74,33 @@ func (s *StatServer) Shutdown(ctx context.Context) {
 		return
 	}
 
-	logger.L.Info("shutting down stats server", "component", "stats")
+	logger.L.Info("shutting down stats server", logger.LogComponent, logger.LogComponentStats)
 
 	if err := s.server.Shutdown(ctx); err != nil {
-		logger.L.Error("error shutting down stats server", "component", "stats", "error", err)
+		logger.L.Error(
+			"error shutting down stats server",
+			logger.LogComponent,
+			logger.LogComponentStats,
+			"error",
+			err,
+		)
 	}
 }
 
 func (s *StatServer) listenAndServe() {
 	logger.L.Info("server started",
-		"component", "stats",
+		logger.LogComponent, logger.LogComponentStats,
 		"statserver", fmt.Sprintf("http://localhost%s%s", s.server.Addr, StatRoute),
 	)
 
 	if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.L.Error("error starting stats server", "component", "stats", "error", err)
+		logger.L.Error(
+			"error starting stats server",
+			logger.LogComponent,
+			logger.LogComponentStats,
+			"error",
+			err,
+		)
 	}
 }
 
@@ -114,7 +126,13 @@ func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	logger.L.Debug("requested", "component", "stats", "requester", req.RemoteAddr)
+	logger.L.Debug(
+		"requested",
+		logger.LogComponent,
+		logger.LogComponentStats,
+		"requester",
+		req.RemoteAddr,
+	)
 
 	writeJSON(writer, h.GenStatReport())
 }
@@ -126,7 +144,13 @@ func writeJSON(w http.ResponseWriter, data any) {
 	enc.SetIndent("", JSONIndentSpaces)
 
 	if err := enc.Encode(data); err != nil {
-		logger.L.Error("error writing JSON response", "component", "stats", "error", err)
+		logger.L.Error(
+			"error writing JSON response",
+			logger.LogComponent,
+			logger.LogComponentStats,
+			"error",
+			err,
+		)
 	}
 }
 

@@ -130,8 +130,8 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 		if err != nil {
 			logger.L.Debug(
 				"invalid range for stat report",
-				"component",
-				"stats",
+				logger.LogComponent,
+				logger.LogComponentStats,
 				"error",
 				err,
 				"period",
