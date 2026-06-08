@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func startStatServer(t *testing.T, config *StatServerConfig) *StatServer {
+func newStatServer(t *testing.T, config *StatServerConfig) *StatServer {
 	t.Helper()
 
 	status := NewStatus()
@@ -51,7 +51,7 @@ func TestStartStatServer_WithPort(t *testing.T) {
 		Retention: time.Hour,
 	}
 
-	server := startStatServer(t, config)
+	server := newStatServer(t, config)
 	require.NotNil(t, server.status)
 	require.NotNil(t, server.config)
 }
@@ -66,7 +66,7 @@ func TestStatServer_Start_WithTimeouts(t *testing.T) {
 		IdleTimeout:  2 * time.Second,
 	}
 
-	server := startStatServer(t, config)
+	server := newStatServer(t, config)
 	require.NotNil(t, server.server)
 	assert.Equal(t, 2*time.Second, server.server.ReadTimeout)
 	assert.Equal(t, 2*time.Second, server.server.WriteTimeout)
@@ -80,7 +80,7 @@ func TestStatServer_Start_UsesDefaultTimeouts(t *testing.T) {
 		Retention: time.Hour,
 	}
 
-	server := startStatServer(t, config)
+	server := newStatServer(t, config)
 	require.NotNil(t, server.server)
 	assert.Equal(t, DefaultStatServerReadTimeout, server.server.ReadTimeout)
 	assert.Equal(t, DefaultStatServerWriteTimeout, server.server.WriteTimeout)
@@ -103,7 +103,7 @@ func TestShutdown_GracefulShutdown(t *testing.T) {
 		Retention: time.Hour,
 	}
 
-	server := startStatServer(t, config)
+	server := newStatServer(t, config)
 	require.NotNil(t, server.server)
 }
 
@@ -114,7 +114,7 @@ func TestStatServer_Route(t *testing.T) {
 		Retention: time.Hour,
 	}
 
-	server := startStatServer(t, config)
+	server := newStatServer(t, config)
 	require.NotNil(t, server.server)
 
 	url := "http://localhost" + server.server.Addr + StatRoute
