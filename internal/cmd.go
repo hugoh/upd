@@ -22,8 +22,6 @@ const (
 	AppName = "upd"
 	// AppShort is the application short description.
 	AppShort = "Tool to monitor if the network connection is up."
-	// ExitCodeError is the exit code for errors.
-	ExitCodeError = 1
 	// ErrChanSize is the buffer size for error channels.
 	ErrChanSize = 1
 	// SighupChanSize is the buffer size for SIGHUP channels.
@@ -35,8 +33,6 @@ const (
 	ConfigConfig string = "config"
 	// ConfigDebug is the debug flag name.
 	ConfigDebug string = "debug"
-	// ConfigDump is the dump flag name.
-	ConfigDump string = "dump"
 )
 
 // SetupLoop initializes the loop with configuration from the given file.
