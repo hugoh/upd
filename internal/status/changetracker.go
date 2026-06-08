@@ -72,6 +72,7 @@ func (tracker *StateChangeTracker) Prune(currentTime time.Time) {
 	}
 }
 
+// ErrInvalidRange is returned when the requested duration exceeds retention.
 var ErrInvalidRange = errors.New("range greater than the retention period")
 
 // CalculateUptime computes availability percentage and downtime for a given period.
