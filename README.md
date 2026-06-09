@@ -118,10 +118,15 @@ The sample configuration above will provide data looking like this:
       "downTime": "0s"
     }
   ],
-  "totalChecksRun": 612,
-  "timeSinceLastUpdate": "35s",
-  "updUptime": "20h25m15s",
-  "updVersion": "2.0.0",
-  "generatedAt": "2024-12-12T17:38:01.738046722-06:00"
+  "loop": {
+    "lastSuccess": "11s",
+    "nextCheck": "49s",
+    "interval": "1m",
+    "timeSinceLastUpdate": "11s",
+    "totalChecksRun": 753
+  },
+  "updUptime": "12h33m23s",
+  "updVersion": "4.2.0",
+  "generatedAt": "2026-06-09T07:37:00.70887063-05:00"
 }
 ```
