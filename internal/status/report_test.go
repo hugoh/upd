@@ -18,9 +18,8 @@ func setupTestServer(t *testing.T, opts ...func(*StatServerConfig)) *StatHandler
 	status.SetRetention(1 * time.Hour)
 
 	config := &StatServerConfig{
-		Port:      8080,
-		Reports:   []time.Duration{time.Minute},
-		Retention: time.Hour,
+		Port:    8080,
+		Reports: []time.Duration{time.Minute},
 	}
 
 	for _, opt := range opts {
@@ -40,9 +39,8 @@ func TestStatHandlerInit(t *testing.T) {
 	status.SetRetention(1 * time.Hour)
 
 	config := &StatServerConfig{
-		Port:      8080,
-		Reports:   []time.Duration{time.Minute},
-		Retention: time.Hour,
+		Port:    8080,
+		Reports: []time.Duration{time.Minute},
 	}
 
 	server := &StatServer{

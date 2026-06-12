@@ -46,9 +46,8 @@ func TestStartStatServer_NoPort(t *testing.T) {
 
 func TestStartStatServer_WithPort(t *testing.T) {
 	config := &StatServerConfig{
-		Port:      18765,
-		Reports:   []time.Duration{time.Minute},
-		Retention: time.Hour,
+		Port:    18765,
+		Reports: []time.Duration{time.Minute},
 	}
 
 	server := newStatServer(t, config)
@@ -60,7 +59,6 @@ func TestStatServer_Start_WithTimeouts(t *testing.T) {
 	config := &StatServerConfig{
 		Port:         18765,
 		Reports:      []time.Duration{time.Minute},
-		Retention:    time.Hour,
 		ReadTimeout:  2 * time.Second,
 		WriteTimeout: 2 * time.Second,
 		IdleTimeout:  2 * time.Second,
@@ -75,9 +73,8 @@ func TestStatServer_Start_WithTimeouts(t *testing.T) {
 
 func TestStatServer_Start_UsesDefaultTimeouts(t *testing.T) {
 	config := &StatServerConfig{
-		Port:      18765,
-		Reports:   []time.Duration{time.Minute},
-		Retention: time.Hour,
+		Port:    18765,
+		Reports: []time.Duration{time.Minute},
 	}
 
 	server := newStatServer(t, config)
@@ -98,9 +95,8 @@ func TestShutdown_NilServer(t *testing.T) {
 
 func TestShutdown_GracefulShutdown(t *testing.T) {
 	config := &StatServerConfig{
-		Port:      18765,
-		Reports:   []time.Duration{time.Minute},
-		Retention: time.Hour,
+		Port:    18765,
+		Reports: []time.Duration{time.Minute},
 	}
 
 	server := newStatServer(t, config)
@@ -109,9 +105,8 @@ func TestShutdown_GracefulShutdown(t *testing.T) {
 
 func TestStatServer_Route(t *testing.T) {
 	config := &StatServerConfig{
-		Port:      18765,
-		Reports:   []time.Duration{time.Minute},
-		Retention: time.Hour,
+		Port:    18765,
+		Reports: []time.Duration{time.Minute},
 	}
 
 	server := newStatServer(t, config)

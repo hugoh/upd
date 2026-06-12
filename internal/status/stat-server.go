@@ -28,7 +28,6 @@ const (
 type StatServerConfig struct {
 	Port         int
 	Reports      []time.Duration
-	Retention    time.Duration
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	IdleTimeout  time.Duration

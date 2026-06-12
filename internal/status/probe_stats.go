@@ -5,8 +5,6 @@ import (
 	"time"
 )
 
-const bucketInterval = time.Minute
-
 type probeBucket struct {
 	timestamp time.Time
 	total     uint32
@@ -14,26 +12,44 @@ type probeBucket struct {
 }
 
 // RollingProbeTracker tracks probe success/failure rates within a rolling time
-// window using time-bucketed counters (1-minute buckets) in a ring buffer.
-// Thread-safe.
+// window using time-bucketed counters in a ring buffer. Thread-safe.
 type RollingProbeTracker struct {
-	mu         sync.Mutex
-	maxBuckets int
-	buckets    []probeBucket
-	head       int
-	tail       int
-	count      int
+	mu             sync.Mutex
+	bucketInterval time.Duration
+	maxBuckets     int
+	buckets        []probeBucket
+	head           int
+	tail           int
+	count          int
 }
 
 // NewRollingProbeTracker creates a tracker that retains data for the given
-// duration using 1-minute buckets.
-func NewRollingProbeTracker(retention time.Duration) *RollingProbeTracker {
+// duration using buckets of the given interval.
+func NewRollingProbeTracker(retention, bucketInterval time.Duration) *RollingProbeTracker {
 	maxBuckets := max(int(retention/bucketInterval)+1, 1)
 
 	return &RollingProbeTracker{
-		maxBuckets: maxBuckets,
-		buckets:    make([]probeBucket, maxBuckets),
+		bucketInterval: bucketInterval,
+		maxBuckets:     maxBuckets,
+		buckets:        make([]probeBucket, maxBuckets),
 	}
+}
+
+// BucketInterval returns the probe bucket interval to use for the given
+// report periods. Defaults to 1 minute when no periods are given.
+func BucketInterval(periods []time.Duration) time.Duration {
+	if len(periods) == 0 {
+		return time.Minute
+	}
+
+	minPeriod := periods[0]
+	for _, p := range periods[1:] {
+		if p < minPeriod {
+			minPeriod = p
+		}
+	}
+
+	return max(minPeriod, time.Second)
 }
 
 // Record records a probe result.
@@ -79,7 +95,7 @@ func (t *RollingProbeTracker) Stats(since time.Duration, now time.Time) (int, in
 // recordAt records a probe result at the given time. Must be called with the
 // lock held.
 func (t *RollingProbeTracker) recordAt(now time.Time) {
-	bucketTime := now.Truncate(bucketInterval)
+	bucketTime := now.Truncate(t.bucketInterval)
 
 	if t.count == 0 {
 		t.buckets[t.tail] = probeBucket{timestamp: bucketTime, total: 1}
@@ -99,7 +115,9 @@ func (t *RollingProbeTracker) recordAt(now time.Time) {
 	}
 
 	if bucketTime.After(lastTime) {
-		for nextTime := lastTime.Add(bucketInterval); !nextTime.After(bucketTime); nextTime = nextTime.Add(bucketInterval) {
+		bi := t.bucketInterval
+
+		for nextTime := lastTime.Add(bi); !nextTime.After(bucketTime); nextTime = nextTime.Add(bi) {
 			if t.count == t.maxBuckets {
 				t.head = (t.head + 1) % t.maxBuckets
 				t.count--

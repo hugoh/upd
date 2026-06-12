@@ -94,7 +94,6 @@ type Configuration struct {
 	Stats struct {
 		Port         int        `toml:"port"`
 		Reports      []Duration `toml:"reports"`
-		Retention    Duration   `toml:"retention"`
 		ReadTimeout  Duration   `toml:"readTimeout"`
 		WriteTimeout Duration   `toml:"writeTimeout"`
 		IdleTimeout  Duration   `toml:"idleTimeout"`
@@ -273,7 +272,6 @@ func (c Configuration) GetStatServerConfig() *status.StatServerConfig {
 	return &status.StatServerConfig{
 		Port:         c.Stats.Port,
 		Reports:      reports,
-		Retention:    c.Stats.Retention.StdDuration(),
 		ReadTimeout:  c.Stats.ReadTimeout.StdDuration(),
 		WriteTimeout: c.Stats.WriteTimeout.StdDuration(),
 		IdleTimeout:  c.Stats.IdleTimeout.StdDuration(),

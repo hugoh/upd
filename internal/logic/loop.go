@@ -27,7 +27,7 @@
 //		true:  2 * time.Minute,  // Check every 2 minutes when up
 //		false: 30 * time.Second,  // Check every 30 seconds when down
 //	}
-//	loop.Configure(checks, delays, nil, 24*time.Hour)
+//	loop.Configure(checks, delays, nil, time.Minute, 5*time.Minute)
 //	go loop.Run(ctx, nil)
 //
 // Down Actions:
@@ -48,7 +48,7 @@
 //		Exec:         "/usr/local/bin/notify-down",
 //		StopExec:     "/usr/local/bin/notify-up",
 //	}
-//	loop.Configure(checks, delays, downAction, 24*time.Hour)
+//	loop.Configure(checks, delays, downAction, time.Minute, 5*time.Minute)
 //
 // Configuration:
 //
@@ -56,7 +56,7 @@
 //   - checkList: List of probes to execute
 //   - delays: Check intervals for up/down states
 //   - downAction: Optional down action configuration
-//   - retention: How long to keep status history (for statistics)
+//   - periods: Report periods for statistics (retention is derived from the max period)
 //
 // Context and Cancellation:
 //
@@ -115,16 +115,27 @@ func (l *Loop) Configure(
 	checkList *check.List,
 	delays Delays,
 	downAction *DownAction,
-	retention time.Duration,
+	periods ...time.Duration,
 ) {
 	l.checkList = checkList
 	l.delays = delays
 	l.downAction = downAction
+
+	var retention time.Duration
+	for _, p := range periods {
+		if p > retention {
+			retention = p
+		}
+	}
+
 	l.status.SetRetention(retention)
 
 	if retention > 0 {
-		l.rollingTracker = status.NewRollingProbeTracker(retention)
+		l.rollingTracker = status.NewRollingProbeTracker(retention, status.BucketInterval(periods))
 		l.status.SetRollingTracker(l.rollingTracker)
+	} else {
+		l.rollingTracker = nil
+		l.status.SetRollingTracker(nil)
 	}
 }
 

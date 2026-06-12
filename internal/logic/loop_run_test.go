@@ -17,7 +17,6 @@ func TestRun_StopsOnContextCancel(t *testing.T) {
 		emptyCheckList,
 		Delays{true: 1 * time.Second, false: 1 * time.Second},
 		nil,
-		0,
 	)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -47,7 +46,6 @@ func TestRun_ProcessesChecks(t *testing.T) {
 		checkList,
 		Delays{true: 10 * time.Millisecond, false: 10 * time.Millisecond},
 		nil,
-		0,
 	)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -67,7 +65,6 @@ func TestStop_StopsStatServer(t *testing.T) {
 		emptyCheckList,
 		Delays{true: 1 * time.Second, false: 1 * time.Second},
 		nil,
-		0,
 	)
 
 	ctx := t.Context()
