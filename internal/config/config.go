@@ -13,30 +13,34 @@
 //
 // Example configuration:
 //
-//	checks:
-//	 every:
-//	   normal: 2m
-//	   down: 30s
-//	 list:
-//	   ordered:
-//	     - http://captive.apple.com/hotspot-detect.html
-//	   shuffled:
-//	     - dns://8.8.8.8/example.com
-//	 timeout: 10s
-//	downAction:
-//	 exec: "echo 'Connection down'"
-//	 every:
-//	   after: 60s
-//	   repeat: 300s
-//	stats:
-//	 port: 8080
-//	logLevel: debug
+//	logLevel = "debug"
+//
+//	[checks]
+//	timeout = "10s"
+//
+//	[checks.every]
+//	normal = "2m"
+//	down = "30s"
+//
+//	[checks.list]
+//	ordered = ["http://captive.apple.com/hotspot-detect.html"]
+//	shuffled = ["dns://8.8.8.8/example.com"]
+//
+//	[downAction]
+//	exec = "echo 'Connection down'"
+//
+//	[downAction.every]
+//	after = "60s"
+//	repeat = "300s"
+//
+//	[stats]
+//	port = 8080
 //
 // Configuration values support environment variable substitution using
 // the ${VAR} syntax in TOML string values:
 //
-//	checks:
-//	 timeout: ${UPD_TIMEOUT} // Set UPD_TIMEOUT env var to override
+//	[checks]
+//	timeout = "${UPD_TIMEOUT}" # Set UPD_TIMEOUT env var to override
 //
 // Network Security:
 //

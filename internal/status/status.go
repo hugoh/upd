@@ -17,7 +17,7 @@
 //	}
 //
 //	// Get current status:
-//	up := status.Get()
+//	up := status.Up
 //
 // Thread Safety:
 //
