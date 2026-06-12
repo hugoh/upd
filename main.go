@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/hugoh/upd/internal"
@@ -10,6 +11,7 @@ import (
 func main() {
 	err := internal.Cmd()
 	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
