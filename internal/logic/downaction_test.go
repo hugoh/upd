@@ -189,20 +189,20 @@ func testBackoff(t *testing.T, hasLimit bool) {
 	assert.InEpsilon(t, 1.5, BackoffFactor, 0.01, "Ensuring we have the right values")
 
 	dal, _ := da.NewDownActionLoop(t.Context())
-	assert.Equal(t, uint64(0), dal.iteration.Load())
+	assert.Equal(t, uint32(0), dal.iteration.Load())
 	assert.Equal(t, da.After, dal.sleepTime)
 	assert.False(t, dal.limitReached)
 
 	sleepTime := dal.nextSleep()
-	assert.Equal(t, uint64(1), dal.iteration.Load())
+	assert.Equal(t, uint32(1), dal.iteration.Load())
 	assert.Equal(t, da.Every, sleepTime)
 
 	sleepTime = dal.nextSleep()
-	assert.Equal(t, uint64(2), dal.iteration.Load())
+	assert.Equal(t, uint32(2), dal.iteration.Load())
 	assert.Equal(t, time.Duration(1.5*float64(time.Second)), sleepTime)
 
 	sleepTime = dal.nextSleep()
-	assert.Equal(t, uint64(3), dal.iteration.Load())
+	assert.Equal(t, uint32(3), dal.iteration.Load())
 
 	if hasLimit {
 		assert.Equal(t, da.BackoffLimit, sleepTime)
@@ -226,7 +226,7 @@ func Test_Status_Initial(t *testing.T) {
 	dal, _ := da.NewDownActionLoop(t.Context())
 
 	st := dal.Status()
-	assert.Equal(t, uint64(0), st.Iteration)
+	assert.Equal(t, uint32(0), st.Iteration)
 	assert.Zero(t, st.SleepTime)
 	assert.False(t, st.BackoffCapped)
 }
@@ -237,13 +237,13 @@ func Test_Status_AfterIteration(t *testing.T) {
 
 	dal.nextSleep()
 	st := dal.Status()
-	assert.Equal(t, uint64(1), st.Iteration)
+	assert.Equal(t, uint32(1), st.Iteration)
 	assert.Equal(t, da.Every, time.Duration(st.SleepTime))
 	assert.False(t, st.BackoffCapped)
 
 	dal.nextSleep()
 	st = dal.Status()
-	assert.Equal(t, uint64(2), st.Iteration)
+	assert.Equal(t, uint32(2), st.Iteration)
 	assert.InEpsilon(t, 1.5*float64(time.Second), float64(time.Duration(st.SleepTime)), 0.01)
 	assert.False(t, st.BackoffCapped)
 }

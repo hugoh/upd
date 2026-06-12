@@ -32,7 +32,7 @@ type DownActionLoop struct {
 	cancelFunc context.CancelFunc
 	//nolint:containedctx // loopCtx stored to bind StopExec commands on loop exit
 	loopCtx      context.Context
-	iteration    atomic.Uint64
+	iteration    atomic.Uint32
 	sleepTime    time.Duration
 	limitReached bool
 	currentCmd   *exec.Cmd

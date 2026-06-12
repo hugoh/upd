@@ -1,4 +1,4 @@
-logLevel = "trace"
+logLevel = "debug"
 
 [checks]
 timeout = "2s"

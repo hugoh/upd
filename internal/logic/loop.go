@@ -98,6 +98,7 @@ type Loop struct {
 	downActionLoop *DownActionLoop
 	statServer     *status.StatServer
 	status         *status.Status
+	rollingTracker *status.RollingProbeTracker
 	lastSuccess    time.Time
 	nextCheckAt    time.Time
 }
@@ -120,6 +121,11 @@ func (l *Loop) Configure(
 	l.delays = delays
 	l.downAction = downAction
 	l.status.SetRetention(retention)
+
+	if retention > 0 {
+		l.rollingTracker = status.NewRollingProbeTracker(retention)
+		l.status.SetRollingTracker(l.rollingTracker)
+	}
 }
 
 // ErrDownActionRunning is returned when trying to start a down action while one is active.
@@ -162,7 +168,7 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 
 // Run starts the monitoring loop with optional statistics server config.
 func (l *Loop) Run(ctx context.Context, statServerConfig *status.StatServerConfig) {
-	var checker LoopChecker
+	checker := LoopChecker{tracker: l.rollingTracker}
 
 	if l.statServer == nil {
 		l.statServer = status.StartStatServer(l.status, statServerConfig)
@@ -244,8 +250,11 @@ func (l *Loop) pushStatus() {
 	}
 }
 
-// LoopChecker implements check.Checker for logging check lifecycle events.
-type LoopChecker struct{}
+// LoopChecker implements check.Checker for logging check lifecycle events and
+// probe-level stats collection.
+type LoopChecker struct {
+	tracker *status.RollingProbeTracker
+}
 
 // CheckRun logs the start of a check.
 func (LoopChecker) CheckRun(chk check.Check) {
@@ -260,11 +269,19 @@ func (LoopChecker) CheckRun(chk check.Check) {
 }
 
 // ProbeSuccess logs successful probe results.
-func (LoopChecker) ProbeSuccess(report *check.Report) {
+func (c LoopChecker) ProbeSuccess(report *check.Report) {
 	logger.Check().Debug("success", report.LogAttrs())
+
+	if c.tracker != nil {
+		c.tracker.Record(false)
+	}
 }
 
 // ProbeFailure logs failed probe results.
-func (LoopChecker) ProbeFailure(report *check.Report) {
+func (c LoopChecker) ProbeFailure(report *check.Report) {
 	logger.Check().Warn("failed", report.LogAttrs())
+
+	if c.tracker != nil {
+		c.tracker.Record(true)
+	}
 }

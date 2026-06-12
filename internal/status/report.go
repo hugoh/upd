@@ -10,11 +10,14 @@ type ReportByPeriod struct {
 	Period       ReadableDuration `json:"period"`
 	Availability ReadablePercent  `json:"availability"`
 	Downtime     ReadableDuration `json:"downTime"`
+	TotalProbes  int              `json:"totalProbes,omitempty"`
+	FailedProbes int              `json:"failedProbes,omitempty"`
+	FailureRate  ReadablePercent  `json:"failureRate,omitempty"`
 }
 
 // DownActionStatus contains the current state of the down action loop.
 type DownActionStatus struct {
-	Iteration     uint64           `json:"iteration"`
+	Iteration     uint32           `json:"iteration"`
 	SleepTime     ReadableDuration `json:"sleepTime"`
 	BackoffCapped bool             `json:"backoffCapped"`
 }
@@ -25,7 +28,7 @@ type LoopStatus struct {
 	NextCheck       ReadableDuration `json:"nextCheck"`
 	Interval        ReadableDuration `json:"interval"`
 	TimeSinceUpdate ReadableDuration `json:"timeSinceLastUpdate"`
-	TotalChecksRun  uint64           `json:"totalChecksRun"`
+	TotalChecksRun  uint32           `json:"totalChecksRun"`
 }
 
 // Report contains the full status report with statistics.

@@ -112,7 +112,7 @@ func Test_ProcessCheck_PopulatesDownActionStatus(t *testing.T) {
 	loop.ProcessCheck(ctx, false)
 	report := loop.status.GenStatReport(nil)
 	require.NotNil(t, report.DownAction)
-	assert.Equal(t, uint64(0), report.DownAction.Iteration)
+	assert.Equal(t, uint32(0), report.DownAction.Iteration)
 	assert.False(t, report.DownAction.BackoffCapped)
 }
 
