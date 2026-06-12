@@ -211,13 +211,12 @@ func (dal *DownActionLoop) killCurrentCmd() {
 		return
 	}
 
+	// currentCmd is only set after a successful Start, so Process is non-nil.
 	logger.DownAction().Warn("killing current command",
 		"pid", dal.currentCmd.Process.Pid)
 
-	if dal.currentCmd.Process != nil {
-		if err := dal.currentCmd.Process.Kill(); err != nil {
-			logger.DownAction().Warn("failed to kill current command", "error", err)
-		}
+	if err := dal.currentCmd.Process.Kill(); err != nil {
+		logger.DownAction().Warn("failed to kill current command", "error", err)
 	}
 
 	dal.currentCmd = nil
