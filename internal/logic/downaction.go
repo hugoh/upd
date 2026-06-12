@@ -28,16 +28,17 @@ type DownAction struct {
 
 // DownActionLoop manages execution of down action commands.
 type DownActionLoop struct {
-	da         *DownAction
-	cancelFunc context.CancelFunc
-	//nolint:containedctx // loopCtx stored to bind StopExec commands on loop exit
-	loopCtx      context.Context
+	da           *DownAction
+	cancelFunc   context.CancelFunc
 	iteration    atomic.Uint32
 	sleepTime    atomic.Int64
 	limitReached atomic.Bool
 	currentCmd   *exec.Cmd
 	cmdMu        sync.Mutex
 }
+
+// StopExecTimeout bounds how long the stop command may run.
+const StopExecTimeout = 30 * time.Second
 
 // BackoffFactor is the multiplier for exponential backoff.
 // Each iteration beyond the second will increase the delay by this factor.
@@ -63,20 +64,23 @@ func validateCommand(command []string) error {
 	return nil
 }
 
-// Execute runs the specified command string with the iteration context.
-func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error {
+// startCommand parses, validates, and starts the given command string.
+func (dal *DownActionLoop) startCommand(
+	ctx context.Context,
+	execString string,
+) (*exec.Cmd, *bytes.Buffer, error) {
 	if execString == "" {
-		return ErrNoCommand
+		return nil, nil, ErrNoCommand
 	}
 
 	command, errSh := shlex.Split(execString)
 	if errSh != nil {
-		return fmt.Errorf("failed to parse DownAction definition: %w", errSh)
+		return nil, nil, fmt.Errorf("failed to parse DownAction definition: %w", errSh)
 	}
 
 	err := validateCommand(command)
 	if err != nil {
-		return fmt.Errorf("invalid command: %w", err)
+		return nil, nil, fmt.Errorf("invalid command: %w", err)
 	}
 
 	iteration := dal.iteration.Load()
@@ -88,9 +92,7 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 
 	cmd.Stderr = &stderrBuf
 
-	cmdEnv := os.Environ()
-	cmdEnv = append(cmdEnv, fmt.Sprintf("UPD_ITERATION=%d", iteration))
-	cmd.Env = cmdEnv
+	cmd.Env = append(os.Environ(), fmt.Sprintf("UPD_ITERATION=%d", iteration))
 	logger.DownAction().Info("executing command",
 		"exec", cmd.String(),
 		"iteration", iteration,
@@ -100,14 +102,24 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 		logger.DownAction().Error("failed to run",
 			"exec", cmd.String(), "error", err)
 
-		return fmt.Errorf("failed to execute DownAction: %w", err)
+		return nil, nil, fmt.Errorf("failed to execute DownAction: %w", err)
+	}
+
+	return cmd, &stderrBuf, nil
+}
+
+// Execute runs the specified command string with the iteration context.
+func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error {
+	cmd, stderrBuf, err := dal.startCommand(ctx, execString)
+	if err != nil {
+		return err
 	}
 
 	dal.cmdMu.Lock()
 	dal.currentCmd = cmd
 	dal.cmdMu.Unlock()
 
-	go dal.waitForCmd(cmd, &stderrBuf)
+	go dal.waitForCmd(cmd, stderrBuf)
 
 	return nil
 }
@@ -118,7 +130,6 @@ func (da *DownAction) NewDownActionLoop(ctx context.Context) (*DownActionLoop, c
 	dal := &DownActionLoop{
 		da:         da,
 		cancelFunc: cancelFunc,
-		loopCtx:    ctx,
 	}
 	dal.sleepTime.Store(int64(da.After))
 
@@ -136,21 +147,32 @@ func (da *DownAction) Start(ctx context.Context) *DownActionLoop {
 	return dal
 }
 
-// Stop cancels the down action loop and executes the stop command.
-// The stop command is bound to loopCtx so cancelFunc kills it on loop exit.
+// Stop cancels the down action loop, kills any running command, and runs the
+// stop command to completion. The stop command gets its own timeout-bounded
+// context so loop cancellation cannot kill it.
 func (dal *DownActionLoop) Stop(_ context.Context) {
+	logger.DownAction().Debug("sending shutdown signal")
+	dal.cancelFunc()
 	dal.killCurrentCmd()
 
 	if dal.da.StopExec != "" {
-		//nolint:contextcheck // loopCtx derived from the same hierarchy as ctx
-		err := dal.Execute(dal.loopCtx, dal.da.StopExec)
-		if err != nil && !errors.Is(err, ErrNoCommand) {
-			logger.DownAction().Warn("failed to execute stop command", "error", err)
-		}
+		dal.runStopExec()
+	}
+}
+
+func (dal *DownActionLoop) runStopExec() {
+	//nolint:contextcheck // intentionally detached: must survive loop cancellation
+	ctx, cancel := context.WithTimeout(context.Background(), StopExecTimeout)
+	defer cancel()
+
+	cmd, stderrBuf, err := dal.startCommand(ctx, dal.da.StopExec)
+	if err != nil {
+		logger.DownAction().Warn("failed to execute stop command", "error", err)
+
+		return
 	}
 
-	logger.DownAction().Debug("sending shutdown signal")
-	dal.cancelFunc()
+	dal.waitForCmd(cmd, stderrBuf)
 }
 
 // Status returns a snapshot of the current down action loop state.

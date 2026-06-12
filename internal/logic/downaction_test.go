@@ -1,6 +1,8 @@
 package logic
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -73,6 +75,23 @@ func Test_ExecuteStderrCapture_Trimmed(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 }
 
+func Test_Stop_RunsStopExecToCompletion(t *testing.T) {
+	marker := filepath.Join(t.TempDir(), "stopped")
+	da := &DownAction{
+		Exec:     "sleep 10",
+		StopExec: "sh -c 'sleep 0.1 && touch " + marker + "'",
+	}
+
+	dal := da.Start(t.Context())
+
+	time.Sleep(100 * time.Millisecond)
+
+	dal.Stop(t.Context())
+
+	_, err := os.Stat(marker)
+	require.NoError(t, err, "stop command should run to completion")
+}
+
 func Test_killCurrentCmd_nilCmd(t *testing.T) {
 	da := &DownAction{}
 	dal, _ := da.NewDownActionLoop(t.Context())
@@ -122,12 +141,9 @@ func Test_ExecuteReplacesStaleCmd(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 }
 
-func Test_StopUsesLoopCtx(t *testing.T) {
+func Test_StopCancelsLoopCtx(t *testing.T) {
 	da := &DownAction{}
 	dal, ctx := da.NewDownActionLoop(t.Context())
-
-	assert.NotNil(t, dal.loopCtx, "loopCtx should be stored")
-	assert.Equal(t, ctx, dal.loopCtx, "loopCtx matches returned child context")
 
 	dal.Stop(t.Context())
 
@@ -135,9 +151,9 @@ func Test_StopUsesLoopCtx(t *testing.T) {
 	defer timer.Stop()
 
 	select {
-	case <-dal.loopCtx.Done():
+	case <-ctx.Done():
 	case <-timer.C:
-		t.Fatal("loopCtx should be cancelled after Stop")
+		t.Fatal("loop context should be cancelled after Stop")
 	}
 }
 
