@@ -52,7 +52,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -69,36 +68,54 @@ const (
 	DefaultConfig = ".upd.toml"
 )
 
+// ChecksEveryConfig holds the check intervals for up and down states.
+type ChecksEveryConfig struct {
+	Normal Duration `toml:"normal"`
+	Down   Duration `toml:"down"`
+}
+
+// ChecksListConfig holds the ordered and shuffled check URI lists.
+type ChecksListConfig struct {
+	Ordered  []string `toml:"ordered"`
+	Shuffled []string `toml:"shuffled"`
+}
+
+// ChecksConfig holds the connectivity check settings.
+type ChecksConfig struct {
+	Every   ChecksEveryConfig `toml:"every"`
+	List    ChecksListConfig  `toml:"list"`
+	TimeOut Duration          `toml:"timeout"`
+}
+
+// DownActionEveryConfig holds the down action scheduling settings.
+type DownActionEveryConfig struct {
+	After        Duration `toml:"after"`
+	Repeat       Duration `toml:"repeat"`
+	BackoffLimit Duration `toml:"expBackoffLimit"`
+}
+
+// DownActionConfig holds the down action settings.
+type DownActionConfig struct {
+	Exec     string                `toml:"exec"`
+	Every    DownActionEveryConfig `toml:"every"`
+	StopExec string                `toml:"stopExec"`
+}
+
+// StatsConfig holds the statistics server settings.
+type StatsConfig struct {
+	Port         int        `toml:"port"`
+	Reports      []Duration `toml:"reports"`
+	ReadTimeout  Duration   `toml:"readTimeout"`
+	WriteTimeout Duration   `toml:"writeTimeout"`
+	IdleTimeout  Duration   `toml:"idleTimeout"`
+}
+
 // Configuration holds all application settings.
 type Configuration struct {
-	Checks struct {
-		Every struct {
-			Normal Duration `toml:"normal"`
-			Down   Duration `toml:"down"`
-		} `toml:"every"`
-		List struct {
-			Ordered  []string `toml:"ordered"`
-			Shuffled []string `toml:"shuffled"`
-		} `toml:"list"`
-		TimeOut Duration `toml:"timeout"`
-	} `toml:"checks"`
-	DownAction struct {
-		Exec  string `toml:"exec"`
-		Every struct {
-			After        Duration `toml:"after"`
-			Repeat       Duration `toml:"repeat"`
-			BackoffLimit Duration `toml:"expBackoffLimit"`
-		} `toml:"every"`
-		StopExec string `toml:"stopExec"`
-	} `toml:"downAction"`
-	Stats struct {
-		Port         int        `toml:"port"`
-		Reports      []Duration `toml:"reports"`
-		ReadTimeout  Duration   `toml:"readTimeout"`
-		WriteTimeout Duration   `toml:"writeTimeout"`
-		IdleTimeout  Duration   `toml:"idleTimeout"`
-	} `toml:"stats"`
-	LogLevel string `toml:"logLevel"`
+	Checks     ChecksConfig     `toml:"checks"`
+	DownAction DownActionConfig `toml:"downAction"`
+	Stats      StatsConfig      `toml:"stats"`
+	LogLevel   string           `toml:"logLevel"`
 }
 
 func configError(msg string, path string, err error) (*Configuration, error) {
@@ -237,7 +254,7 @@ func (c Configuration) GetChecksCat(category []string) ([]*check.Check, error) {
 
 // GetDownAction creates a DownAction from the configuration.
 func (c Configuration) GetDownAction() *logic.DownAction {
-	if reflect.ValueOf(c.DownAction).IsZero() {
+	if c.DownAction == (DownActionConfig{}) {
 		return nil
 	}
 

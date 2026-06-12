@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"reflect"
 	"time"
 
 	"github.com/hugoh/upd/internal/check"
@@ -32,14 +31,8 @@ func (c Configuration) Validate() error {
 	var errs []error
 
 	errs = appendErr(errs, "checks", c.validateChecks())
-
-	if !reflect.ValueOf(c.DownAction).IsZero() {
-		errs = appendErr(errs, "downAction", c.validateDownAction())
-	}
-
-	if !reflect.ValueOf(c.Stats).IsZero() {
-		errs = appendErr(errs, "stats", c.validateStats())
-	}
+	errs = appendErr(errs, "downAction", c.validateDownAction())
+	errs = appendErr(errs, "stats", c.validateStats())
 
 	if c.LogLevel != "" {
 		errs = appendErr(errs, "logLevel", validateLogLevel(c.LogLevel))
