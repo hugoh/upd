@@ -10,9 +10,9 @@ type ReportByPeriod struct {
 	Period       ReadableDuration `json:"period"`
 	Availability ReadablePercent  `json:"availability"`
 	Downtime     ReadableDuration `json:"downTime"`
-	TotalProbes  int              `json:"totalProbes,omitempty"`
-	FailedProbes int              `json:"failedProbes,omitempty"`
-	FailureRate  ReadablePercent  `json:"failureRate,omitempty"`
+	TotalProbes  int              `json:"totalProbes"`
+	FailedProbes int              `json:"failedProbes"`
+	FailureRate  ReadablePercent  `json:"failureRate"`
 }
 
 // DownActionStatus contains the current state of the down action loop.
