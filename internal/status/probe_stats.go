@@ -1,6 +1,7 @@
 package status
 
 import (
+	"slices"
 	"sync"
 	"time"
 )
@@ -35,6 +36,10 @@ func NewRollingProbeTracker(retention, bucketInterval time.Duration) *RollingPro
 	}
 }
 
+// BucketIntervalDivisor controls bucket granularity relative to the shortest
+// report period; the rolling-window error is bounded to ~1/Divisor of it.
+const BucketIntervalDivisor = 10
+
 // BucketInterval returns the probe bucket interval to use for the given
 // report periods. Defaults to 1 minute when no periods are given.
 func BucketInterval(periods []time.Duration) time.Duration {
@@ -42,14 +47,7 @@ func BucketInterval(periods []time.Duration) time.Duration {
 		return time.Minute
 	}
 
-	minPeriod := periods[0]
-	for _, p := range periods[1:] {
-		if p < minPeriod {
-			minPeriod = p
-		}
-	}
-
-	return max(minPeriod, time.Second)
+	return max(slices.Min(periods)/BucketIntervalDivisor, time.Second)
 }
 
 // Record records a probe result.

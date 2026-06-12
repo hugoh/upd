@@ -20,10 +20,11 @@ func TestBucketInterval_Defaults(t *testing.T) {
 func TestBucketInterval_FromPeriods(t *testing.T) {
 	assert.Equal(
 		t,
-		15*time.Second,
+		1500*time.Millisecond,
 		BucketInterval([]time.Duration{time.Minute, 15 * time.Second, 5 * time.Minute}),
 	)
 	assert.Equal(t, time.Second, BucketInterval([]time.Duration{100 * time.Millisecond}))
+	assert.Equal(t, 6*time.Minute, BucketInterval([]time.Duration{time.Hour, 24 * time.Hour}))
 }
 
 func TestRollingProbeTracker_Record(t *testing.T) {
