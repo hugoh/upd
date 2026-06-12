@@ -77,6 +77,18 @@ func TestNewDNSProbe_Error(t *testing.T) {
 	}
 }
 
+func TestDnsProbe_Target(t *testing.T) {
+	probe, err := NewDNSProbe("1.1.1.1", "example.com")
+	require.NoError(t, err)
+	assert.Equal(t, "1.1.1.1:53", probe.Target())
+}
+
+func TestDnsProbe_WithPort_Target(t *testing.T) {
+	probe, err := NewDNSProbe("8.8.8.8:5353", "example.com")
+	require.NoError(t, err)
+	assert.Equal(t, "8.8.8.8:5353", probe.Target())
+}
+
 func TestDnsProbe(t *testing.T) {
 	t.Run("returns the first resolved IP address if the request is successful", func(t *testing.T) {
 		resolver := &fakeResolver{result: []string{"1.2.3.4"}}

@@ -54,6 +54,11 @@ func (*HTTPProbe) Scheme() string {
 	return HTTP
 }
 
+// Target returns the URL being probed.
+func (p *HTTPProbe) Target() string {
+	return p.URL
+}
+
 // Execute runs the HTTP request and returns a report.
 func (p *HTTPProbe) Execute(ctx context.Context, timeout time.Duration) *Report {
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, timeout)

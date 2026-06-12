@@ -28,6 +28,11 @@ func (TCPProbe) Scheme() string {
 	return TCP
 }
 
+// Target returns the host:port being probed.
+func (p TCPProbe) Target() string {
+	return p.HostPort
+}
+
 // Execute runs the TCP connection attempt and returns a report.
 func (p TCPProbe) Execute(ctx context.Context, timeout time.Duration) *Report {
 	start := time.Now()

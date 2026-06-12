@@ -11,6 +11,7 @@ import (
 func TestLogAttrs_Response(t *testing.T) {
 	report := &Report{
 		protocol: HTTP,
+		target:   "http://example.com",
 		response: "OK",
 		elapsed:  123 * time.Millisecond,
 	}
@@ -18,19 +19,22 @@ func TestLogAttrs_Response(t *testing.T) {
 
 	assert.Equal(t, "report", attr.Key)
 	group := attr.Value.Group()
-	assert.Len(t, group, 3)
+	assert.Len(t, group, 4)
 	assert.Equal(t, "protocol", group[0].Key)
 	assert.Equal(t, "http", group[0].Value.String())
-	assert.Equal(t, "elapsed", group[1].Key)
-	assert.Equal(t, 123*time.Millisecond, group[1].Value.Duration())
-	assert.Equal(t, "response", group[2].Key)
-	assert.Equal(t, "OK", group[2].Value.String())
+	assert.Equal(t, "target", group[1].Key)
+	assert.Equal(t, "http://example.com", group[1].Value.String())
+	assert.Equal(t, "elapsed", group[2].Key)
+	assert.Equal(t, 123*time.Millisecond, group[2].Value.Duration())
+	assert.Equal(t, "response", group[3].Key)
+	assert.Equal(t, "OK", group[3].Value.String())
 }
 
 func TestLogAttrs_Error(t *testing.T) {
 	err := errors.New("network error")
 	report := &Report{
 		protocol: "tcp",
+		target:   "127.0.0.1:80",
 		elapsed:  456 * time.Millisecond,
 		error:    err,
 	}
@@ -38,29 +42,34 @@ func TestLogAttrs_Error(t *testing.T) {
 
 	assert.Equal(t, "report", attr.Key)
 	group := attr.Value.Group()
-	assert.Len(t, group, 3)
+	assert.Len(t, group, 4)
 	assert.Equal(t, "protocol", group[0].Key)
 	assert.Equal(t, "tcp", group[0].Value.String())
-	assert.Equal(t, "elapsed", group[1].Key)
-	assert.Equal(t, 456*time.Millisecond, group[1].Value.Duration())
-	assert.Equal(t, "error", group[2].Key)
-	assert.Equal(t, err, group[2].Value.Any())
+	assert.Equal(t, "target", group[1].Key)
+	assert.Equal(t, "127.0.0.1:80", group[1].Value.String())
+	assert.Equal(t, "elapsed", group[2].Key)
+	assert.Equal(t, 456*time.Millisecond, group[2].Value.Duration())
+	assert.Equal(t, "error", group[3].Key)
+	assert.Equal(t, err, group[3].Value.Any())
 }
 
 func TestLogAttrs_Empty(t *testing.T) {
 	report := &Report{
 		protocol: "udp",
+		target:   "192.168.1.1:53",
 		elapsed:  789 * time.Millisecond,
 	}
 	attr := report.LogAttrs()
 
 	assert.Equal(t, "report", attr.Key)
 	group := attr.Value.Group()
-	assert.Len(t, group, 2)
+	assert.Len(t, group, 3)
 	assert.Equal(t, "protocol", group[0].Key)
 	assert.Equal(t, "udp", group[0].Value.String())
-	assert.Equal(t, "elapsed", group[1].Key)
-	assert.Equal(t, 789*time.Millisecond, group[1].Value.Duration())
+	assert.Equal(t, "target", group[1].Key)
+	assert.Equal(t, "192.168.1.1:53", group[1].Value.String())
+	assert.Equal(t, "elapsed", group[2].Key)
+	assert.Equal(t, 789*time.Millisecond, group[2].Value.Duration())
 }
 
 func TestProtocol(t *testing.T) {
@@ -142,6 +151,21 @@ func TestError(t *testing.T) {
 			assert.Equal(t, tt.wantErr, report.error != nil)
 		})
 	}
+}
+
+type targetProbe struct {
+	Probe
+
+	target string
+}
+
+func (p *targetProbe) Target() string { return p.target }
+func (*targetProbe) Scheme() string   { return "chk" }
+
+func TestBuildReport_Target(t *testing.T) {
+	probe := &targetProbe{target: "example.com:443"}
+	report := BuildReport(probe, time.Now())
+	assert.Equal(t, "example.com:443", report.target)
 }
 
 func TestIsError(t *testing.T) {

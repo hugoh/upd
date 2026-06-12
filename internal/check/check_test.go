@@ -18,6 +18,7 @@ func (f *fakeProbe) Execute(_ context.Context, _ time.Duration) *Report {
 	return f.ret
 }
 func (*fakeProbe) Scheme() string { return "fake" }
+func (*fakeProbe) Target() string { return "fake" }
 
 type fakeListIterator struct {
 	checks []*Check

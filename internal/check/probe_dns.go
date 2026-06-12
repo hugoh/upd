@@ -58,6 +58,11 @@ func (DNSProbe) Scheme() string {
 	return DNS
 }
 
+// Target returns the DNS resolver address being probed.
+func (p DNSProbe) Target() string {
+	return p.DNSResolver
+}
+
 // Execute runs the DNS resolution and returns a report.
 func (p DNSProbe) Execute(ctx context.Context, timeout time.Duration) *Report {
 	resolver := p.resolver

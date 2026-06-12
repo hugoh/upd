@@ -120,7 +120,7 @@ func TestHTTPProbe_RoundTrip(t *testing.T) {
 			gotUA = req.Header.Get("User-Agent")
 		},
 	}
-	trans := &updTransport{version: "test", delegate: ft}
+	trans := &updTransport{version: "ver", delegate: ft}
 	req := httptest.NewRequest(http.MethodGet, testURL+"/rt", http.NoBody)
 	resp, err := trans.RoundTrip(req)
 	require.NoError(t, err)
@@ -128,12 +128,12 @@ func TestHTTPProbe_RoundTrip(t *testing.T) {
 
 	_ = resp.Body.Close()
 
-	assert.Equal(t, "upd/test", gotUA)
+	assert.Equal(t, "upd/ver", gotUA)
 }
 
 func TestHTTPProbe_RoundTrip_NetworkFailure(t *testing.T) {
 	trans := &updTransport{
-		version:  "test",
+		version:  "e2e",
 		delegate: &fakeRoundTripper{err: errors.New("connection refused")},
 	}
 	req := httptest.NewRequest(http.MethodGet, testURL+"/test", http.NoBody)
@@ -152,6 +152,11 @@ func TestHTTPProbe_ProbeWithTimeout(t *testing.T) {
 	report := httpProbe.Execute(t.Context(), time.Second)
 	require.Error(t, report.error)
 	assert.Contains(t, report.error.Error(), "error building request")
+}
+
+func TestHTTPProbe_Target(t *testing.T) {
+	probe := NewHTTPProbe("http://example.com/path")
+	assert.Equal(t, "http://example.com/path", probe.Target())
 }
 
 func TestHTTPProbe_Scheme(t *testing.T) {
