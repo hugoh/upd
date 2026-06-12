@@ -1,160 +1,203 @@
 package status
 
 import (
-	"slices"
+	"cmp"
 	"sync"
 	"time"
 )
 
 // probeBucket counts probe results within one bucket interval. Bucket start
-// times are not stored: they are derived from RollingProbeTracker.lastTime
-// and the bucket's distance from the newest bucket, keeping the ring buffer
-// at 8 bytes per bucket.
+// times are not stored: they are derived from the ring's lastTime and the
+// bucket's distance from the newest bucket, keeping rings at 8 bytes per
+// bucket.
 type probeBucket struct {
 	total  uint32
 	failed uint32
 }
 
-// MaxBucketCount caps the ring buffer size regardless of configuration
-// (~800 KiB at 8 bytes per bucket). When a configuration would exceed it,
-// the bucket interval is enlarged instead.
-const MaxBucketCount = 100_000
+const (
+	// DefaultBucketsMin is the default minimum number of buckets each report
+	// period is split into.
+	DefaultBucketsMin = 100
+	// DefaultBucketMaxSpan is the default maximum time span a single bucket
+	// aggregates.
+	DefaultBucketMaxSpan = 30 * time.Minute
+	// MinBucketInterval is the smallest bucket interval.
+	MinBucketInterval = time.Second
+	// MaxBucketsPerPeriod bounds the ring size for a single report period
+	// (~800 KiB at 8 bytes per bucket).
+	MaxBucketsPerPeriod = 100_000
+)
 
-// RollingProbeTracker tracks probe success/failure rates within a rolling time
-// window using time-bucketed counters in a ring buffer. Thread-safe.
+// BucketConfig tunes probe-stat bucket granularity. Zero values mean
+// defaults.
+type BucketConfig struct {
+	// Min is the minimum number of buckets a report period is split into.
+	Min int
+	// MaxSpan is the maximum time span a single bucket aggregates.
+	MaxSpan time.Duration
+}
+
+// Interval returns the bucket interval for the given report period:
+// period/Min, capped at MaxSpan and floored at MinBucketInterval.
+func (c BucketConfig) Interval(period time.Duration) time.Duration {
+	minBuckets := cmp.Or(c.Min, DefaultBucketsMin)
+	maxSpan := cmp.Or(c.MaxSpan, DefaultBucketMaxSpan)
+
+	interval := min(period/time.Duration(minBuckets), maxSpan)
+
+	return max(interval, MinBucketInterval)
+}
+
+// BucketCount returns the ring size needed to cover the given report period.
+func (c BucketConfig) BucketCount(period time.Duration) int {
+	return max(int(period/c.Interval(period))+1, 1)
+}
+
+// probeRing is a fixed-size ring of time-bucketed counters covering one
+// report period.
+type probeRing struct {
+	period   time.Duration
+	interval time.Duration
+	buckets  []probeBucket
+	head     int
+	count    int
+	lastTime time.Time // start time of the newest bucket
+}
+
+// RollingProbeTracker tracks probe success/failure rates per report period.
+// Each period gets its own ring of bucketed counters, so bucket granularity
+// is proportional to the period it serves instead of one global resolution
+// paying for the longest retention. Thread-safe.
 type RollingProbeTracker struct {
-	mu             sync.Mutex
-	bucketInterval time.Duration
-	maxBuckets     int
-	buckets        []probeBucket
-	head           int
-	count          int
-	lastTime       time.Time // start time of the newest bucket
+	mu    sync.Mutex
+	rings []*probeRing
 }
 
-// NewRollingProbeTracker creates a tracker that retains data for the given
-// duration using buckets of the given interval, enlarged if needed to keep
-// the bucket count under MaxBucketCount.
-func NewRollingProbeTracker(retention, bucketInterval time.Duration) *RollingProbeTracker {
-	if minInterval := retention / (MaxBucketCount - 1); bucketInterval < minInterval {
-		bucketInterval = minInterval
+// NewRollingProbeTracker creates a tracker with one ring per report period.
+func NewRollingProbeTracker(periods []time.Duration, cfg BucketConfig) *RollingProbeTracker {
+	rings := make([]*probeRing, 0, len(periods))
+
+	for _, period := range periods {
+		rings = append(rings, &probeRing{
+			period:   period,
+			interval: cfg.Interval(period),
+			buckets:  make([]probeBucket, cfg.BucketCount(period)),
+		})
 	}
 
-	maxBuckets := min(max(int(retention/bucketInterval)+1, 1), MaxBucketCount)
-
-	return &RollingProbeTracker{
-		bucketInterval: bucketInterval,
-		maxBuckets:     maxBuckets,
-		buckets:        make([]probeBucket, maxBuckets),
-	}
-}
-
-// BucketIntervalDivisor controls bucket granularity relative to the shortest
-// report period; the rolling-window error is bounded to ~1/Divisor of it.
-const BucketIntervalDivisor = 10
-
-// BucketInterval returns the probe bucket interval to use for the given
-// report periods. Defaults to 1 minute when no periods are given.
-func BucketInterval(periods []time.Duration) time.Duration {
-	if len(periods) == 0 {
-		return time.Minute
-	}
-
-	return max(slices.Min(periods)/BucketIntervalDivisor, time.Second)
+	return &RollingProbeTracker{rings: rings}
 }
 
 // Record records a probe result.
 func (t *RollingProbeTracker) Record(failed bool) {
+	now := time.Now()
+
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.recordAt(time.Now())
+	for _, ring := range t.rings {
+		ring.recordAt(now)
 
-	if failed {
-		t.buckets[t.newestIdx()].failed++
+		if failed {
+			ring.buckets[ring.newestIdx()].failed++
+		}
 	}
 }
 
-// Stats returns (total, failed) probe results within the given duration
-// before now.
-func (t *RollingProbeTracker) Stats(since time.Duration, now time.Time) (int, int) {
+// Stats returns (total, failed) probe results within the given report period
+// before now. The period must be one of the configured report periods;
+// unknown periods report no data.
+func (t *RollingProbeTracker) Stats(period time.Duration, now time.Time) (int, int) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if t.count == 0 {
-		return 0, 0
+	for _, ring := range t.rings {
+		if ring.period == period {
+			return ring.statsSince(now.Add(-period))
+		}
 	}
 
-	cutoff := now.Add(-since)
-	oldest := t.lastTime.Add(-time.Duration(t.count-1) * t.bucketInterval)
-
-	skip := 0
-	if diff := cutoff.Sub(oldest); diff > 0 {
-		// Ceil: a bucket is included only if it starts at or after the cutoff.
-		skip = min(int((diff+t.bucketInterval-1)/t.bucketInterval), t.count)
-	}
-
-	var total, failed int
-
-	for i := skip; i < t.count; i++ {
-		bucket := t.buckets[(t.head+i)%t.maxBuckets]
-		total += int(bucket.total)
-		failed += int(bucket.failed)
-	}
-
-	return total, failed
+	return 0, 0
 }
 
 // newestIdx returns the ring index of the newest bucket. Must be called with
-// the lock held and count > 0.
-func (t *RollingProbeTracker) newestIdx() int {
-	return (t.head + t.count - 1) % t.maxBuckets
+// the tracker lock held and count > 0.
+func (r *probeRing) newestIdx() int {
+	return (r.head + r.count - 1) % len(r.buckets)
 }
 
-// recordAt counts a probe at the given time. Must be called with the lock
-// held.
-func (t *RollingProbeTracker) recordAt(now time.Time) {
-	bucketTime := now.Truncate(t.bucketInterval)
+// recordAt counts a probe at the given time. Must be called with the tracker
+// lock held.
+func (r *probeRing) recordAt(now time.Time) {
+	bucketTime := now.Truncate(r.interval)
 
 	switch {
-	case t.count == 0:
-		t.head = 0
-		t.count = 1
-		t.lastTime = bucketTime
-		t.buckets[0] = probeBucket{}
-	case bucketTime.After(t.lastTime):
-		t.advanceTo(bucketTime)
+	case r.count == 0:
+		r.head = 0
+		r.count = 1
+		r.lastTime = bucketTime
+		r.buckets[0] = probeBucket{}
+	case bucketTime.After(r.lastTime):
+		r.advanceTo(bucketTime)
 	default:
 		// Same bucket as the last record, or earlier (clock drift, which
 		// should never happen): count into the newest bucket.
 	}
 
-	t.buckets[t.newestIdx()].total++
+	r.buckets[r.newestIdx()].total++
 }
 
 // advanceTo appends empty buckets up to bucketTime, evicting the oldest ones
-// once the ring is full. Must be called with the lock held, count > 0, and
-// bucketTime after lastTime.
-func (t *RollingProbeTracker) advanceTo(bucketTime time.Time) {
-	steps := int(bucketTime.Sub(t.lastTime) / t.bucketInterval)
-	t.lastTime = bucketTime
+// once the ring is full. Must be called with the tracker lock held,
+// count > 0, and bucketTime after lastTime.
+func (r *probeRing) advanceTo(bucketTime time.Time) {
+	maxBuckets := len(r.buckets)
+	steps := int(bucketTime.Sub(r.lastTime) / r.interval)
+	r.lastTime = bucketTime
 
-	if steps >= t.maxBuckets {
-		// The gap spans the whole window: drop everything.
-		t.head = 0
-		t.count = 1
-		t.buckets[0] = probeBucket{}
+	if steps >= maxBuckets {
+		// The gap spans the whole ring: drop everything.
+		r.head = 0
+		r.count = 1
+		r.buckets[0] = probeBucket{}
 
 		return
 	}
 
 	for range steps {
-		if t.count == t.maxBuckets {
-			t.buckets[t.head] = probeBucket{}
-			t.head = (t.head + 1) % t.maxBuckets
+		if r.count == maxBuckets {
+			r.buckets[r.head] = probeBucket{}
+			r.head = (r.head + 1) % maxBuckets
 		} else {
-			t.buckets[(t.head+t.count)%t.maxBuckets] = probeBucket{}
-			t.count++
+			r.buckets[(r.head+r.count)%maxBuckets] = probeBucket{}
+			r.count++
 		}
 	}
+}
+
+// statsSince sums the buckets that start at or after cutoff. Must be called
+// with the tracker lock held.
+func (r *probeRing) statsSince(cutoff time.Time) (int, int) {
+	if r.count == 0 {
+		return 0, 0
+	}
+
+	oldest := r.lastTime.Add(-time.Duration(r.count-1) * r.interval)
+
+	skip := 0
+	if diff := cutoff.Sub(oldest); diff > 0 {
+		// Ceil: a bucket is included only if it starts at or after the cutoff.
+		skip = min(int((diff+r.interval-1)/r.interval), r.count)
+	}
+
+	var total, failed int
+
+	for i := skip; i < r.count; i++ {
+		bucket := r.buckets[(r.head+i)%len(r.buckets)]
+		total += int(bucket.total)
+		failed += int(bucket.failed)
+	}
+
+	return total, failed
 }

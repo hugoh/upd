@@ -5,13 +5,14 @@ import (
 	"time"
 
 	"github.com/hugoh/upd/internal/check"
+	"github.com/hugoh/upd/internal/status"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func emptyNewLoop() *Loop {
 	l := NewLoop()
-	l.Configure(nil, Delays{}, nil)
+	l.Configure(nil, Delays{}, nil, status.BucketConfig{})
 
 	return l
 }
@@ -19,13 +20,13 @@ func emptyNewLoop() *Loop {
 func TestConfigure_TrackerCreatedOnlyWithReports(t *testing.T) {
 	t.Run("no periods", func(t *testing.T) {
 		loop := NewLoop()
-		loop.Configure(nil, Delays{}, nil)
+		loop.Configure(nil, Delays{}, nil, status.BucketConfig{})
 		assert.Nil(t, loop.rollingTracker, "no tracker without reports")
 	})
 
 	t.Run("with periods", func(t *testing.T) {
 		loop := NewLoop()
-		loop.Configure(nil, Delays{}, nil, time.Minute, 5*time.Minute)
+		loop.Configure(nil, Delays{}, nil, status.BucketConfig{}, time.Minute, 5*time.Minute)
 		assert.NotNil(t, loop.rollingTracker, "tracker created when reports given")
 	})
 }
@@ -94,7 +95,7 @@ func Test_ProcessCheck_StatusChanged_DownStatus_StartsDownAction(t *testing.T) {
 
 func Test_ProcessCheck_PopulatesLoopStatus(t *testing.T) {
 	loop := NewLoop()
-	loop.Configure(nil, Delays{Up: time.Minute, Down: 30 * time.Second}, nil)
+	loop.Configure(nil, Delays{Up: time.Minute, Down: 30 * time.Second}, nil, status.BucketConfig{})
 
 	ctx := t.Context()
 
@@ -114,7 +115,7 @@ func Test_ProcessCheck_PopulatesLoopStatus(t *testing.T) {
 func Test_ProcessCheck_PopulatesDownActionStatus(t *testing.T) {
 	loop := NewLoop()
 	da := getTestDA()
-	loop.Configure(nil, Delays{Up: time.Minute, Down: 30 * time.Second}, da)
+	loop.Configure(nil, Delays{Up: time.Minute, Down: 30 * time.Second}, da, status.BucketConfig{})
 
 	ctx := t.Context()
 

@@ -244,3 +244,74 @@ ordered = ["http://example.com/"]`)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "missing required attributes")
 }
+
+func TestValidate_bucketsValid(t *testing.T) {
+	config := validConfigBase() + `
+
+[stats]
+reports = ["1m", "168h"]
+
+[stats.buckets]
+min = 50
+maxSpan = "30m"`
+
+	path := writeTestConfig(t, config)
+
+	_, err := ReadConf(path)
+	require.NoError(t, err)
+}
+
+func TestValidate_bucketsMinNegative(t *testing.T) {
+	config := validConfigBase() + `
+
+[stats.buckets]
+min = -1`
+
+	path := writeTestConfig(t, config)
+
+	_, err := ReadConf(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "buckets.min")
+}
+
+func TestValidate_bucketsMaxSpanNegative(t *testing.T) {
+	config := validConfigBase() + `
+
+[stats.buckets]
+maxSpan = "-5s"`
+
+	path := writeTestConfig(t, config)
+
+	_, err := ReadConf(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "buckets.maxSpan")
+}
+
+func TestValidate_reportTooManyBuckets(t *testing.T) {
+	config := validConfigBase() + `
+
+[stats]
+reports = ["168h"]
+
+[stats.buckets]
+maxSpan = "1s"`
+
+	path := writeTestConfig(t, config)
+
+	_, err := ReadConf(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "too many buckets")
+}
+
+func TestValidate_reportNotPositive(t *testing.T) {
+	config := validConfigBase() + `
+
+[stats]
+reports = ["1m", "0s"]`
+
+	path := writeTestConfig(t, config)
+
+	_, err := ReadConf(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reports")
+}

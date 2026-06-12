@@ -80,6 +80,13 @@ repeat = "3s"
 port = 8080
 retention = "10080m"
 reports = ["10s", "15m", "60m", "1440m", "10080m"]
+
+# Optional: probe-stat bucket granularity per report period.
+# Each report period is split into at least `min` buckets (default 100),
+# and a single bucket never aggregates more than `maxSpan` (default 30m).
+[stats.buckets]
+min = 100
+maxSpan = "30m"
 ```
 
 ## Status

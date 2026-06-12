@@ -105,13 +105,20 @@ type DownActionConfig struct {
 	StopExec string                `toml:"stopExec"`
 }
 
+// StatsBucketsConfig tunes probe-stat bucket granularity for report periods.
+type StatsBucketsConfig struct {
+	Min     int      `toml:"min"`
+	MaxSpan Duration `toml:"maxSpan"`
+}
+
 // StatsConfig holds the statistics server settings.
 type StatsConfig struct {
-	Port         int        `toml:"port"`
-	Reports      []Duration `toml:"reports"`
-	ReadTimeout  Duration   `toml:"readTimeout"`
-	WriteTimeout Duration   `toml:"writeTimeout"`
-	IdleTimeout  Duration   `toml:"idleTimeout"`
+	Port         int                `toml:"port"`
+	Reports      []Duration         `toml:"reports"`
+	Buckets      StatsBucketsConfig `toml:"buckets"`
+	ReadTimeout  Duration           `toml:"readTimeout"`
+	WriteTimeout Duration           `toml:"writeTimeout"`
+	IdleTimeout  Duration           `toml:"idleTimeout"`
 }
 
 // Configuration holds all application settings.
@@ -289,9 +296,18 @@ func (c Configuration) GetStatServerConfig() *status.StatServerConfig {
 	return &status.StatServerConfig{
 		Port:         c.Stats.Port,
 		Reports:      reports,
+		Buckets:      c.Stats.GetBucketConfig(),
 		ReadTimeout:  c.Stats.ReadTimeout.StdDuration(),
 		WriteTimeout: c.Stats.WriteTimeout.StdDuration(),
 		IdleTimeout:  c.Stats.IdleTimeout.StdDuration(),
+	}
+}
+
+// GetBucketConfig creates a runtime probe-stat bucket config.
+func (s StatsConfig) GetBucketConfig() status.BucketConfig {
+	return status.BucketConfig{
+		Min:     s.Buckets.Min,
+		MaxSpan: s.Buckets.MaxSpan.StdDuration(),
 	}
 }
 

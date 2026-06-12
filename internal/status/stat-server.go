@@ -28,6 +28,7 @@ const (
 type StatServerConfig struct {
 	Port         int
 	Reports      []time.Duration
+	Buckets      BucketConfig
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	IdleTimeout  time.Duration

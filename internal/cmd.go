@@ -48,10 +48,13 @@ func SetupLoop(loop *logic.Loop, configPath string) (*config.Configuration, erro
 		return nil, fmt.Errorf("invalid checks in configuration: %w", checkErr)
 	}
 
+	statCfg := newConf.GetStatServerConfig()
+
 	loop.Configure(checklist,
 		newConf.GetDelays(),
 		newConf.GetDownAction(),
-		newConf.GetStatServerConfig().Reports...)
+		statCfg.Buckets,
+		statCfg.Reports...)
 
 	return newConf, nil
 }
