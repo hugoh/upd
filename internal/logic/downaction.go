@@ -28,16 +28,17 @@ type DownAction struct {
 
 // DownActionLoop manages execution of down action commands.
 type DownActionLoop struct {
-	da         *DownAction
-	cancelFunc context.CancelFunc
-	//nolint:containedctx // loopCtx stored to bind StopExec commands on loop exit
-	loopCtx      context.Context
-	iteration    atomic.Uint64
-	sleepTime    time.Duration
-	limitReached bool
+	da           *DownAction
+	cancelFunc   context.CancelFunc
+	iteration    atomic.Uint32
+	sleepTime    atomic.Int64
+	limitReached atomic.Bool
 	currentCmd   *exec.Cmd
 	cmdMu        sync.Mutex
 }
+
+// StopExecTimeout bounds how long the stop command may run.
+const StopExecTimeout = 30 * time.Second
 
 // BackoffFactor is the multiplier for exponential backoff.
 // Each iteration beyond the second will increase the delay by this factor.
@@ -65,49 +66,16 @@ func validateCommand(command []string) error {
 
 // Execute runs the specified command string with the iteration context.
 func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error {
-	if execString == "" {
-		return ErrNoCommand
-	}
-
-	command, errSh := shlex.Split(execString)
-	if errSh != nil {
-		return fmt.Errorf("failed to parse DownAction definition: %w", errSh)
-	}
-
-	err := validateCommand(command)
+	cmd, stderrBuf, err := dal.startCommand(ctx, execString)
 	if err != nil {
-		return fmt.Errorf("invalid command: %w", err)
-	}
-
-	iteration := dal.iteration.Load()
-
-	// #nosec G204 // Command is validated by shlex.Split() and validateCommand() before execution
-	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
-
-	var stderrBuf bytes.Buffer
-
-	cmd.Stderr = &stderrBuf
-
-	cmdEnv := os.Environ()
-	cmdEnv = append(cmdEnv, fmt.Sprintf("UPD_ITERATION=%d", iteration))
-	cmd.Env = cmdEnv
-	logger.DownAction().Info("executing command",
-		"exec", cmd.String(),
-		"iteration", iteration,
-	)
-
-	if err = cmd.Start(); err != nil {
-		logger.DownAction().Error("failed to run",
-			"exec", cmd.String(), "error", err)
-
-		return fmt.Errorf("failed to execute DownAction: %w", err)
+		return err
 	}
 
 	dal.cmdMu.Lock()
 	dal.currentCmd = cmd
 	dal.cmdMu.Unlock()
 
-	go dal.waitForCmd(cmd, &stderrBuf)
+	go dal.waitForCmd(cmd, stderrBuf)
 
 	return nil
 }
@@ -118,9 +86,8 @@ func (da *DownAction) NewDownActionLoop(ctx context.Context) (*DownActionLoop, c
 	dal := &DownActionLoop{
 		da:         da,
 		cancelFunc: cancelFunc,
-		loopCtx:    ctx,
-		sleepTime:  da.After,
 	}
+	dal.sleepTime.Store(int64(da.After))
 
 	return dal, ctx
 }
@@ -136,30 +103,87 @@ func (da *DownAction) Start(ctx context.Context) *DownActionLoop {
 	return dal
 }
 
-// Stop cancels the down action loop and executes the stop command.
-// The stop command is bound to loopCtx so cancelFunc kills it on loop exit.
+// Stop cancels the down action loop, kills any running command, and runs the
+// stop command to completion. The stop command gets its own timeout-bounded
+// context so loop cancellation cannot kill it.
 func (dal *DownActionLoop) Stop(_ context.Context) {
+	logger.DownAction().Debug("sending shutdown signal")
+	dal.cancelFunc()
 	dal.killCurrentCmd()
 
 	if dal.da.StopExec != "" {
-		//nolint:contextcheck // loopCtx derived from the same hierarchy as ctx
-		err := dal.Execute(dal.loopCtx, dal.da.StopExec)
-		if err != nil && !errors.Is(err, ErrNoCommand) {
-			logger.DownAction().Warn("failed to execute stop command", "error", err)
-		}
+		//nolint:contextcheck // intentionally detached: must survive loop cancellation
+		dal.runStopExec()
 	}
-
-	logger.DownAction().Debug("sending shutdown signal")
-	dal.cancelFunc()
 }
 
 // Status returns a snapshot of the current down action loop state.
 func (dal *DownActionLoop) Status() status.DownActionStatus {
 	return status.DownActionStatus{
 		Iteration:     dal.iteration.Load(),
-		SleepTime:     status.ReadableDuration(dal.sleepTime),
-		BackoffCapped: dal.limitReached,
+		SleepTime:     status.ReadableDuration(time.Duration(dal.sleepTime.Load())),
+		BackoffCapped: dal.limitReached.Load(),
 	}
+}
+
+// startCommand parses, validates, and starts the given command string.
+func (dal *DownActionLoop) startCommand(
+	ctx context.Context,
+	execString string,
+) (*exec.Cmd, *bytes.Buffer, error) {
+	if execString == "" {
+		return nil, nil, ErrNoCommand
+	}
+
+	command, errSh := shlex.Split(execString)
+	if errSh != nil {
+		return nil, nil, fmt.Errorf("failed to parse DownAction definition: %w", errSh)
+	}
+
+	err := validateCommand(command)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid command: %w", err)
+	}
+
+	iteration := dal.iteration.Load()
+
+	// #nosec G204 // Command is validated by shlex.Split() and validateCommand() before execution
+	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
+
+	var stderrBuf bytes.Buffer
+
+	cmd.Stderr = &stderrBuf
+
+	cmd.Env = append(os.Environ(), fmt.Sprintf("UPD_ITERATION=%d", iteration))
+	logger.DownAction().Info("executing command",
+		"exec", cmd.String(),
+		"iteration", iteration,
+	)
+
+	if err = cmd.Start(); err != nil {
+		logger.DownAction().Error("failed to run",
+			"exec", cmd.String(), "error", err)
+
+		return nil, nil, fmt.Errorf("failed to execute DownAction: %w", err)
+	}
+
+	return cmd, &stderrBuf, nil
+}
+
+// runStopExec runs the stop command to completion on a context detached from
+// the loop so cancellation cannot kill it, bounded by StopExecTimeout.
+func (dal *DownActionLoop) runStopExec() {
+	ctx, cancel := context.WithTimeout(context.Background(), StopExecTimeout)
+	defer cancel()
+
+	cmd, stderrBuf, err := dal.startCommand(ctx, dal.da.StopExec)
+	if err != nil {
+		logger.DownAction().Warn("failed to execute stop command", "error", err)
+
+		return
+	}
+
+	dal.waitForCmd(cmd, stderrBuf)
 }
 
 func (dal *DownActionLoop) waitForCmd(cmd *exec.Cmd, stderrBuf *bytes.Buffer) {
@@ -189,13 +213,12 @@ func (dal *DownActionLoop) killCurrentCmd() {
 		return
 	}
 
+	// currentCmd is only set after a successful Start, so Process is non-nil.
 	logger.DownAction().Warn("killing current command",
 		"pid", dal.currentCmd.Process.Pid)
 
-	if dal.currentCmd.Process != nil {
-		if err := dal.currentCmd.Process.Kill(); err != nil {
-			logger.DownAction().Warn("failed to kill current command", "error", err)
-		}
+	if err := dal.currentCmd.Process.Kill(); err != nil {
+		logger.DownAction().Warn("failed to kill current command", "error", err)
 	}
 
 	dal.currentCmd = nil
@@ -206,41 +229,40 @@ func (dal *DownActionLoop) nextSleep() time.Duration {
 
 	switch dal.iteration.Load() {
 	case 1:
-		dal.sleepTime = dal.da.Every
+		dal.sleepTime.Store(int64(dal.da.Every))
 	default:
-		if !dal.limitReached {
-			next := time.Duration(BackoffFactor * float64(dal.sleepTime))
+		if !dal.limitReached.Load() {
+			next := time.Duration(BackoffFactor * float64(dal.sleepTime.Load()))
 			if dal.da.BackoffLimit != 0 && next >= dal.da.BackoffLimit {
 				next = dal.da.BackoffLimit
-				dal.limitReached = true
+				dal.limitReached.Store(true)
 			}
 
-			dal.sleepTime = next
+			dal.sleepTime.Store(int64(next))
 		}
 	}
 
+	sleepTime := time.Duration(dal.sleepTime.Load())
 	logger.DownAction().Debug("iteration details",
 		"iteration", dal.iteration.Load(),
-		"sleepTime", dal.sleepTime,
-		"limitReached", dal.limitReached)
+		"sleepTime", sleepTime,
+		"limitReached", dal.limitReached.Load())
 
-	return dal.sleepTime
+	return sleepTime
 }
 
 func (dal *DownActionLoop) run(ctx context.Context) {
 	logger.DownAction().Debug("down action loop started")
 
 	for {
-		logger.DownAction().Debug("sleeping", "duration", dal.sleepTime)
-		timer := time.NewTimer(dal.sleepTime)
+		logger.DownAction().Debug("sleeping", "duration", time.Duration(dal.sleepTime.Load()))
 
 		select {
 		case <-ctx.Done():
-			timer.Stop()
 			logger.DownAction().Debug("canceled")
 
 			return
-		case <-timer.C:
+		case <-time.After(time.Duration(dal.sleepTime.Load())):
 		}
 
 		dal.killCurrentCmd()
@@ -258,7 +280,7 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 		}
 
 		if dal.da.Every > 0 {
-			dal.sleepTime = dal.nextSleep()
+			dal.nextSleep()
 		} else {
 			logger.DownAction().Debug("down action loop complete")
 

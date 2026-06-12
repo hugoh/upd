@@ -13,30 +13,34 @@
 //
 // Example configuration:
 //
-//	checks:
-//	 every:
-//	   normal: 2m
-//	   down: 30s
-//	 list:
-//	   ordered:
-//	     - http://captive.apple.com/hotspot-detect.html
-//	   shuffled:
-//	     - dns://8.8.8.8/example.com
-//	 timeout: 10s
-//	downAction:
-//	 exec: "echo 'Connection down'"
-//	 every:
-//	   after: 60s
-//	   repeat: 300s
-//	stats:
-//	 port: 8080
-//	logLevel: debug
+//	logLevel = "debug"
+//
+//	[checks]
+//	timeout = "10s"
+//
+//	[checks.every]
+//	normal = "2m"
+//	down = "30s"
+//
+//	[checks.list]
+//	ordered = ["http://captive.apple.com/hotspot-detect.html"]
+//	shuffled = ["dns://8.8.8.8/example.com"]
+//
+//	[downAction]
+//	exec = "echo 'Connection down'"
+//
+//	[downAction.every]
+//	after = "60s"
+//	repeat = "300s"
+//
+//	[stats]
+//	port = 8080
 //
 // Configuration values support environment variable substitution using
 // the ${VAR} syntax in TOML string values:
 //
-//	checks:
-//	 timeout: ${UPD_TIMEOUT} // Set UPD_TIMEOUT env var to override
+//	[checks]
+//	timeout = "${UPD_TIMEOUT}" # Set UPD_TIMEOUT env var to override
 //
 // Network Security:
 //
@@ -52,7 +56,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -69,37 +72,61 @@ const (
 	DefaultConfig = ".upd.toml"
 )
 
+// ChecksEveryConfig holds the check intervals for up and down states.
+type ChecksEveryConfig struct {
+	Normal Duration `toml:"normal"`
+	Down   Duration `toml:"down"`
+}
+
+// ChecksListConfig holds the ordered and shuffled check URI lists.
+type ChecksListConfig struct {
+	Ordered  []string `toml:"ordered"`
+	Shuffled []string `toml:"shuffled"`
+}
+
+// ChecksConfig holds the connectivity check settings.
+type ChecksConfig struct {
+	Every   ChecksEveryConfig `toml:"every"`
+	List    ChecksListConfig  `toml:"list"`
+	TimeOut Duration          `toml:"timeout"`
+}
+
+// DownActionEveryConfig holds the down action scheduling settings.
+type DownActionEveryConfig struct {
+	After        Duration `toml:"after"`
+	Repeat       Duration `toml:"repeat"`
+	BackoffLimit Duration `toml:"expBackoffLimit"`
+}
+
+// DownActionConfig holds the down action settings.
+type DownActionConfig struct {
+	Exec     string                `toml:"exec"`
+	Every    DownActionEveryConfig `toml:"every"`
+	StopExec string                `toml:"stopExec"`
+}
+
+// StatsBucketsConfig tunes probe-stat bucket granularity for report periods.
+type StatsBucketsConfig struct {
+	Min     int      `toml:"min"`
+	MaxSpan Duration `toml:"maxSpan"`
+}
+
+// StatsConfig holds the statistics server settings.
+type StatsConfig struct {
+	Port         int                `toml:"port"`
+	Reports      []Duration         `toml:"reports"`
+	Buckets      StatsBucketsConfig `toml:"buckets"`
+	ReadTimeout  Duration           `toml:"readTimeout"`
+	WriteTimeout Duration           `toml:"writeTimeout"`
+	IdleTimeout  Duration           `toml:"idleTimeout"`
+}
+
 // Configuration holds all application settings.
 type Configuration struct {
-	Checks struct {
-		Every struct {
-			Normal Duration `toml:"normal"`
-			Down   Duration `toml:"down"`
-		} `toml:"every"`
-		List struct {
-			Ordered  []string `toml:"ordered"`
-			Shuffled []string `toml:"shuffled"`
-		} `toml:"list"`
-		TimeOut Duration `toml:"timeout"`
-	} `toml:"checks"`
-	DownAction struct {
-		Exec  string `toml:"exec"`
-		Every struct {
-			After        Duration `toml:"after"`
-			Repeat       Duration `toml:"repeat"`
-			BackoffLimit Duration `toml:"expBackoffLimit"`
-		} `toml:"every"`
-		StopExec string `toml:"stopExec"`
-	} `toml:"downAction"`
-	Stats struct {
-		Port         int        `toml:"port"`
-		Reports      []Duration `toml:"reports"`
-		Retention    Duration   `toml:"retention"`
-		ReadTimeout  Duration   `toml:"readTimeout"`
-		WriteTimeout Duration   `toml:"writeTimeout"`
-		IdleTimeout  Duration   `toml:"idleTimeout"`
-	} `toml:"stats"`
-	LogLevel string `toml:"logLevel"`
+	Checks     ChecksConfig     `toml:"checks"`
+	DownAction DownActionConfig `toml:"downAction"`
+	Stats      StatsConfig      `toml:"stats"`
+	LogLevel   string           `toml:"logLevel"`
 }
 
 func configError(msg string, path string, err error) (*Configuration, error) {
@@ -171,63 +198,60 @@ func expandEnvVars(content []byte) ([]byte, error) {
 	}), nil
 }
 
-// ErrNoChecks is returned when no valid checks are found in configuration.
-var ErrNoChecks = errors.New("no valid checks found in config")
+// ErrNoChecks is returned when no checks are found in configuration.
+var ErrNoChecks = errors.New("no checks found in config")
 
 // GetChecks builds a CheckList from the configuration.
+// Any invalid check fails the whole configuration.
 func (c Configuration) GetChecks() (*check.List, error) {
-	checkList := &check.List{
-		Ordered:  c.GetChecksCat(c.Checks.List.Ordered),
-		Shuffled: c.GetChecksCat(c.Checks.List.Shuffled),
+	ordered, err := c.GetChecksCat(c.Checks.List.Ordered)
+	if err != nil {
+		return nil, err
 	}
-	if len(checkList.Ordered) == 0 && len(checkList.Shuffled) == 0 {
+
+	shuffled, err := c.GetChecksCat(c.Checks.List.Shuffled)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ordered) == 0 && len(shuffled) == 0 {
 		return nil, ErrNoChecks
 	}
 
-	return checkList, nil
+	return &check.List{Ordered: ordered, Shuffled: shuffled}, nil
 }
 
 //nolint:ireturn // intentionally returns interface to abstract probe creation
-func probeFromURL(parsedURL *url.URL, checkStr string) check.Probe {
+func probeFromURL(parsedURL *url.URL) (check.Probe, error) {
 	switch parsedURL.Scheme {
 	case check.DNS:
 		probe, err := check.NewDNSProbe(parsedURL.Host, strings.TrimPrefix(parsedURL.Path, "/"))
 		if err != nil {
-			logger.Config().Error("invalid DNS check",
-				"check", checkStr, "error", err)
-
-			return nil
+			return nil, fmt.Errorf("invalid DNS check: %w", err)
 		}
 
-		return probe
+		return probe, nil
 	case check.HTTP, check.HTTPS:
-		return check.NewHTTPProbe(parsedURL.String())
+		return check.NewHTTPProbe(parsedURL.String()), nil
 	case check.TCP:
-		return check.NewTCPProbe(net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port()))
+		return check.NewTCPProbe(net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())), nil
 	default:
-		logger.Config().Error("unknown protocol in config",
-			"check", checkStr,
-			"protocol", parsedURL.Scheme)
-
-		return nil
+		return nil, fmt.Errorf("%w: %q", errUnsupportedScheme, parsedURL.Scheme)
 	}
 }
 
 // GetChecksCat creates checks from a list of check URIs.
-func (c Configuration) GetChecksCat(category []string) []*check.Check {
+func (c Configuration) GetChecksCat(category []string) ([]*check.Check, error) {
 	checks := make([]*check.Check, 0, len(category))
 	for _, checkStr := range category {
 		parsedURL, err := url.Parse(checkStr)
 		if err != nil {
-			logger.Config().Error("could not parse check in config",
-				"check", checkStr, "error", err)
-
-			continue
+			return nil, fmt.Errorf("could not parse check %q: %w", checkStr, err)
 		}
 
-		probe := probeFromURL(parsedURL, checkStr)
-		if probe == nil {
-			continue
+		probe, err := probeFromURL(parsedURL)
+		if err != nil {
+			return nil, fmt.Errorf("check %q: %w", checkStr, err)
 		}
 
 		checks = append(checks, &check.Check{
@@ -236,12 +260,12 @@ func (c Configuration) GetChecksCat(category []string) []*check.Check {
 		})
 	}
 
-	return checks
+	return checks, nil
 }
 
 // GetDownAction creates a DownAction from the configuration.
 func (c Configuration) GetDownAction() *logic.DownAction {
-	if reflect.ValueOf(c.DownAction).IsZero() {
+	if c.DownAction == (DownActionConfig{}) {
 		return nil
 	}
 
@@ -255,12 +279,11 @@ func (c Configuration) GetDownAction() *logic.DownAction {
 }
 
 // GetDelays returns the check intervals for up and down states.
-func (c Configuration) GetDelays() map[bool]time.Duration {
-	delays := make(map[bool]time.Duration)
-	delays[true] = c.Checks.Every.Normal.StdDuration()
-	delays[false] = c.Checks.Every.Down.StdDuration()
-
-	return delays
+func (c Configuration) GetDelays() logic.Delays {
+	return logic.Delays{
+		Up:   c.Checks.Every.Normal.StdDuration(),
+		Down: c.Checks.Every.Down.StdDuration(),
+	}
 }
 
 // GetStatServerConfig creates a runtime stats server config from the TOML-deserialized config.
@@ -273,10 +296,18 @@ func (c Configuration) GetStatServerConfig() *status.StatServerConfig {
 	return &status.StatServerConfig{
 		Port:         c.Stats.Port,
 		Reports:      reports,
-		Retention:    c.Stats.Retention.StdDuration(),
+		Buckets:      c.Stats.GetBucketConfig(),
 		ReadTimeout:  c.Stats.ReadTimeout.StdDuration(),
 		WriteTimeout: c.Stats.WriteTimeout.StdDuration(),
 		IdleTimeout:  c.Stats.IdleTimeout.StdDuration(),
+	}
+}
+
+// GetBucketConfig creates a runtime probe-stat bucket config.
+func (s StatsConfig) GetBucketConfig() status.BucketConfig {
+	return status.BucketConfig{
+		Min:     s.Buckets.Min,
+		MaxSpan: s.Buckets.MaxSpan.StdDuration(),
 	}
 }
 

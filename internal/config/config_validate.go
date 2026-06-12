@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"reflect"
 	"time"
+
+	"github.com/hugoh/upd/internal/check"
+	"github.com/hugoh/upd/internal/status"
 )
 
 var (
@@ -14,6 +16,8 @@ var (
 	errMustNotBeNegative      = errors.New("must not be negative")
 	errPortOutOfRange         = errors.New("must be between 1 and 65535")
 	errInvalidLogLevel        = errors.New("must be one of: debug, info, warn")
+	errUnsupportedScheme      = errors.New("unsupported scheme")
+	errTooManyBuckets         = errors.New("report period needs too many buckets")
 )
 
 func appendErr(errs []error, key string, err error) []error {
@@ -29,14 +33,8 @@ func (c Configuration) Validate() error {
 	var errs []error
 
 	errs = appendErr(errs, "checks", c.validateChecks())
-
-	if !reflect.ValueOf(c.DownAction).IsZero() {
-		errs = appendErr(errs, "downAction", c.validateDownAction())
-	}
-
-	if !reflect.ValueOf(c.Stats).IsZero() {
-		errs = appendErr(errs, "stats", c.validateStats())
-	}
+	errs = appendErr(errs, "downAction", c.validateDownAction())
+	errs = appendErr(errs, "stats", c.validateStats())
 
 	if c.LogLevel != "" {
 		errs = appendErr(errs, "logLevel", validateLogLevel(c.LogLevel))
@@ -79,9 +77,39 @@ func (c Configuration) validateStats() error {
 	var errs []error
 
 	errs = appendErr(errs, "port", validatePort(c.Stats.Port))
+	errs = appendErr(errs, "buckets.min", checkNonNegativeInt(c.Stats.Buckets.Min))
+	errs = appendErr(
+		errs,
+		"buckets.maxSpan",
+		checkNonNegative(c.Stats.Buckets.MaxSpan.StdDuration()),
+	)
+	errs = appendErr(errs, "reports", c.Stats.validateReports())
 	errs = appendErr(errs, "readTimeout", checkNonNegative(c.Stats.ReadTimeout.StdDuration()))
 	errs = appendErr(errs, "writeTimeout", checkNonNegative(c.Stats.WriteTimeout.StdDuration()))
 	errs = appendErr(errs, "idleTimeout", checkNonNegative(c.Stats.IdleTimeout.StdDuration()))
+
+	return errors.Join(errs...)
+}
+
+func (s StatsConfig) validateReports() error {
+	bucketCfg := s.GetBucketConfig()
+
+	var errs []error
+
+	for idx, report := range s.Reports {
+		period := report.StdDuration()
+		if period <= 0 {
+			errs = append(errs, fmt.Errorf("[%d]: %w", idx, errDurationMustBePositive))
+
+			continue
+		}
+
+		if n := bucketCfg.BucketCount(period); n > status.MaxBucketsPerPeriod {
+			errs = append(errs, fmt.Errorf(
+				"[%d]: %w (%d > %d): increase buckets.maxSpan",
+				idx, errTooManyBuckets, n, status.MaxBucketsPerPeriod))
+		}
+	}
 
 	return errors.Join(errs...)
 }
@@ -96,6 +124,14 @@ func validatePositiveDuration(d Duration) error {
 
 func checkNonNegative(d time.Duration) error {
 	if d < 0 {
+		return errMustNotBeNegative
+	}
+
+	return nil
+}
+
+func checkNonNegativeInt(n int) error {
+	if n < 0 {
 		return errMustNotBeNegative
 	}
 
@@ -120,15 +156,24 @@ func validateLogLevel(level string) error {
 }
 
 func validateURIs(uris []string) error {
-	if len(uris) == 0 {
-		return nil
-	}
-
 	var errs []error
 
-	for i, s := range uris {
-		if _, err := url.ParseRequestURI(s); err != nil {
-			errs = append(errs, fmt.Errorf("[%d]: %w", i, errInvalidURI))
+	for idx, uri := range uris {
+		// Same parser as GetChecksCat so validation matches what gets built.
+		parsed, err := url.Parse(uri)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("[%d]: %w", idx, errInvalidURI))
+
+			continue
+		}
+
+		switch parsed.Scheme {
+		case check.DNS, check.HTTP, check.HTTPS, check.TCP:
+		default:
+			errs = append(
+				errs,
+				fmt.Errorf("[%d]: %w: %q", idx, errUnsupportedScheme, parsed.Scheme),
+			)
 		}
 	}
 

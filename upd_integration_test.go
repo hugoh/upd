@@ -103,7 +103,6 @@ ordered = ["http://captive.apple.com/hotspot-detect.html"]
 [stats]
 port = %s
 reports = ["1m"]
-retention = "1h"
 `), port)
 	buildAndStartUpd(t, configContent)
 

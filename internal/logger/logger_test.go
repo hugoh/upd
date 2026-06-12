@@ -8,23 +8,28 @@ import (
 )
 
 func TestLogSetup_DebugFlagTrue(t *testing.T) {
-	originalLogger := L
-
-	defer func() { L = originalLogger }()
+	defer SetLevel(slog.LevelInfo)
 
 	LogSetup(true)
-	assert.NotNil(t, L)
+	assert.True(t, L.Enabled(t.Context(), slog.LevelDebug))
 }
 
 func TestLogSetup_DebugFlagFalse(t *testing.T) {
-	originalLogger := L
+	defer SetLevel(slog.LevelInfo)
 
-	defer func() { L = originalLogger }()
-
-	L = slog.New(slog.NewTextHandler(nil, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
-
+	SetLevel(slog.LevelInfo)
 	LogSetup(false)
-	assert.NotNil(t, L)
+	assert.False(t, L.Enabled(t.Context(), slog.LevelDebug))
+	assert.True(t, L.Enabled(t.Context(), slog.LevelInfo))
+}
+
+func TestSetLevel_AppliesToExistingLoggers(t *testing.T) {
+	defer SetLevel(slog.LevelInfo)
+
+	chk := Check()
+	assert.False(t, chk.Enabled(t.Context(), slog.LevelDebug))
+
+	SetLevel(slog.LevelDebug)
+	assert.True(t, chk.Enabled(t.Context(), slog.LevelDebug),
+		"level change should apply to loggers handed out earlier")
 }

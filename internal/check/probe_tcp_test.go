@@ -32,6 +32,11 @@ type stubTCPConn struct {
 
 func (c *stubTCPConn) LocalAddr() net.Addr { return c.localAddr }
 
+func TestTcpProbe_Target(t *testing.T) {
+	probe := NewTCPProbe("192.168.1.1:8080")
+	assert.Equal(t, "192.168.1.1:8080", probe.Target())
+}
+
 func TestTcpProbe_Success(t *testing.T) {
 	wantLocalAddr := &fakeTCPAddr{addr: "127.0.0.1:54321"}
 	_, clientEnd := net.Pipe()

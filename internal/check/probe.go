@@ -31,4 +31,6 @@ type Probe interface {
 	//
 	// Example: "http", "https", "tcp", "dns"
 	Scheme() string
+
+	Target() string
 }

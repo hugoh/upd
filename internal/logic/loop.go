@@ -8,9 +8,9 @@
 //   - Normal interval: Used when connection is up
 //   - Down interval: Used when connection is down (typically more frequent)
 //
-// The loop uses a Delays map with boolean keys:
-//   - true: Normal interval (connection up)
-//   - false: Down interval (connection down)
+// The loop uses a Delays struct:
+//   - Up: Normal interval (connection up)
+//   - Down: Down interval (connection down)
 //
 // Example - Creating and running a loop:
 //
@@ -24,10 +24,10 @@
 //		},
 //	}
 //	delays := logic.Delays{
-//		true:  2 * time.Minute,  // Check every 2 minutes when up
-//		false: 30 * time.Second,  // Check every 30 seconds when down
+//		Up:   2 * time.Minute,  // Check every 2 minutes when up
+//		Down: 30 * time.Second, // Check every 30 seconds when down
 //	}
-//	loop.Configure(checks, delays, nil, 24*time.Hour)
+//	loop.Configure(checks, delays, nil, status.BucketConfig{}, time.Minute, 5*time.Minute)
 //	go loop.Run(ctx, nil)
 //
 // Down Actions:
@@ -48,7 +48,7 @@
 //		Exec:         "/usr/local/bin/notify-down",
 //		StopExec:     "/usr/local/bin/notify-up",
 //	}
-//	loop.Configure(checks, delays, downAction, 24*time.Hour)
+//	loop.Configure(checks, delays, downAction, status.BucketConfig{}, time.Minute, 5*time.Minute)
 //
 // Configuration:
 //
@@ -56,7 +56,8 @@
 //   - checkList: List of probes to execute
 //   - delays: Check intervals for up/down states
 //   - downAction: Optional down action configuration
-//   - retention: How long to keep status history (for statistics)
+//   - buckets: Probe-stat bucket granularity tuning (zero value for defaults)
+//   - periods: Report periods for statistics (retention is derived from the max period)
 //
 // Context and Cancellation:
 //
@@ -87,8 +88,20 @@ import (
 	"github.com/hugoh/upd/internal/status"
 )
 
-// Delays maps connection state to check interval durations.
-type Delays map[bool]time.Duration
+// Delays holds the check interval durations for up and down states.
+type Delays struct {
+	Up   time.Duration
+	Down time.Duration
+}
+
+// ForStatus returns the check interval for the given connection state.
+func (d Delays) ForStatus(up bool) time.Duration {
+	if up {
+		return d.Up
+	}
+
+	return d.Down
+}
 
 // Loop manages periodic network connectivity checks.
 type Loop struct {
@@ -98,6 +111,7 @@ type Loop struct {
 	downActionLoop *DownActionLoop
 	statServer     *status.StatServer
 	status         *status.Status
+	rollingTracker *status.RollingProbeTracker
 	lastSuccess    time.Time
 	nextCheckAt    time.Time
 }
@@ -114,12 +128,29 @@ func (l *Loop) Configure(
 	checkList *check.List,
 	delays Delays,
 	downAction *DownAction,
-	retention time.Duration,
+	buckets status.BucketConfig,
+	periods ...time.Duration,
 ) {
 	l.checkList = checkList
 	l.delays = delays
 	l.downAction = downAction
+
+	var retention time.Duration
+	for _, p := range periods {
+		if p > retention {
+			retention = p
+		}
+	}
+
 	l.status.SetRetention(retention)
+
+	if retention > 0 {
+		l.rollingTracker = status.NewRollingProbeTracker(periods, buckets)
+		l.status.SetRollingTracker(l.rollingTracker)
+	} else {
+		l.rollingTracker = nil
+		l.status.SetRollingTracker(nil)
+	}
 }
 
 // ErrDownActionRunning is returned when trying to start a down action while one is active.
@@ -156,46 +187,32 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 		l.handleStateChange(ctx, upStatus)
 	}
 
-	l.nextCheckAt = time.Now().Add(l.delays[l.status.Up])
+	l.nextCheckAt = time.Now().Add(l.delays.ForStatus(l.status.Up))
 	l.pushStatus()
 }
 
 // Run starts the monitoring loop with optional statistics server config.
 func (l *Loop) Run(ctx context.Context, statServerConfig *status.StatServerConfig) {
-	var checker LoopChecker
+	checker := LoopChecker{tracker: l.rollingTracker}
 
 	if l.statServer == nil {
 		l.statServer = status.StartStatServer(l.status, statServerConfig)
 	}
 
 	for {
-		checkStatus, err := check.CheckerRun(ctx, checker, l.checkList.GetIterator())
-		if err == nil {
-			l.lastSuccess = time.Now()
-			l.ProcessCheck(ctx, checkStatus)
-		} else {
-			attrs := []any{"error", err}
-			if !l.lastSuccess.IsZero() {
-				attrs = append(attrs, "sinceLastSuccess", time.Since(l.lastSuccess))
-			}
+		checkStatus := check.CheckerRun(ctx, checker, l.checkList.All())
+		l.lastSuccess = time.Now()
+		l.ProcessCheck(ctx, checkStatus)
 
-			logger.Loop().Error("loop error", attrs...)
-
-			l.nextCheckAt = time.Now().Add(l.delays[l.status.Up])
-			l.pushStatus()
-		}
-
-		sleepTime := l.delays[l.status.Up]
+		sleepTime := l.delays.ForStatus(l.status.Up)
 		logger.Loop().Debug("waiting for next loop iteration", "wait", sleepTime)
 
-		timer := time.NewTimer(sleepTime)
 		select {
 		case <-ctx.Done():
-			timer.Stop()
 			logger.Loop().Debug("context canceled during sleep, exiting Run()")
 
 			return
-		case <-timer.C:
+		case <-time.After(sleepTime):
 		}
 	}
 }
@@ -227,7 +244,7 @@ func (l *Loop) handleStateChange(ctx context.Context, upStatus bool) {
 
 func (l *Loop) pushStatus() {
 	loopSt := status.LoopStatus{
-		Interval: status.ReadableDuration(l.delays[l.status.Up]),
+		Interval: status.ReadableDuration(l.delays.ForStatus(l.status.Up)),
 	}
 
 	l.status.SetLoopStatus(loopSt)
@@ -244,8 +261,11 @@ func (l *Loop) pushStatus() {
 	}
 }
 
-// LoopChecker implements check.Checker for logging check lifecycle events.
-type LoopChecker struct{}
+// LoopChecker implements check.Checker for logging check lifecycle events and
+// probe-level stats collection.
+type LoopChecker struct {
+	tracker *status.RollingProbeTracker
+}
 
 // CheckRun logs the start of a check.
 func (LoopChecker) CheckRun(chk check.Check) {
@@ -260,11 +280,19 @@ func (LoopChecker) CheckRun(chk check.Check) {
 }
 
 // ProbeSuccess logs successful probe results.
-func (LoopChecker) ProbeSuccess(report *check.Report) {
+func (c LoopChecker) ProbeSuccess(report *check.Report) {
 	logger.Check().Debug("success", report.LogAttrs())
+
+	if c.tracker != nil {
+		c.tracker.Record(false)
+	}
 }
 
 // ProbeFailure logs failed probe results.
-func (LoopChecker) ProbeFailure(report *check.Report) {
+func (c LoopChecker) ProbeFailure(report *check.Report) {
 	logger.Check().Warn("failed", report.LogAttrs())
+
+	if c.tracker != nil {
+		c.tracker.Record(true)
+	}
 }

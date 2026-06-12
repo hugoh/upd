@@ -58,16 +58,22 @@ func (DNSProbe) Scheme() string {
 	return DNS
 }
 
+// Target returns the DNS resolver address being probed.
+func (p DNSProbe) Target() string {
+	return p.DNSResolver
+}
+
 // Execute runs the DNS resolution and returns a report.
 func (p DNSProbe) Execute(ctx context.Context, timeout time.Duration) *Report {
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
 	resolver := p.resolver
 	if resolver == nil {
 		resolver = &net.Resolver{
 			PreferGo: true,
 			Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-				d := net.Dialer{
-					Timeout: timeout,
-				}
+				var d net.Dialer
 
 				return d.DialContext(ctx, network, p.DNSResolver)
 			},
@@ -75,7 +81,7 @@ func (p DNSProbe) Execute(ctx context.Context, timeout time.Duration) *Report {
 	}
 
 	start := time.Now()
-	addr, err := resolver.LookupHost(ctx, p.Domain)
+	addr, err := resolver.LookupHost(ctxWithTimeout, p.Domain)
 
 	report := BuildReport(p, start)
 	if err != nil {

@@ -13,20 +13,18 @@ import (
 //
 // Only one of the properties 'Response' or 'Error' is set.
 type Report struct {
-	// protocol used to connect to.
 	protocol string
-	// Target used to connect to.
+	target   string
 	response string
-	// Response time.
-	elapsed time.Duration
-	// Network error.
-	error error
+	elapsed  time.Duration
+	error    error
 }
 
 // BuildReport creates a new report for the given probe.
 func BuildReport(p Probe, startTime time.Time) *Report {
 	return &Report{
 		protocol: p.Scheme(),
+		target:   p.Target(),
 		elapsed:  time.Since(startTime),
 	}
 }
@@ -35,6 +33,7 @@ func BuildReport(p Probe, startTime time.Time) *Report {
 func (r *Report) LogAttrs() slog.Attr {
 	attrs := []any{
 		slog.String("protocol", r.protocol),
+		slog.String("target", r.target),
 		slog.Duration("elapsed", r.elapsed),
 	}
 	if r.response != "" {

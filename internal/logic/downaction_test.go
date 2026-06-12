@@ -1,6 +1,8 @@
 package logic
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -73,6 +75,23 @@ func Test_ExecuteStderrCapture_Trimmed(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 }
 
+func Test_Stop_RunsStopExecToCompletion(t *testing.T) {
+	marker := filepath.Join(t.TempDir(), "stopped")
+	da := &DownAction{
+		Exec:     "sleep 10",
+		StopExec: "sh -c 'sleep 0.1 && touch " + marker + "'",
+	}
+
+	dal := da.Start(t.Context())
+
+	time.Sleep(100 * time.Millisecond)
+
+	dal.Stop(t.Context())
+
+	_, err := os.Stat(marker)
+	require.NoError(t, err, "stop command should run to completion")
+}
+
 func Test_killCurrentCmd_nilCmd(t *testing.T) {
 	da := &DownAction{}
 	dal, _ := da.NewDownActionLoop(t.Context())
@@ -122,12 +141,9 @@ func Test_ExecuteReplacesStaleCmd(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 }
 
-func Test_StopUsesLoopCtx(t *testing.T) {
+func Test_StopCancelsLoopCtx(t *testing.T) {
 	da := &DownAction{}
 	dal, ctx := da.NewDownActionLoop(t.Context())
-
-	assert.NotNil(t, dal.loopCtx, "loopCtx should be stored")
-	assert.Equal(t, ctx, dal.loopCtx, "loopCtx matches returned child context")
 
 	dal.Stop(t.Context())
 
@@ -135,9 +151,9 @@ func Test_StopUsesLoopCtx(t *testing.T) {
 	defer timer.Stop()
 
 	select {
-	case <-dal.loopCtx.Done():
+	case <-ctx.Done():
 	case <-timer.C:
-		t.Fatal("loopCtx should be cancelled after Stop")
+		t.Fatal("loop context should be cancelled after Stop")
 	}
 }
 
@@ -189,27 +205,27 @@ func testBackoff(t *testing.T, hasLimit bool) {
 	assert.InEpsilon(t, 1.5, BackoffFactor, 0.01, "Ensuring we have the right values")
 
 	dal, _ := da.NewDownActionLoop(t.Context())
-	assert.Equal(t, uint64(0), dal.iteration.Load())
-	assert.Equal(t, da.After, dal.sleepTime)
-	assert.False(t, dal.limitReached)
+	assert.Equal(t, uint32(0), dal.iteration.Load())
+	assert.Equal(t, da.After, time.Duration(dal.sleepTime.Load()))
+	assert.False(t, dal.limitReached.Load())
 
 	sleepTime := dal.nextSleep()
-	assert.Equal(t, uint64(1), dal.iteration.Load())
+	assert.Equal(t, uint32(1), dal.iteration.Load())
 	assert.Equal(t, da.Every, sleepTime)
 
 	sleepTime = dal.nextSleep()
-	assert.Equal(t, uint64(2), dal.iteration.Load())
+	assert.Equal(t, uint32(2), dal.iteration.Load())
 	assert.Equal(t, time.Duration(1.5*float64(time.Second)), sleepTime)
 
 	sleepTime = dal.nextSleep()
-	assert.Equal(t, uint64(3), dal.iteration.Load())
+	assert.Equal(t, uint32(3), dal.iteration.Load())
 
 	if hasLimit {
 		assert.Equal(t, da.BackoffLimit, sleepTime)
-		assert.True(t, dal.limitReached)
+		assert.True(t, dal.limitReached.Load())
 	} else {
 		assert.Equal(t, time.Duration(2.25*float64(time.Second)), sleepTime)
-		assert.False(t, dal.limitReached)
+		assert.False(t, dal.limitReached.Load())
 	}
 }
 
@@ -226,7 +242,7 @@ func Test_Status_Initial(t *testing.T) {
 	dal, _ := da.NewDownActionLoop(t.Context())
 
 	st := dal.Status()
-	assert.Equal(t, uint64(0), st.Iteration)
+	assert.Equal(t, uint32(0), st.Iteration)
 	assert.Zero(t, st.SleepTime)
 	assert.False(t, st.BackoffCapped)
 }
@@ -237,13 +253,13 @@ func Test_Status_AfterIteration(t *testing.T) {
 
 	dal.nextSleep()
 	st := dal.Status()
-	assert.Equal(t, uint64(1), st.Iteration)
+	assert.Equal(t, uint32(1), st.Iteration)
 	assert.Equal(t, da.Every, time.Duration(st.SleepTime))
 	assert.False(t, st.BackoffCapped)
 
 	dal.nextSleep()
 	st = dal.Status()
-	assert.Equal(t, uint64(2), st.Iteration)
+	assert.Equal(t, uint32(2), st.Iteration)
 	assert.InEpsilon(t, 1.5*float64(time.Second), float64(time.Duration(st.SleepTime)), 0.01)
 	assert.False(t, st.BackoffCapped)
 }

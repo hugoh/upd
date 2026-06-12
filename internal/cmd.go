@@ -48,10 +48,13 @@ func SetupLoop(loop *logic.Loop, configPath string) (*config.Configuration, erro
 		return nil, fmt.Errorf("invalid checks in configuration: %w", checkErr)
 	}
 
+	statCfg := newConf.GetStatServerConfig()
+
 	loop.Configure(checklist,
 		newConf.GetDelays(),
 		newConf.GetDownAction(),
-		newConf.Stats.Retention.StdDuration())
+		statCfg.Buckets,
+		statCfg.Reports...)
 
 	return newConf, nil
 }
@@ -71,6 +74,12 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 	loop := logic.NewLoop()
 
 	for {
+		if rootCtx.Err() != nil {
+			logger.App().Info("shutting down")
+
+			return nil
+		}
+
 		currentWorkerCtx, cancelCurrentWorker := context.WithCancel(rootCtx)
 
 		errCh := make(chan error, ErrChanSize)
@@ -92,26 +101,58 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 			loop.Stop(ctx)
 		}(currentWorkerCtx)
 
+		err := waitForWorker(rootCtx, sighupCh, errCh, done, cancelCurrentWorker)
+		if err != nil {
+			return err
+		}
+	}
+}
+
+// waitForWorker blocks until the current worker needs to be replaced or the
+// application should terminate. It keeps handling shutdown and reload signals
+// while the worker is running. A non-nil return value terminates the
+// application.
+func waitForWorker(
+	rootCtx context.Context,
+	sighupCh <-chan os.Signal,
+	errCh <-chan error,
+	done <-chan struct{},
+	cancelWorker context.CancelFunc,
+) error {
+	stopWorker := func() {
+		cancelWorker()
+		<-done
+	}
+
+	for {
 		select {
 		case <-rootCtx.Done():
-			logger.App().Info("shutting down")
-			cancelCurrentWorker()
-			<-done
+			stopWorker()
 
 			return nil
 		case err := <-errCh:
 			if err != nil {
-				cancelCurrentWorker()
-				<-done
+				stopWorker()
 
 				return err
 			}
-
-			<-done
+			// Configuration loaded; keep waiting for signals.
 		case <-sighupCh:
 			logger.App().Info("SIGHUP received: reloading configuration")
-			cancelCurrentWorker()
-			<-done
+			stopWorker()
+
+			return nil
+		case <-done:
+			// Worker exited on its own; surface a pending error if any.
+			select {
+			case err := <-errCh:
+				if err != nil {
+					return err
+				}
+			default:
+			}
+
+			return nil
 		}
 	}
 }

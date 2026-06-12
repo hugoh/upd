@@ -17,7 +17,7 @@
 //	}
 //
 //	// Get current status:
-//	up := status.Get()
+//	up := status.Up
 //
 // Thread Safety:
 //
@@ -94,6 +94,7 @@ type Status struct {
 	initialized        bool
 	mutex              sync.Mutex
 	stateChangeTracker *StateChangeTracker
+	rollingTracker     *RollingProbeTracker
 	downActionStatus   DownActionStatus
 	loopStatus         LoopStatus
 	lastSuccessAt      time.Time
@@ -102,15 +103,14 @@ type Status struct {
 
 // NewStatus creates a new Status instance.
 func NewStatus() *Status {
-	var stateChangeTracker *StateChangeTracker
-
-	return &Status{
-		stateChangeTracker: stateChangeTracker,
-	}
+	return &Status{}
 }
 
 // SetRetention configures the retention period for state change history.
 func (s *Status) SetRetention(retention time.Duration) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	if retention <= 0 {
 		s.stateChangeTracker = nil
 
@@ -126,6 +126,14 @@ func (s *Status) SetRetention(retention time.Duration) {
 		s.stateChangeTracker.retention = retention
 		s.stateChangeTracker.Prune(time.Now())
 	}
+}
+
+// SetRollingTracker attaches a probe stats tracker for per-period reporting.
+func (s *Status) SetRollingTracker(t *RollingProbeTracker) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.rollingTracker = t
 }
 
 // SetDownActionStatus stores a snapshot of the down action loop state.
@@ -234,6 +242,18 @@ func (s *Status) GenStatReport(periods []time.Duration) *Report {
 	rpt.Stats = s.stateChangeTracker.GenReports(s.Up, generated, periods)
 	rpt.Loop.TimeSinceUpdate = ReadableDuration(generated.Sub(s.stateChangeTracker.lastUpdated))
 	rpt.Loop.TotalChecksRun = s.stateChangeTracker.updateCount
+
+	if s.rollingTracker != nil {
+		for idx, period := range periods {
+			total, failed := s.rollingTracker.Stats(period, generated)
+			rpt.Stats[idx].TotalProbes = total
+
+			rpt.Stats[idx].FailedProbes = failed
+			if total > 0 {
+				rpt.Stats[idx].FailureRate = ReadablePercent(float64(failed) / float64(total))
+			}
+		}
+	}
 
 	return rpt
 }

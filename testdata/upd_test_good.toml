@@ -24,5 +24,4 @@ repeat = "300s"
 
 [stats]
 port = 8080
-retention = "10080m"
 reports = ["10s", "15m", "60m", "1440m", "10080m"]

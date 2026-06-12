@@ -15,9 +15,9 @@ func TestRun_StopsOnContextCancel(t *testing.T) {
 	emptyCheckList := &check.List{}
 	loop.Configure(
 		emptyCheckList,
-		Delays{true: 1 * time.Second, false: 1 * time.Second},
+		Delays{Up: 1 * time.Second, Down: 1 * time.Second},
 		nil,
-		0,
+		status.BucketConfig{},
 	)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -45,9 +45,9 @@ func TestRun_ProcessesChecks(t *testing.T) {
 
 	loop.Configure(
 		checkList,
-		Delays{true: 10 * time.Millisecond, false: 10 * time.Millisecond},
+		Delays{Up: 10 * time.Millisecond, Down: 10 * time.Millisecond},
 		nil,
-		0,
+		status.BucketConfig{},
 	)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -65,9 +65,9 @@ func TestStop_StopsStatServer(t *testing.T) {
 	emptyCheckList := &check.List{}
 	loop.Configure(
 		emptyCheckList,
-		Delays{true: 1 * time.Second, false: 1 * time.Second},
+		Delays{Up: 1 * time.Second, Down: 1 * time.Second},
 		nil,
-		0,
+		status.BucketConfig{},
 	)
 
 	ctx := t.Context()
@@ -85,8 +85,9 @@ func TestRun_StopsTimerOnContextCancel(t *testing.T) {
 	longDelay := 10 * time.Second
 	loop.Configure(
 		emptyCheckList,
-		Delays{true: longDelay, false: longDelay},
+		Delays{Up: longDelay, Down: longDelay},
 		nil,
+		status.BucketConfig{},
 		0,
 	)
 

@@ -1,9 +1,12 @@
 package check
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hugoh/upd/internal/version"
@@ -12,46 +15,44 @@ import (
 const (
 	// UserAgentPrefix is prepended to the version in the User-Agent header.
 	UserAgentPrefix = "upd/"
+
+	// maxBodyDrain caps how much of the response body is read before closing
+	// so the pooled connection can be reused without downloading arbitrarily
+	// large bodies.
+	maxBodyDrain = 4096
 )
 
 // updClient is a shared HTTP client for all HTTP probes.
 // Using a single client enables connection pooling and improves performance.
 //
 //nolint:gochecknoglobals // Intentional singleton for connection pooling
-var updClient = &http.Client{
-	Transport: &updTransport{version: version.Version()},
-}
-
-type updTransport struct {
-	version  string
-	delegate http.RoundTripper
-}
-
-func (t *updTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Add("User-Agent", UserAgentPrefix+t.version)
-
-	d := t.delegate
-	if d == nil {
-		d = http.DefaultTransport
-	}
-
-	return d.RoundTrip(req) //nolint:wrapcheck // base transport
-}
+var updClient = &http.Client{}
 
 // HTTPProbe performs HTTP connectivity checks.
 type HTTPProbe struct {
 	URL    string
+	scheme string
 	client *http.Client
 }
 
 // NewHTTPProbe creates a new HTTP probe for the given URL.
 func NewHTTPProbe(url string) *HTTPProbe {
-	return &HTTPProbe{URL: url, client: updClient}
+	scheme := HTTP
+	if strings.HasPrefix(url, HTTPS+":") {
+		scheme = HTTPS
+	}
+
+	return &HTTPProbe{URL: url, scheme: scheme, client: updClient}
 }
 
 // Scheme returns the protocol scheme (http or https).
-func (*HTTPProbe) Scheme() string {
-	return HTTP
+func (p *HTTPProbe) Scheme() string {
+	return cmp.Or(p.scheme, HTTP)
+}
+
+// Target returns the URL being probed.
+func (p *HTTPProbe) Target() string {
+	return p.URL
 }
 
 // Execute runs the HTTP request and returns a report.
@@ -68,6 +69,8 @@ func (p *HTTPProbe) Execute(ctx context.Context, timeout time.Duration) *Report 
 		return report
 	}
 
+	req.Header.Set("User-Agent", UserAgentPrefix+version.Version())
+
 	start := time.Now()
 	resp, err := p.client.Do(req)
 
@@ -83,6 +86,9 @@ func (p *HTTPProbe) Execute(ctx context.Context, timeout time.Duration) *Report 
 			report.error = fmt.Errorf("error closing response body: %w", closeErr)
 		}
 	}()
+
+	// Drain (bounded) so the pooled connection can be reused.
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxBodyDrain))
 
 	report.response = resp.Status
 

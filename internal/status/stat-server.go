@@ -28,7 +28,7 @@ const (
 type StatServerConfig struct {
 	Port         int
 	Reports      []time.Duration
-	Retention    time.Duration
+	Buckets      BucketConfig
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	IdleTimeout  time.Duration
@@ -124,12 +124,4 @@ func serverHeader(next http.Handler) http.Handler {
 		w.Header().Set("Server", "upd/"+version.Version())
 		next.ServeHTTP(w, r)
 	})
-}
-
-func defaultTimeout(d, def time.Duration) time.Duration {
-	if d == 0 {
-		return def
-	}
-
-	return d
 }

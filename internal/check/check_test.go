@@ -3,11 +3,11 @@ package check
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type fakeProbe struct {
@@ -18,22 +18,7 @@ func (f *fakeProbe) Execute(_ context.Context, _ time.Duration) *Report {
 	return f.ret
 }
 func (*fakeProbe) Scheme() string { return "fake" }
-
-type fakeListIterator struct {
-	checks []*Check
-	idx    int
-}
-
-func (it *fakeListIterator) Fetch() *Check {
-	if it.idx >= len(it.checks) {
-		return nil
-	}
-
-	c := it.checks[it.idx]
-	it.idx++
-
-	return c
-}
+func (*fakeProbe) Target() string { return "fake" }
 
 type recordChecker struct {
 	run  []Check
@@ -49,12 +34,9 @@ func TestCheckerRun_SuccessFirst(t *testing.T) {
 	probe := &fakeProbe{ret: &Report{}}
 	probeIface := Probe(probe)
 	check := &Check{Probe: probeIface, Timeout: 1 * time.Second}
-	it := &fakeListIterator{checks: []*Check{check}}
 	checker := &recordChecker{}
-	ctx := t.Context()
-	ok, err := CheckerRun(ctx, checker, it)
+	ok := CheckerRun(t.Context(), checker, slices.Values([]*Check{check}))
 	assert.True(t, ok)
-	require.NoError(t, err)
 	assert.Len(t, checker.run, 1)
 	assert.Len(t, checker.succ, 1)
 	assert.Empty(t, checker.fail)
@@ -65,40 +47,31 @@ func TestCheckerRun_AllFail(t *testing.T) {
 	probe := &fakeProbe{ret: rep}
 	probeIface := Probe(probe)
 	check := &Check{Probe: probeIface, Timeout: 1 * time.Second}
-	it := &fakeListIterator{checks: []*Check{check, check}}
 	checker := &recordChecker{}
-	ctx := t.Context()
-	ok, err := CheckerRun(ctx, checker, it)
+	ok := CheckerRun(t.Context(), checker, slices.Values([]*Check{check, check}))
 	assert.False(t, ok)
-	require.NoError(t, err)
 	assert.Len(t, checker.run, 2)
 	assert.Empty(t, checker.succ)
 	assert.Len(t, checker.fail, 2)
 }
 
 func TestCheckerRun_Empty(t *testing.T) {
-	it := &fakeListIterator{checks: []*Check{}}
 	checker := &recordChecker{}
-	ctx := t.Context()
-	ok, err := CheckerRun(ctx, checker, it)
+	ok := CheckerRun(t.Context(), checker, slices.Values([]*Check{}))
 	assert.False(t, ok)
-	require.NoError(t, err)
 	assert.Empty(t, checker.run)
 	assert.Empty(t, checker.succ)
 	assert.Empty(t, checker.fail)
 }
 
-func TestCheckerRun_WithListIterator(t *testing.T) {
+func TestCheckerRun_WithList(t *testing.T) {
 	probe := &fakeProbe{ret: &Report{}}
 	probeIface := Probe(probe)
 	check := &Check{Probe: probeIface, Timeout: 1 * time.Second}
 	cl := &List{Ordered: Checks{check}}
-	it := cl.GetIterator()
 	checker := &recordChecker{}
-	ctx := t.Context()
-	ok, err := CheckerRun(ctx, checker, it)
+	ok := CheckerRun(t.Context(), checker, cl.All())
 	assert.True(t, ok)
-	require.NoError(t, err)
 	assert.Len(t, checker.run, 1)
 	assert.Len(t, checker.succ, 1)
 	assert.Empty(t, checker.fail)
