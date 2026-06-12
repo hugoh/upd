@@ -136,11 +136,6 @@ func TestStatServerConfigDefaults(t *testing.T) {
 	assert.Equal(t, "/stats.json", StatRoute)
 }
 
-func TestDefaultTimeout(t *testing.T) {
-	assert.Equal(t, 5*time.Second, defaultTimeout(0, 5*time.Second))
-	assert.Equal(t, 3*time.Second, defaultTimeout(3*time.Second, 5*time.Second))
-}
-
 func TestServerHeader_SetsHeaderOnSuccessfulRoute(t *testing.T) {
 	handler := serverHeader(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

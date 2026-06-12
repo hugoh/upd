@@ -125,11 +125,3 @@ func serverHeader(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-
-func defaultTimeout(d, def time.Duration) time.Duration {
-	if d == 0 {
-		return def
-	}
-
-	return d
-}
