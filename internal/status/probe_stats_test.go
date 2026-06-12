@@ -199,6 +199,32 @@ func TestRollingProbeTracker_SubMinuteBucket(t *testing.T) {
 	assert.Equal(t, 0, failed)
 }
 
+func TestNewRollingProbeTracker_CapsBucketCount(t *testing.T) {
+	// 7 days at 1s buckets would be 604,801 buckets; the cap enlarges the
+	// interval instead.
+	tracker := NewRollingProbeTracker(7*24*time.Hour, time.Second)
+
+	assert.LessOrEqual(t, tracker.maxBuckets, MaxBucketCount)
+	assert.Len(t, tracker.buckets, tracker.maxBuckets)
+	assert.Greater(t, tracker.bucketInterval, time.Second)
+}
+
+func TestRollingProbeTracker_LongGapResets(t *testing.T) {
+	now := startOfThisMinute()
+	tracker := NewRollingProbeTracker(5*time.Minute, time.Minute)
+
+	tracker.mu.Lock()
+	tracker.recordAt(now)
+	tracker.recordAt(now.Add(time.Minute))
+	// Gap longer than the whole retention window.
+	tracker.recordAt(now.Add(24 * time.Hour))
+	tracker.mu.Unlock()
+
+	total, failed := tracker.Stats(time.Hour, now.Add(24*time.Hour))
+	assert.Equal(t, 1, total)
+	assert.Equal(t, 0, failed)
+}
+
 func TestNewRollingProbeTracker_ZeroRetention(t *testing.T) {
 	tracker := NewRollingProbeTracker(0, time.Minute)
 	assert.NotNil(t, tracker)
