@@ -1,10 +1,12 @@
 package check
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hugoh/upd/internal/version"
@@ -29,17 +31,23 @@ var updClient = &http.Client{}
 // HTTPProbe performs HTTP connectivity checks.
 type HTTPProbe struct {
 	URL    string
+	scheme string
 	client *http.Client
 }
 
 // NewHTTPProbe creates a new HTTP probe for the given URL.
 func NewHTTPProbe(url string) *HTTPProbe {
-	return &HTTPProbe{URL: url, client: updClient}
+	scheme := HTTP
+	if strings.HasPrefix(url, HTTPS+":") {
+		scheme = HTTPS
+	}
+
+	return &HTTPProbe{URL: url, scheme: scheme, client: updClient}
 }
 
 // Scheme returns the protocol scheme (http or https).
-func (*HTTPProbe) Scheme() string {
-	return HTTP
+func (p *HTTPProbe) Scheme() string {
+	return cmp.Or(p.scheme, HTTP)
 }
 
 // Target returns the URL being probed.

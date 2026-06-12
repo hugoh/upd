@@ -139,3 +139,8 @@ func TestHTTPProbe_Scheme(t *testing.T) {
 	probe := NewHTTPProbe("http://example.com")
 	assert.Equal(t, "http", probe.Scheme())
 }
+
+func TestHTTPProbe_SchemeHTTPS(t *testing.T) {
+	probe := NewHTTPProbe("https://example.com")
+	assert.Equal(t, "https", probe.Scheme())
+}
