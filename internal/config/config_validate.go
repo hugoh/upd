@@ -118,11 +118,11 @@ func validateLogLevel(level string) error {
 func validateURIs(uris []string) error {
 	var errs []error
 
-	for i, s := range uris {
+	for idx, uri := range uris {
 		// Same parser as GetChecksCat so validation matches what gets built.
-		parsed, err := url.Parse(s)
+		parsed, err := url.Parse(uri)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("[%d]: %w", i, errInvalidURI))
+			errs = append(errs, fmt.Errorf("[%d]: %w", idx, errInvalidURI))
 
 			continue
 		}
@@ -130,7 +130,10 @@ func validateURIs(uris []string) error {
 		switch parsed.Scheme {
 		case check.DNS, check.HTTP, check.HTTPS, check.TCP:
 		default:
-			errs = append(errs, fmt.Errorf("[%d]: %w: %q", i, errUnsupportedScheme, parsed.Scheme))
+			errs = append(
+				errs,
+				fmt.Errorf("[%d]: %w: %q", idx, errUnsupportedScheme, parsed.Scheme),
+			)
 		}
 	}
 

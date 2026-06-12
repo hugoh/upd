@@ -48,9 +48,9 @@ func TestListAll_DoesNotMutateShuffled(t *testing.T) {
 	orig := slices.Clone(shuffled)
 	cl := &List{Shuffled: shuffled}
 
-	for range cl.All() {
-	}
+	got := slices.Collect(cl.All())
 
+	assert.Len(t, got, len(orig))
 	assert.True(t, slices.Equal(orig, shuffled), "All() should not reorder the underlying slice")
 }
 

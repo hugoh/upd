@@ -64,50 +64,6 @@ func validateCommand(command []string) error {
 	return nil
 }
 
-// startCommand parses, validates, and starts the given command string.
-func (dal *DownActionLoop) startCommand(
-	ctx context.Context,
-	execString string,
-) (*exec.Cmd, *bytes.Buffer, error) {
-	if execString == "" {
-		return nil, nil, ErrNoCommand
-	}
-
-	command, errSh := shlex.Split(execString)
-	if errSh != nil {
-		return nil, nil, fmt.Errorf("failed to parse DownAction definition: %w", errSh)
-	}
-
-	err := validateCommand(command)
-	if err != nil {
-		return nil, nil, fmt.Errorf("invalid command: %w", err)
-	}
-
-	iteration := dal.iteration.Load()
-
-	// #nosec G204 // Command is validated by shlex.Split() and validateCommand() before execution
-	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
-
-	var stderrBuf bytes.Buffer
-
-	cmd.Stderr = &stderrBuf
-
-	cmd.Env = append(os.Environ(), fmt.Sprintf("UPD_ITERATION=%d", iteration))
-	logger.DownAction().Info("executing command",
-		"exec", cmd.String(),
-		"iteration", iteration,
-	)
-
-	if err = cmd.Start(); err != nil {
-		logger.DownAction().Error("failed to run",
-			"exec", cmd.String(), "error", err)
-
-		return nil, nil, fmt.Errorf("failed to execute DownAction: %w", err)
-	}
-
-	return cmd, &stderrBuf, nil
-}
-
 // Execute runs the specified command string with the iteration context.
 func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error {
 	cmd, stderrBuf, err := dal.startCommand(ctx, execString)
@@ -156,12 +112,67 @@ func (dal *DownActionLoop) Stop(_ context.Context) {
 	dal.killCurrentCmd()
 
 	if dal.da.StopExec != "" {
+		//nolint:contextcheck // intentionally detached: must survive loop cancellation
 		dal.runStopExec()
 	}
 }
 
+// Status returns a snapshot of the current down action loop state.
+func (dal *DownActionLoop) Status() status.DownActionStatus {
+	return status.DownActionStatus{
+		Iteration:     dal.iteration.Load(),
+		SleepTime:     status.ReadableDuration(time.Duration(dal.sleepTime.Load())),
+		BackoffCapped: dal.limitReached.Load(),
+	}
+}
+
+// startCommand parses, validates, and starts the given command string.
+func (dal *DownActionLoop) startCommand(
+	ctx context.Context,
+	execString string,
+) (*exec.Cmd, *bytes.Buffer, error) {
+	if execString == "" {
+		return nil, nil, ErrNoCommand
+	}
+
+	command, errSh := shlex.Split(execString)
+	if errSh != nil {
+		return nil, nil, fmt.Errorf("failed to parse DownAction definition: %w", errSh)
+	}
+
+	err := validateCommand(command)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid command: %w", err)
+	}
+
+	iteration := dal.iteration.Load()
+
+	// #nosec G204 // Command is validated by shlex.Split() and validateCommand() before execution
+	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
+
+	var stderrBuf bytes.Buffer
+
+	cmd.Stderr = &stderrBuf
+
+	cmd.Env = append(os.Environ(), fmt.Sprintf("UPD_ITERATION=%d", iteration))
+	logger.DownAction().Info("executing command",
+		"exec", cmd.String(),
+		"iteration", iteration,
+	)
+
+	if err = cmd.Start(); err != nil {
+		logger.DownAction().Error("failed to run",
+			"exec", cmd.String(), "error", err)
+
+		return nil, nil, fmt.Errorf("failed to execute DownAction: %w", err)
+	}
+
+	return cmd, &stderrBuf, nil
+}
+
+// runStopExec runs the stop command to completion on a context detached from
+// the loop so cancellation cannot kill it, bounded by StopExecTimeout.
 func (dal *DownActionLoop) runStopExec() {
-	//nolint:contextcheck // intentionally detached: must survive loop cancellation
 	ctx, cancel := context.WithTimeout(context.Background(), StopExecTimeout)
 	defer cancel()
 
@@ -173,15 +184,6 @@ func (dal *DownActionLoop) runStopExec() {
 	}
 
 	dal.waitForCmd(cmd, stderrBuf)
-}
-
-// Status returns a snapshot of the current down action loop state.
-func (dal *DownActionLoop) Status() status.DownActionStatus {
-	return status.DownActionStatus{
-		Iteration:     dal.iteration.Load(),
-		SleepTime:     status.ReadableDuration(time.Duration(dal.sleepTime.Load())),
-		BackoffCapped: dal.limitReached.Load(),
-	}
 }
 
 func (dal *DownActionLoop) waitForCmd(cmd *exec.Cmd, stderrBuf *bytes.Buffer) {

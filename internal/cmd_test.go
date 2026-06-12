@@ -82,7 +82,7 @@ func TestRun_SighupReloadsConfig(t *testing.T) {
 	cfgPath := filepath.Join(t.TempDir(), "upd.toml")
 	good, err := os.ReadFile(testConfigDir + "/upd_test_minimal.toml")
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(cfgPath, good, 0o600))
+	require.NoError(t, os.WriteFile(cfgPath, good, 0o600)) // #nosec G703 -- path under t.TempDir()
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
