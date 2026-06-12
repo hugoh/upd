@@ -190,8 +190,8 @@ func testBackoff(t *testing.T, hasLimit bool) {
 
 	dal, _ := da.NewDownActionLoop(t.Context())
 	assert.Equal(t, uint32(0), dal.iteration.Load())
-	assert.Equal(t, da.After, dal.sleepTime)
-	assert.False(t, dal.limitReached)
+	assert.Equal(t, da.After, time.Duration(dal.sleepTime.Load()))
+	assert.False(t, dal.limitReached.Load())
 
 	sleepTime := dal.nextSleep()
 	assert.Equal(t, uint32(1), dal.iteration.Load())
@@ -206,10 +206,10 @@ func testBackoff(t *testing.T, hasLimit bool) {
 
 	if hasLimit {
 		assert.Equal(t, da.BackoffLimit, sleepTime)
-		assert.True(t, dal.limitReached)
+		assert.True(t, dal.limitReached.Load())
 	} else {
 		assert.Equal(t, time.Duration(2.25*float64(time.Second)), sleepTime)
-		assert.False(t, dal.limitReached)
+		assert.False(t, dal.limitReached.Load())
 	}
 }
 

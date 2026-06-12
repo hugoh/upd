@@ -33,8 +33,8 @@ type DownActionLoop struct {
 	//nolint:containedctx // loopCtx stored to bind StopExec commands on loop exit
 	loopCtx      context.Context
 	iteration    atomic.Uint32
-	sleepTime    time.Duration
-	limitReached bool
+	sleepTime    atomic.Int64
+	limitReached atomic.Bool
 	currentCmd   *exec.Cmd
 	cmdMu        sync.Mutex
 }
@@ -119,8 +119,8 @@ func (da *DownAction) NewDownActionLoop(ctx context.Context) (*DownActionLoop, c
 		da:         da,
 		cancelFunc: cancelFunc,
 		loopCtx:    ctx,
-		sleepTime:  da.After,
 	}
+	dal.sleepTime.Store(int64(da.After))
 
 	return dal, ctx
 }
@@ -157,8 +157,8 @@ func (dal *DownActionLoop) Stop(_ context.Context) {
 func (dal *DownActionLoop) Status() status.DownActionStatus {
 	return status.DownActionStatus{
 		Iteration:     dal.iteration.Load(),
-		SleepTime:     status.ReadableDuration(dal.sleepTime),
-		BackoffCapped: dal.limitReached,
+		SleepTime:     status.ReadableDuration(time.Duration(dal.sleepTime.Load())),
+		BackoffCapped: dal.limitReached.Load(),
 	}
 }
 
@@ -206,33 +206,34 @@ func (dal *DownActionLoop) nextSleep() time.Duration {
 
 	switch dal.iteration.Load() {
 	case 1:
-		dal.sleepTime = dal.da.Every
+		dal.sleepTime.Store(int64(dal.da.Every))
 	default:
-		if !dal.limitReached {
-			next := time.Duration(BackoffFactor * float64(dal.sleepTime))
+		if !dal.limitReached.Load() {
+			next := time.Duration(BackoffFactor * float64(dal.sleepTime.Load()))
 			if dal.da.BackoffLimit != 0 && next >= dal.da.BackoffLimit {
 				next = dal.da.BackoffLimit
-				dal.limitReached = true
+				dal.limitReached.Store(true)
 			}
 
-			dal.sleepTime = next
+			dal.sleepTime.Store(int64(next))
 		}
 	}
 
+	sleepTime := time.Duration(dal.sleepTime.Load())
 	logger.DownAction().Debug("iteration details",
 		"iteration", dal.iteration.Load(),
-		"sleepTime", dal.sleepTime,
-		"limitReached", dal.limitReached)
+		"sleepTime", sleepTime,
+		"limitReached", dal.limitReached.Load())
 
-	return dal.sleepTime
+	return sleepTime
 }
 
 func (dal *DownActionLoop) run(ctx context.Context) {
 	logger.DownAction().Debug("down action loop started")
 
 	for {
-		logger.DownAction().Debug("sleeping", "duration", dal.sleepTime)
-		timer := time.NewTimer(dal.sleepTime)
+		logger.DownAction().Debug("sleeping", "duration", time.Duration(dal.sleepTime.Load()))
+		timer := time.NewTimer(time.Duration(dal.sleepTime.Load()))
 
 		select {
 		case <-ctx.Done():
@@ -258,7 +259,7 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 		}
 
 		if dal.da.Every > 0 {
-			dal.sleepTime = dal.nextSleep()
+			dal.nextSleep()
 		} else {
 			logger.DownAction().Debug("down action loop complete")
 

@@ -112,6 +112,9 @@ func NewStatus() *Status {
 
 // SetRetention configures the retention period for state change history.
 func (s *Status) SetRetention(retention time.Duration) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	if retention <= 0 {
 		s.stateChangeTracker = nil
 
