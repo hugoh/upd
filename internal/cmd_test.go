@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 
@@ -73,6 +75,46 @@ func TestRun_WaitsForWorkerCompletion(t *testing.T) {
 	case <-done:
 	case <-timer.C:
 		t.Fatal("Run did not exit after context cancellation")
+	}
+}
+
+func TestRun_SighupReloadsConfig(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "upd.toml")
+	good, err := os.ReadFile(testConfigDir + "/upd_test_minimal.toml")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(cfgPath, good, 0o600))
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	cmd := &cli.Command{
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  ConfigConfig,
+				Value: cfgPath,
+			},
+			&cli.BoolFlag{
+				Name: ConfigDebug,
+			},
+		},
+	}
+
+	errResult := make(chan error, 1)
+
+	go func() { errResult <- Run(ctx, cmd) }()
+
+	// Let the worker start and the main loop settle into waiting.
+	time.Sleep(300 * time.Millisecond)
+
+	// Break the config; a SIGHUP-triggered reload must surface the error.
+	require.NoError(t, os.WriteFile(cfgPath, []byte("not valid toml ["), 0o600))
+	require.NoError(t, syscall.Kill(os.Getpid(), syscall.SIGHUP))
+
+	select {
+	case err := <-errResult:
+		require.Error(t, err, "reload should fail on broken config")
+	case <-time.After(2 * time.Second):
+		t.Fatal("SIGHUP did not trigger a configuration reload")
 	}
 }
 
