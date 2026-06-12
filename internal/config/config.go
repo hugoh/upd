@@ -170,63 +170,60 @@ func expandEnvVars(content []byte) ([]byte, error) {
 	}), nil
 }
 
-// ErrNoChecks is returned when no valid checks are found in configuration.
-var ErrNoChecks = errors.New("no valid checks found in config")
+// ErrNoChecks is returned when no checks are found in configuration.
+var ErrNoChecks = errors.New("no checks found in config")
 
 // GetChecks builds a CheckList from the configuration.
+// Any invalid check fails the whole configuration.
 func (c Configuration) GetChecks() (*check.List, error) {
-	checkList := &check.List{
-		Ordered:  c.GetChecksCat(c.Checks.List.Ordered),
-		Shuffled: c.GetChecksCat(c.Checks.List.Shuffled),
+	ordered, err := c.GetChecksCat(c.Checks.List.Ordered)
+	if err != nil {
+		return nil, err
 	}
-	if len(checkList.Ordered) == 0 && len(checkList.Shuffled) == 0 {
+
+	shuffled, err := c.GetChecksCat(c.Checks.List.Shuffled)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ordered) == 0 && len(shuffled) == 0 {
 		return nil, ErrNoChecks
 	}
 
-	return checkList, nil
+	return &check.List{Ordered: ordered, Shuffled: shuffled}, nil
 }
 
 //nolint:ireturn // intentionally returns interface to abstract probe creation
-func probeFromURL(parsedURL *url.URL, checkStr string) check.Probe {
+func probeFromURL(parsedURL *url.URL) (check.Probe, error) {
 	switch parsedURL.Scheme {
 	case check.DNS:
 		probe, err := check.NewDNSProbe(parsedURL.Host, strings.TrimPrefix(parsedURL.Path, "/"))
 		if err != nil {
-			logger.Config().Error("invalid DNS check",
-				"check", checkStr, "error", err)
-
-			return nil
+			return nil, fmt.Errorf("invalid DNS check: %w", err)
 		}
 
-		return probe
+		return probe, nil
 	case check.HTTP, check.HTTPS:
-		return check.NewHTTPProbe(parsedURL.String())
+		return check.NewHTTPProbe(parsedURL.String()), nil
 	case check.TCP:
-		return check.NewTCPProbe(net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port()))
+		return check.NewTCPProbe(net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())), nil
 	default:
-		logger.Config().Error("unknown protocol in config",
-			"check", checkStr,
-			"protocol", parsedURL.Scheme)
-
-		return nil
+		return nil, fmt.Errorf("%w: %q", errUnsupportedScheme, parsedURL.Scheme)
 	}
 }
 
 // GetChecksCat creates checks from a list of check URIs.
-func (c Configuration) GetChecksCat(category []string) []*check.Check {
+func (c Configuration) GetChecksCat(category []string) ([]*check.Check, error) {
 	checks := make([]*check.Check, 0, len(category))
 	for _, checkStr := range category {
 		parsedURL, err := url.Parse(checkStr)
 		if err != nil {
-			logger.Config().Error("could not parse check in config",
-				"check", checkStr, "error", err)
-
-			continue
+			return nil, fmt.Errorf("could not parse check %q: %w", checkStr, err)
 		}
 
-		probe := probeFromURL(parsedURL, checkStr)
-		if probe == nil {
-			continue
+		probe, err := probeFromURL(parsedURL)
+		if err != nil {
+			return nil, fmt.Errorf("check %q: %w", checkStr, err)
 		}
 
 		checks = append(checks, &check.Check{
@@ -235,7 +232,7 @@ func (c Configuration) GetChecksCat(category []string) []*check.Check {
 		})
 	}
 
-	return checks
+	return checks, nil
 }
 
 // GetDownAction creates a DownAction from the configuration.

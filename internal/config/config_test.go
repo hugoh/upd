@@ -25,24 +25,6 @@ func readTestConfig(cfgFile string) (*Configuration, error) {
 	return ReadConf(fmt.Sprintf("%s/%s", testConfigDir, cfgFile))
 }
 
-func countProbes[T any](list *check.List) int {
-	n := 0
-
-	for _, chk := range list.Ordered {
-		if _, ok := chk.Probe.(T); ok {
-			n++
-		}
-	}
-
-	for _, chk := range list.Shuffled {
-		if _, ok := chk.Probe.(T); ok {
-			n++
-		}
-	}
-
-	return n
-}
-
 func (suite *TestSuite) SetupTest() {
 	var err error
 
@@ -80,27 +62,23 @@ func (suite *TestSuite) TestGetDelaysFromConf() {
 	suite.Equal(delays, conf)
 }
 
-func TestGetChecksIgnored(t *testing.T) {
-	conf, err := readTestConfig("upd_test_bad.toml")
-	require.NoError(t, err)
-
-	checklist, checkErr := conf.GetChecks()
-	require.NoError(t, checkErr)
-
-	totalChecks := 0
-	if checklist != nil {
-		totalChecks = len(checklist.Ordered) + len(checklist.Shuffled)
-	}
-
-	assert.Equal(t, 1, totalChecks, "2 checks should be invalid")
+func TestReadConf_UnsupportedSchemeFails(t *testing.T) {
+	_, err := readTestConfig("upd_test_bad.toml")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported scheme")
 }
 
-func TestGetChecksFromConfFail(t *testing.T) {
-	conf, err := readTestConfig("upd_test_allbad.toml")
-	require.NoError(t, err)
+func TestReadConf_AllBadChecksFail(t *testing.T) {
+	_, err := readTestConfig("upd_test_allbad.toml")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported scheme")
+}
 
-	_, checkErr := conf.GetChecks()
-	assert.ErrorIs(t, checkErr, ErrNoChecks, "Error expected: no valid checks")
+func TestGetChecks_NoChecks(t *testing.T) {
+	var conf Configuration
+
+	_, err := conf.GetChecks()
+	assert.ErrorIs(t, err, ErrNoChecks)
 }
 
 func (suite *TestSuite) TestGetChecks() {
@@ -128,7 +106,7 @@ func (suite *TestSuite) TestGetChecks() {
 	probe = allChecks[1].Probe
 	httpProbe, ok = probe.(*check.HTTPProbe)
 	suite.True(ok)
-	suite.Equal("http", httpProbe.Scheme())
+	suite.Equal("https", httpProbe.Scheme())
 	suite.Equal("https://example.com/", httpProbe.URL)
 
 	probe = allChecks[2].Probe
@@ -167,51 +145,22 @@ func TestReadConf_envsubst_missing(t *testing.T) {
 }
 
 func TestDNSCheckValidation_MissingDomain(t *testing.T) {
-	conf, err := readTestConfig("upd_test_bad.toml")
-	require.NoError(t, err)
+	var conf Configuration
 
-	checklist, checkErr := conf.GetChecks()
-	require.NoError(t, checkErr)
+	conf.Checks.List.Ordered = []string{"dns://8.8.4.4/"}
 
-	assert.Equal(
-		t,
-		0,
-		countProbes[*check.DNSProbe](checklist),
-		"DNS check with missing domain should be ignored",
-	)
+	_, err := conf.GetChecks()
+	require.Error(t, err)
+	assert.ErrorIs(t, err, check.ErrDNSMissingDomain)
 }
 
 func TestDNSCheckValidation_MissingResolver(t *testing.T) {
 	conf, err := readTestConfig("upd_test_dns_missing_resolver.toml")
 	require.NoError(t, err)
 
-	checklist, checkErr := conf.GetChecks()
-	require.NoError(t, checkErr)
-
-	assert.Equal(
-		t,
-		0,
-		countProbes[*check.DNSProbe](checklist),
-		"DNS check with missing resolver host should be ignored",
-	)
-
-	httpChecks := 0
-
-	for _, chk := range checklist.Ordered {
-		_, ok := chk.Probe.(*check.HTTPProbe)
-		if ok {
-			httpChecks++
-		}
-	}
-
-	for _, chk := range checklist.Shuffled {
-		_, ok := chk.Probe.(*check.HTTPProbe)
-		if ok {
-			httpChecks++
-		}
-	}
-
-	assert.Equal(t, 1, httpChecks, "HTTP check should still be present")
+	_, checkErr := conf.GetChecks()
+	require.Error(t, checkErr)
+	assert.ErrorIs(t, checkErr, check.ErrDNSMissingResolver)
 }
 
 func TestLogSetup(t *testing.T) {

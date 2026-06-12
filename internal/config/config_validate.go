@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"reflect"
 	"time"
+
+	"github.com/hugoh/upd/internal/check"
 )
 
 var (
@@ -14,6 +16,7 @@ var (
 	errMustNotBeNegative      = errors.New("must not be negative")
 	errPortOutOfRange         = errors.New("must be between 1 and 65535")
 	errInvalidLogLevel        = errors.New("must be one of: debug, info, warn")
+	errUnsupportedScheme      = errors.New("unsupported scheme")
 )
 
 func appendErr(errs []error, key string, err error) []error {
@@ -120,15 +123,21 @@ func validateLogLevel(level string) error {
 }
 
 func validateURIs(uris []string) error {
-	if len(uris) == 0 {
-		return nil
-	}
-
 	var errs []error
 
 	for i, s := range uris {
-		if _, err := url.ParseRequestURI(s); err != nil {
+		// Same parser as GetChecksCat so validation matches what gets built.
+		parsed, err := url.Parse(s)
+		if err != nil {
 			errs = append(errs, fmt.Errorf("[%d]: %w", i, errInvalidURI))
+
+			continue
+		}
+
+		switch parsed.Scheme {
+		case check.DNS, check.HTTP, check.HTTPS, check.TCP:
+		default:
+			errs = append(errs, fmt.Errorf("[%d]: %w: %q", i, errUnsupportedScheme, parsed.Scheme))
 		}
 	}
 
