@@ -155,11 +155,11 @@ func TestSetupLoop_reload(t *testing.T) {
 
 	conf, err := SetupLoop(loop, testConfigDir+"/upd_test_reload_a.toml")
 	require.NoError(t, err)
-	assert.Equal(t, 5*time.Second, conf.GetDelays()[true])
-	assert.Equal(t, 1*time.Second, conf.GetDelays()[false])
+	assert.Equal(t, 5*time.Second, conf.GetDelays().Up)
+	assert.Equal(t, 1*time.Second, conf.GetDelays().Down)
 
 	conf, err = SetupLoop(loop, testConfigDir+"/upd_test_reload_b.toml")
 	require.NoError(t, err)
-	assert.Equal(t, 10*time.Second, conf.GetDelays()[true])
-	assert.Equal(t, 2*time.Second, conf.GetDelays()[false])
+	assert.Equal(t, 10*time.Second, conf.GetDelays().Up)
+	assert.Equal(t, 2*time.Second, conf.GetDelays().Down)
 }

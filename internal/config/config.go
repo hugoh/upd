@@ -268,12 +268,11 @@ func (c Configuration) GetDownAction() *logic.DownAction {
 }
 
 // GetDelays returns the check intervals for up and down states.
-func (c Configuration) GetDelays() map[bool]time.Duration {
-	delays := make(map[bool]time.Duration)
-	delays[true] = c.Checks.Every.Normal.StdDuration()
-	delays[false] = c.Checks.Every.Down.StdDuration()
-
-	return delays
+func (c Configuration) GetDelays() logic.Delays {
+	return logic.Delays{
+		Up:   c.Checks.Every.Normal.StdDuration(),
+		Down: c.Checks.Every.Down.StdDuration(),
+	}
 }
 
 // GetStatServerConfig creates a runtime stats server config from the TOML-deserialized config.

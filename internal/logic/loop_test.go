@@ -11,7 +11,7 @@ import (
 
 func emptyNewLoop() *Loop {
 	l := NewLoop()
-	l.Configure(nil, nil, nil)
+	l.Configure(nil, Delays{}, nil)
 
 	return l
 }
@@ -19,13 +19,13 @@ func emptyNewLoop() *Loop {
 func TestConfigure_TrackerCreatedOnlyWithReports(t *testing.T) {
 	t.Run("no periods", func(t *testing.T) {
 		loop := NewLoop()
-		loop.Configure(nil, nil, nil)
+		loop.Configure(nil, Delays{}, nil)
 		assert.Nil(t, loop.rollingTracker, "no tracker without reports")
 	})
 
 	t.Run("with periods", func(t *testing.T) {
 		loop := NewLoop()
-		loop.Configure(nil, nil, nil, time.Minute, 5*time.Minute)
+		loop.Configure(nil, Delays{}, nil, time.Minute, 5*time.Minute)
 		assert.NotNil(t, loop.rollingTracker, "tracker created when reports given")
 	})
 }
@@ -94,7 +94,7 @@ func Test_ProcessCheck_StatusChanged_DownStatus_StartsDownAction(t *testing.T) {
 
 func Test_ProcessCheck_PopulatesLoopStatus(t *testing.T) {
 	loop := NewLoop()
-	loop.Configure(nil, Delays{true: time.Minute, false: 30 * time.Second}, nil)
+	loop.Configure(nil, Delays{Up: time.Minute, Down: 30 * time.Second}, nil)
 
 	ctx := t.Context()
 
@@ -114,7 +114,7 @@ func Test_ProcessCheck_PopulatesLoopStatus(t *testing.T) {
 func Test_ProcessCheck_PopulatesDownActionStatus(t *testing.T) {
 	loop := NewLoop()
 	da := getTestDA()
-	loop.Configure(nil, Delays{true: time.Minute, false: 30 * time.Second}, da)
+	loop.Configure(nil, Delays{Up: time.Minute, Down: 30 * time.Second}, da)
 
 	ctx := t.Context()
 

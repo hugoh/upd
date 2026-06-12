@@ -55,11 +55,10 @@ func TestNoDownAction(t *testing.T) {
 }
 
 func (suite *TestSuite) TestGetDelaysFromConf() {
-	delays := make(map[bool]time.Duration)
-	delays[true] = 120 * time.Second
-	delays[false] = 20 * time.Second
-	conf := suite.conf.GetDelays()
-	suite.Equal(delays, conf)
+	suite.Equal(logic.Delays{
+		Up:   120 * time.Second,
+		Down: 20 * time.Second,
+	}, suite.conf.GetDelays())
 }
 
 func TestReadConf_UnsupportedSchemeFails(t *testing.T) {

@@ -8,9 +8,9 @@
 //   - Normal interval: Used when connection is up
 //   - Down interval: Used when connection is down (typically more frequent)
 //
-// The loop uses a Delays map with boolean keys:
-//   - true: Normal interval (connection up)
-//   - false: Down interval (connection down)
+// The loop uses a Delays struct:
+//   - Up: Normal interval (connection up)
+//   - Down: Down interval (connection down)
 //
 // Example - Creating and running a loop:
 //
@@ -24,8 +24,8 @@
 //		},
 //	}
 //	delays := logic.Delays{
-//		true:  2 * time.Minute,  // Check every 2 minutes when up
-//		false: 30 * time.Second,  // Check every 30 seconds when down
+//		Up:   2 * time.Minute,  // Check every 2 minutes when up
+//		Down: 30 * time.Second, // Check every 30 seconds when down
 //	}
 //	loop.Configure(checks, delays, nil, time.Minute, 5*time.Minute)
 //	go loop.Run(ctx, nil)
@@ -87,8 +87,20 @@ import (
 	"github.com/hugoh/upd/internal/status"
 )
 
-// Delays maps connection state to check interval durations.
-type Delays map[bool]time.Duration
+// Delays holds the check interval durations for up and down states.
+type Delays struct {
+	Up   time.Duration
+	Down time.Duration
+}
+
+// ForStatus returns the check interval for the given connection state.
+func (d Delays) ForStatus(up bool) time.Duration {
+	if up {
+		return d.Up
+	}
+
+	return d.Down
+}
 
 // Loop manages periodic network connectivity checks.
 type Loop struct {
@@ -173,7 +185,7 @@ func (l *Loop) ProcessCheck(ctx context.Context, upStatus bool) {
 		l.handleStateChange(ctx, upStatus)
 	}
 
-	l.nextCheckAt = time.Now().Add(l.delays[l.status.Up])
+	l.nextCheckAt = time.Now().Add(l.delays.ForStatus(l.status.Up))
 	l.pushStatus()
 }
 
@@ -198,11 +210,11 @@ func (l *Loop) Run(ctx context.Context, statServerConfig *status.StatServerConfi
 
 			logger.Loop().Error("loop error", attrs...)
 
-			l.nextCheckAt = time.Now().Add(l.delays[l.status.Up])
+			l.nextCheckAt = time.Now().Add(l.delays.ForStatus(l.status.Up))
 			l.pushStatus()
 		}
 
-		sleepTime := l.delays[l.status.Up]
+		sleepTime := l.delays.ForStatus(l.status.Up)
 		logger.Loop().Debug("waiting for next loop iteration", "wait", sleepTime)
 
 		timer := time.NewTimer(sleepTime)
@@ -244,7 +256,7 @@ func (l *Loop) handleStateChange(ctx context.Context, upStatus bool) {
 
 func (l *Loop) pushStatus() {
 	loopSt := status.LoopStatus{
-		Interval: status.ReadableDuration(l.delays[l.status.Up]),
+		Interval: status.ReadableDuration(l.delays.ForStatus(l.status.Up)),
 	}
 
 	l.status.SetLoopStatus(loopSt)
