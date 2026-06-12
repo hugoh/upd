@@ -254,15 +254,13 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 
 	for {
 		logger.DownAction().Debug("sleeping", "duration", time.Duration(dal.sleepTime.Load()))
-		timer := time.NewTimer(time.Duration(dal.sleepTime.Load()))
 
 		select {
 		case <-ctx.Done():
-			timer.Stop()
 			logger.DownAction().Debug("canceled")
 
 			return
-		case <-timer.C:
+		case <-time.After(time.Duration(dal.sleepTime.Load())):
 		}
 
 		dal.killCurrentCmd()

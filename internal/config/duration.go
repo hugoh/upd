@@ -22,6 +22,6 @@ func (d *Duration) UnmarshalText(text []byte) error {
 }
 
 // StdDuration returns the Duration as a standard time.Duration.
-func (d *Duration) StdDuration() time.Duration {
-	return time.Duration(*d)
+func (d Duration) StdDuration() time.Duration {
+	return time.Duration(d)
 }

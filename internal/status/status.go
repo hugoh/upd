@@ -103,11 +103,7 @@ type Status struct {
 
 // NewStatus creates a new Status instance.
 func NewStatus() *Status {
-	var stateChangeTracker *StateChangeTracker
-
-	return &Status{
-		stateChangeTracker: stateChangeTracker,
-	}
+	return &Status{}
 }
 
 // SetRetention configures the retention period for state change history.

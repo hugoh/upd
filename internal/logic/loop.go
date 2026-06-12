@@ -205,14 +205,12 @@ func (l *Loop) Run(ctx context.Context, statServerConfig *status.StatServerConfi
 		sleepTime := l.delays.ForStatus(l.status.Up)
 		logger.Loop().Debug("waiting for next loop iteration", "wait", sleepTime)
 
-		timer := time.NewTimer(sleepTime)
 		select {
 		case <-ctx.Done():
-			timer.Stop()
 			logger.Loop().Debug("context canceled during sleep, exiting Run()")
 
 			return
-		case <-timer.C:
+		case <-time.After(sleepTime):
 		}
 	}
 }
