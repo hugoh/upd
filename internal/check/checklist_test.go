@@ -9,75 +9,49 @@ import (
 )
 
 func newCheck(_ int) *Check {
-	// Replace with actual Check struct if needed
 	return &Check{}
 }
 
-func TestChecksIterator_Fetch(t *testing.T) {
-	checks := Checks{newCheck(1), newCheck(2), newCheck(3)}
-	it := NewChecksIterator(checks)
-
-	for i := range checks {
-		got := it.Fetch()
-		assert.NotNil(t, got, "Fetch() = nil at index %d, want check", i)
-	}
-
-	assert.Nil(t, it.Fetch(), "Fetch() after end should return nil")
-}
-
-func TestChecksIterator_ShuffleIfNeeded(t *testing.T) {
-	orig := Checks{newCheck(1), newCheck(2), newCheck(3), newCheck(4)}
-	checks := slices.Clone(orig)
-	it := NewChecksIterator(checks)
-
-	// Should shuffle since index == 0
-	it.ShuffleIfNeeded()
-	// Can't guarantee shuffle, but can check that it's still a permutation
-	assert.True(t, sameElements(checks, orig), "Shuffled checks lost elements")
-
-	// Should NOT shuffle since index > 0
-	it.index = 1
-	before := slices.Clone(checks)
-
-	it.ShuffleIfNeeded()
-	assert.True(t, slices.Equal(before, checks), "ShuffleIfNeeded shuffled when index > 0")
-}
-
-func TestChecks_Shuffle(t *testing.T) {
-	orig := Checks{newCheck(1), newCheck(2), newCheck(3), newCheck(4)}
-	checks := slices.Clone(orig)
-	checks.Shuffle()
-	assert.True(t, sameElements(checks, orig), "Shuffle lost elements")
-	// Not guaranteed to change order, but likely
-}
-
-func TestListIterator_Fetch(t *testing.T) {
+func TestListAll_OrderedFirst(t *testing.T) {
 	ordered := Checks{newCheck(1), newCheck(2)}
 	shuffled := Checks{newCheck(3), newCheck(4)}
 	cl := &List{Ordered: ordered, Shuffled: shuffled}
-	it := cl.GetIterator()
 
-	var got []*Check
+	got := slices.Collect(cl.All())
 
-	for {
-		c := it.Fetch()
-		if c == nil {
-			break
-		}
-
-		got = append(got, c)
-	}
-
-	assert.Len(t, got, 4, "Fetch() got %d checks, want 4", len(got))
-
+	assert.Len(t, got, 4)
 	assert.Same(t, got[0], ordered[0], "first check should be from ordered")
 	assert.Same(t, got[1], ordered[1], "second check should be from ordered")
+	assert.True(t, sameElements(got[2:], shuffled), "shuffled checks lost elements")
 }
 
-func TestListIterator_Empty(t *testing.T) {
+func TestListAll_Empty(t *testing.T) {
 	cl := &List{}
-	it := cl.GetIterator()
-	assert.Nil(t, it.Fetch(), "Fetch() on empty iterator should return nil")
+	assert.Empty(t, slices.Collect(cl.All()))
+}
+
+func TestListAll_EarlyBreak(t *testing.T) {
+	cl := &List{Ordered: Checks{newCheck(1), newCheck(2)}}
+
+	count := 0
+	for range cl.All() {
+		count++
+
+		break
+	}
+
+	assert.Equal(t, 1, count)
+}
+
+func TestListAll_DoesNotMutateShuffled(t *testing.T) {
+	shuffled := Checks{newCheck(1), newCheck(2), newCheck(3), newCheck(4)}
+	orig := slices.Clone(shuffled)
+	cl := &List{Shuffled: shuffled}
+
+	for range cl.All() {
+	}
+
+	assert.True(t, slices.Equal(orig, shuffled), "All() should not reorder the underlying slice")
 }
 
 // Helper: check if two slices have the same elements (ignoring order).

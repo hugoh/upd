@@ -3,6 +3,7 @@ package check
 
 import (
 	"context"
+	"iter"
 	"time"
 )
 
@@ -80,27 +81,13 @@ func (c *Check) RunProbe(ctx context.Context, checker Checker) *Report {
 // Example:
 //
 //	checker := &LoggingChecker{}
-//	success, err := check.CheckerRun(ctx, checker, checkList.GetIterator())
-//
-// Parameters:
-//   - ctx: Context for cancellation and timeout control
-//   - checker: Implementation of Checker interface for lifecycle callbacks
-//   - checkListIterator: Iterator over checks to execute
-//
-// Returns:
-//   - bool: true if any check succeeded, false if all failed
-//   - error: any error that occurred during iteration (not individual probe failures)
+//	success := check.CheckerRun(ctx, checker, checkList.All())
 func CheckerRun(
 	ctx context.Context,
 	checker Checker,
-	checkListIterator ListIterator,
-) (bool, error) {
-	for {
-		check := checkListIterator.Fetch()
-		if check == nil {
-			return false, nil // All checks failed
-		}
-
+	checks iter.Seq[*Check],
+) bool {
+	for check := range checks {
 		report := check.RunProbe(ctx, checker)
 		if report.error != nil {
 			checker.ProbeFailure(report)
@@ -110,6 +97,8 @@ func CheckerRun(
 
 		checker.ProbeSuccess(report)
 
-		return true, nil
+		return true
 	}
+
+	return false // All checks failed
 }

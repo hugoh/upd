@@ -198,21 +198,9 @@ func (l *Loop) Run(ctx context.Context, statServerConfig *status.StatServerConfi
 	}
 
 	for {
-		checkStatus, err := check.CheckerRun(ctx, checker, l.checkList.GetIterator())
-		if err == nil {
-			l.lastSuccess = time.Now()
-			l.ProcessCheck(ctx, checkStatus)
-		} else {
-			attrs := []any{"error", err}
-			if !l.lastSuccess.IsZero() {
-				attrs = append(attrs, "sinceLastSuccess", time.Since(l.lastSuccess))
-			}
-
-			logger.Loop().Error("loop error", attrs...)
-
-			l.nextCheckAt = time.Now().Add(l.delays.ForStatus(l.status.Up))
-			l.pushStatus()
-		}
+		checkStatus := check.CheckerRun(ctx, checker, l.checkList.All())
+		l.lastSuccess = time.Now()
+		l.ProcessCheck(ctx, checkStatus)
 
 		sleepTime := l.delays.ForStatus(l.status.Up)
 		logger.Loop().Debug("waiting for next loop iteration", "wait", sleepTime)
