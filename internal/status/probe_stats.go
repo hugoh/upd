@@ -6,6 +6,13 @@ import (
 	"time"
 )
 
+// ProbeStats holds the result of a probe stats query.
+type ProbeStats struct {
+	Total    int
+	Failed   int
+	Coverage time.Duration
+}
+
 // probeBucket counts probe results within one bucket interval. Bucket start
 // times are not stored: they are derived from the ring's lastTime and the
 // bucket's distance from the newest bucket, keeping rings at 8 bytes per
@@ -105,20 +112,23 @@ func (t *RollingProbeTracker) Record(failed bool) {
 	}
 }
 
-// Stats returns (total, failed) probe results within the given report period
-// before now. The period must be one of the configured report periods;
-// unknown periods report no data.
-func (t *RollingProbeTracker) Stats(period time.Duration, now time.Time) (int, int) {
+// Stats returns probe results within the given report period before now.
+// Coverage may be less than period at startup. The period must be one of the
+// configured report periods; unknown periods return a zero ProbeStats.
+func (t *RollingProbeTracker) Stats(period time.Duration, now time.Time) ProbeStats {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	for _, ring := range t.rings {
 		if ring.period == period {
-			return ring.statsSince(now.Add(-period))
+			result := ring.statsSince(now.Add(-period))
+			result.Coverage = min(time.Duration(ring.count)*ring.interval, period)
+
+			return result
 		}
 	}
 
-	return 0, 0
+	return ProbeStats{}
 }
 
 // newestIdx returns the ring index of the newest bucket. Must be called with
@@ -178,9 +188,9 @@ func (r *probeRing) advanceTo(bucketTime time.Time) {
 
 // statsSince sums the buckets that start at or after cutoff. Must be called
 // with the tracker lock held.
-func (r *probeRing) statsSince(cutoff time.Time) (int, int) {
+func (r *probeRing) statsSince(cutoff time.Time) ProbeStats {
 	if r.count == 0 {
-		return 0, 0
+		return ProbeStats{}
 	}
 
 	oldest := r.lastTime.Add(-time.Duration(r.count-1) * r.interval)
@@ -191,13 +201,13 @@ func (r *probeRing) statsSince(cutoff time.Time) (int, int) {
 		skip = min(int((diff+r.interval-1)/r.interval), r.count)
 	}
 
-	var total, failed int
+	var result ProbeStats
 
 	for i := skip; i < r.count; i++ {
 		bucket := r.buckets[(r.head+i)%len(r.buckets)]
-		total += int(bucket.total)
-		failed += int(bucket.failed)
+		result.Total += int(bucket.total)
+		result.Failed += int(bucket.failed)
 	}
 
-	return total, failed
+	return result
 }

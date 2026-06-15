@@ -1,8 +1,21 @@
 package status
 
 import (
+	"errors"
+	"fmt"
 	"time"
 )
+
+// ErrPeriodExceedsRetention is returned when the requested period is longer
+// than the configured retention window.
+var ErrPeriodExceedsRetention = errors.New("period exceeds retention")
+
+// UptimeResult holds the result of an uptime calculation.
+type UptimeResult struct {
+	Availability float64
+	Downtime     time.Duration
+	Coverage     time.Duration
+}
 
 // StateChange represents a single state transition in the tracker.
 type StateChange struct {
@@ -69,15 +82,27 @@ func (tracker *StateChangeTracker) Prune(currentTime time.Time) {
 	}
 }
 
-// CalculateUptime computes availability percentage and downtime for a given period.
+// CalculateUptime computes availability, downtime, and coverage for a given
+// period. Coverage may be less than last when the tracker started recently.
+// Returns an error if last exceeds the configured retention (data was pruned
+// and cannot be recovered).
 func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 	last time.Duration, end time.Time,
-) (float64, time.Duration) {
-	if last > tracker.retention || end.Sub(tracker.started) < last {
-		return -1, 0
+) (UptimeResult, error) {
+	if last > tracker.retention {
+		return UptimeResult{}, fmt.Errorf(
+			"%w: period %v exceeds retention %v",
+			ErrPeriodExceedsRetention,
+			last,
+			tracker.retention,
+		)
 	}
 
-	return tracker.uptimeCalculation(currentState, last, end)
+	coverage := min(end.Sub(tracker.started), last)
+	result := tracker.uptimeCalculation(currentState, coverage, end)
+	result.Coverage = coverage
+
+	return result, nil
 }
 
 // RecordsCount returns the number of state changes in the tracker.
@@ -109,13 +134,28 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 	for idx := range periods {
 		period := periods[idx]
 
-		availability, downtime := tracker.CalculateUptime(currentState, period, end)
+		result, err := tracker.CalculateUptime(currentState, period, end)
+		if err != nil {
+			reports[idx] = ReportByPeriod{
+				Period:       ReadableDuration(period),
+				Availability: ReadablePercent(-1),
+			}
 
-		reports[idx] = ReportByPeriod{
-			Period:       ReadableDuration(period),
-			Availability: ReadablePercent(availability),
-			Downtime:     ReadableDuration(downtime),
+			continue
 		}
+
+		rpt := ReportByPeriod{
+			Period:       ReadableDuration(period),
+			Availability: ReadablePercent(result.Availability),
+			Downtime:     ReadableDuration(result.Downtime),
+		}
+
+		if result.Coverage < period {
+			c := ReadableDuration(result.Coverage)
+			rpt.Coverage = &c
+		}
+
+		reports[idx] = rpt
 	}
 
 	return reports
@@ -123,14 +163,14 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 
 func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
 	last time.Duration, end time.Time,
-) (float64, time.Duration) {
+) UptimeResult {
 	if tracker.tail == nil {
 		// No records other than the current status
 		if currentState {
-			return 1.0, 0
+			return UptimeResult{Availability: 1.0}
 		}
 
-		return 0.0, last
+		return UptimeResult{Downtime: last}
 	}
 
 	uptime := time.Duration(0)
@@ -171,5 +211,8 @@ func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
 		}
 	}
 
-	return (float64(uptime) / float64(last)), last - uptime
+	return UptimeResult{
+		Availability: float64(uptime) / float64(last),
+		Downtime:     last - uptime,
+	}
 }
