@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -125,78 +126,78 @@ func (suite *TestSuiteStats) TestCalc_EmptyTracker() {
 	t := suite.T()
 	empty := GetTracker()
 
-	actual, downtime := empty.uptimeCalculation(true, 1*time.Minute, suite.Now)
-	assert.InEpsilon(t, 1.0, actual, 0.01)
-	assert.Equal(t, time.Duration(0), downtime)
+	result := empty.uptimeCalculation(true, 1*time.Minute, suite.Now)
+	assert.InEpsilon(t, 1.0, result.Availability, 0.01)
+	assert.Equal(t, time.Duration(0), result.Downtime)
 
-	actual, downtime = empty.uptimeCalculation(false, 1*time.Minute, suite.Now)
-	assert.InDelta(t, 0.0, actual, 0.0001)
-	assert.Equal(t, 1*time.Minute, downtime)
+	result = empty.uptimeCalculation(false, 1*time.Minute, suite.Now)
+	assert.InDelta(t, 0.0, result.Availability, 0.0001)
+	assert.Equal(t, 1*time.Minute, result.Downtime)
 }
 
 func (suite *TestSuiteStats) TestCalc_TrackerWithinOneMinute() {
 	t := suite.T()
 	tracker := suite.Tracker
 
-	actual, downtime := tracker.uptimeCalculation(true, 1*time.Minute, suite.Now)
-	assert.InEpsilon(t, 1.0, actual, 0.01)
-	assert.Equal(t, time.Duration(0), downtime)
+	result := tracker.uptimeCalculation(true, 1*time.Minute, suite.Now)
+	assert.InEpsilon(t, 1.0, result.Availability, 0.01)
+	assert.Equal(t, time.Duration(0), result.Downtime)
 
-	actual, downtime = tracker.uptimeCalculation(false, 1*time.Minute, suite.Now)
-	assert.InEpsilon(t, 1.0, actual, 0.01)
-	assert.Equal(t, time.Duration(0), downtime)
+	result = tracker.uptimeCalculation(false, 1*time.Minute, suite.Now)
+	assert.InEpsilon(t, 1.0, result.Availability, 0.01)
+	assert.Equal(t, time.Duration(0), result.Downtime)
 }
 
 func (suite *TestSuiteStats) TestCalc_TrackerWithinFourteenMinutes() {
 	t := suite.T()
 	tracker := suite.Tracker
 
-	actual, downtime := tracker.uptimeCalculation(true, 14*time.Minute, suite.Now)
-	assert.InEpsilon(t, 1.0, actual, 0.01)
-	assert.Equal(t, time.Duration(0), downtime)
+	result := tracker.uptimeCalculation(true, 14*time.Minute, suite.Now)
+	assert.InEpsilon(t, 1.0, result.Availability, 0.01)
+	assert.Equal(t, time.Duration(0), result.Downtime)
 
-	actual, downtime = tracker.uptimeCalculation(false, 14*time.Minute, suite.Now)
-	assert.InEpsilon(t, 1.0, actual, 0.01)
-	assert.Equal(t, time.Duration(0), downtime)
+	result = tracker.uptimeCalculation(false, 14*time.Minute, suite.Now)
+	assert.InEpsilon(t, 1.0, result.Availability, 0.01)
+	assert.Equal(t, time.Duration(0), result.Downtime)
 }
 
 func (suite *TestSuiteStats) TestCalc_TrackerWithinSixteenMinutes() {
 	t := suite.T()
 	tracker := suite.Tracker
 
-	actual, downtime := tracker.uptimeCalculation(true, 16*time.Minute, suite.Now)
-	assert.InEpsilon(t, 15.0/16.0, actual, 0.01)
-	assert.Equal(t, 1*time.Minute, downtime)
+	result := tracker.uptimeCalculation(true, 16*time.Minute, suite.Now)
+	assert.InEpsilon(t, 15.0/16.0, result.Availability, 0.01)
+	assert.Equal(t, 1*time.Minute, result.Downtime)
 
-	actual, downtime = tracker.uptimeCalculation(false, 16*time.Minute, suite.Now)
-	assert.InEpsilon(t, 15.0/16.0, actual, 0.01)
-	assert.Equal(t, 1*time.Minute, downtime)
+	result = tracker.uptimeCalculation(false, 16*time.Minute, suite.Now)
+	assert.InEpsilon(t, 15.0/16.0, result.Availability, 0.01)
+	assert.Equal(t, 1*time.Minute, result.Downtime)
 }
 
 func (suite *TestSuiteStats) TestCalc_TrackerWithinThirtyMinutes() {
 	t := suite.T()
 	tracker := suite.Tracker
 
-	actual, downtime := tracker.uptimeCalculation(true, 30*time.Minute, suite.Now)
-	assert.InEpsilon(t, 0.5, actual, 0.01)
-	assert.Equal(t, 15*time.Minute, downtime)
+	result := tracker.uptimeCalculation(true, 30*time.Minute, suite.Now)
+	assert.InEpsilon(t, 0.5, result.Availability, 0.01)
+	assert.Equal(t, 15*time.Minute, result.Downtime)
 
-	actual, downtime = tracker.uptimeCalculation(false, 30*time.Minute, suite.Now)
-	assert.InEpsilon(t, 0.5, actual, 0.01)
-	assert.Equal(t, 15*time.Minute, downtime)
+	result = tracker.uptimeCalculation(false, 30*time.Minute, suite.Now)
+	assert.InEpsilon(t, 0.5, result.Availability, 0.01)
+	assert.Equal(t, 15*time.Minute, result.Downtime)
 }
 
 func (suite *TestSuiteStats) TestCalc_TrackerWithinTwentyFourHours() {
 	t := suite.T()
 	tracker := suite.Tracker
 
-	actual, downtime := tracker.uptimeCalculation(true, 24*time.Hour, suite.Now)
-	assert.InEpsilon(t, 0.75/24, actual, 0.01)
-	assert.Equal(t, 23*time.Hour+15*time.Minute, downtime)
+	result := tracker.uptimeCalculation(true, 24*time.Hour, suite.Now)
+	assert.InEpsilon(t, 0.75/24, result.Availability, 0.01)
+	assert.Equal(t, 23*time.Hour+15*time.Minute, result.Downtime)
 
-	actual, downtime = tracker.uptimeCalculation(false, 24*time.Hour, suite.Now)
-	assert.InEpsilon(t, 0.75/24, actual, 0.01)
-	assert.Equal(t, 23*time.Hour+15*time.Minute, downtime)
+	result = tracker.uptimeCalculation(false, 24*time.Hour, suite.Now)
+	assert.InEpsilon(t, 0.75/24, result.Availability, 0.01)
+	assert.Equal(t, 23*time.Hour+15*time.Minute, result.Downtime)
 }
 
 func (suite *TestSuiteStats) TestCalc_EmptyWithRecordChange() {
@@ -204,43 +205,46 @@ func (suite *TestSuiteStats) TestCalc_EmptyWithRecordChange() {
 	empty := GetTracker()
 	empty.RecordChange(suite.Now.Add(-2*time.Hour), false)
 
-	actual, downtime := empty.uptimeCalculation(true, 1*time.Hour, suite.Now)
-	assert.InDelta(t, 0.0, actual, 0.0001)
-	assert.Equal(t, 1*time.Hour, downtime)
+	result := empty.uptimeCalculation(true, 1*time.Hour, suite.Now)
+	assert.InDelta(t, 0.0, result.Availability, 0.0001)
+	assert.Equal(t, 1*time.Hour, result.Downtime)
 
-	actual, downtime = empty.uptimeCalculation(false, 1*time.Hour, suite.Now)
-	assert.InDelta(t, 0.0, actual, 0.0001)
-	assert.Equal(t, 1*time.Hour, downtime)
+	result = empty.uptimeCalculation(false, 1*time.Hour, suite.Now)
+	assert.InDelta(t, 0.0, result.Availability, 0.0001)
+	assert.Equal(t, 1*time.Hour, result.Downtime)
 
-	actual, downtime = empty.uptimeCalculation(true, 2*time.Hour, suite.Now)
-	assert.InDelta(t, 0.0, actual, 0.0001)
-	assert.Equal(t, 2*time.Hour, downtime)
+	result = empty.uptimeCalculation(true, 2*time.Hour, suite.Now)
+	assert.InDelta(t, 0.0, result.Availability, 0.0001)
+	assert.Equal(t, 2*time.Hour, result.Downtime)
 
-	actual, downtime = empty.uptimeCalculation(false, 2*time.Hour, suite.Now)
-	assert.InDelta(t, 0.0, actual, 0.0001)
-	assert.Equal(t, 2*time.Hour, downtime)
+	result = empty.uptimeCalculation(false, 2*time.Hour, suite.Now)
+	assert.InDelta(t, 0.0, result.Availability, 0.0001)
+	assert.Equal(t, 2*time.Hour, result.Downtime)
 
-	actual, downtime = empty.uptimeCalculation(true, 24*time.Hour, suite.Now)
-	assert.InEpsilon(t, 22.0/24, actual, 0.01)
-	assert.Equal(t, 2*time.Hour, downtime)
+	result = empty.uptimeCalculation(true, 24*time.Hour, suite.Now)
+	assert.InEpsilon(t, 22.0/24, result.Availability, 0.01)
+	assert.Equal(t, 2*time.Hour, result.Downtime)
 
-	actual, downtime = empty.uptimeCalculation(false, 24*time.Hour, suite.Now)
-	assert.InEpsilon(t, 22.0/24, actual, 0.01)
-	assert.Equal(t, 2*time.Hour, downtime)
+	result = empty.uptimeCalculation(false, 24*time.Hour, suite.Now)
+	assert.InEpsilon(t, 22.0/24, result.Availability, 0.01)
+	assert.Equal(t, 2*time.Hour, result.Downtime)
 
 	empty.started = suite.Now.Add(-1 * time.Minute)
-	v, w := empty.CalculateUptime(false, 1*time.Hour, suite.Now)
-	assert.InDelta(t, -1.0, v, 0.0001)
-	assert.Equal(t, time.Duration(0), w)
+	result, err := empty.CalculateUptime(false, 1*time.Hour, suite.Now)
+	require.NoError(t, err)
+	assert.InDelta(t, 0.0, result.Availability, 0.0001)
+	assert.Equal(t, 1*time.Minute, result.Downtime)
+	assert.Equal(t, 1*time.Minute, result.Coverage)
 }
 
 func (suite *TestSuiteStats) TestCalcError() {
 	empty := GetTracker()
 
-	v, d := empty.CalculateUptime(true, 72*time.Hour, suite.Now)
-	suite.InDelta(-1.0, v, 0.0001)
-	suite.Equal(time.Duration(0), d)
-	v, d = empty.CalculateUptime(true, 24*time.Hour, suite.Now)
-	suite.InDelta(1.0, v, 0.0001)
-	suite.Equal(time.Duration(0), d)
+	_, err := empty.CalculateUptime(true, 72*time.Hour, suite.Now)
+	suite.Require().Error(err)
+
+	result, err := empty.CalculateUptime(true, 24*time.Hour, suite.Now)
+	suite.Require().NoError(err)
+	suite.InDelta(1.0, result.Availability, 0.0001)
+	suite.Equal(time.Duration(0), result.Downtime)
 }

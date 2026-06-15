@@ -55,9 +55,9 @@ func TestRollingProbeTracker_Record(t *testing.T) {
 		tracker.Record(false)
 	}
 
-	total, failed := tracker.Stats(time.Hour, now.Add(time.Minute))
-	assert.Equal(t, 3, total)
-	assert.Equal(t, 0, failed)
+	ps := tracker.Stats(time.Hour, now.Add(time.Minute))
+	assert.Equal(t, 3, ps.Total)
+	assert.Equal(t, 0, ps.Failed)
 }
 
 func TestRollingProbeTracker_RecordFailed(t *testing.T) {
@@ -67,17 +67,17 @@ func TestRollingProbeTracker_RecordFailed(t *testing.T) {
 	tracker.Record(true)
 	tracker.Record(false)
 
-	total, failed := tracker.Stats(time.Hour, time.Now())
-	assert.Equal(t, 3, total)
-	assert.Equal(t, 1, failed)
+	ps := tracker.Stats(time.Hour, time.Now())
+	assert.Equal(t, 3, ps.Total)
+	assert.Equal(t, 1, ps.Failed)
 }
 
 func TestRollingProbeTracker_Empty(t *testing.T) {
 	tracker := newSingleRingTracker(time.Hour, time.Minute)
 
-	total, failed := tracker.Stats(time.Hour, time.Now())
-	assert.Equal(t, 0, total)
-	assert.Equal(t, 0, failed)
+	ps := tracker.Stats(time.Hour, time.Now())
+	assert.Equal(t, 0, ps.Total)
+	assert.Equal(t, 0, ps.Failed)
 }
 
 func TestRollingProbeTracker_UnknownPeriod(t *testing.T) {
@@ -85,9 +85,9 @@ func TestRollingProbeTracker_UnknownPeriod(t *testing.T) {
 
 	tracker.Record(false)
 
-	total, failed := tracker.Stats(2*time.Hour, time.Now())
-	assert.Equal(t, 0, total)
-	assert.Equal(t, 0, failed)
+	ps := tracker.Stats(2*time.Hour, time.Now())
+	assert.Equal(t, 0, ps.Total)
+	assert.Equal(t, 0, ps.Failed)
 }
 
 func TestRollingProbeTracker_NoPeriods(t *testing.T) {
@@ -95,9 +95,9 @@ func TestRollingProbeTracker_NoPeriods(t *testing.T) {
 
 	tracker.Record(false)
 
-	total, failed := tracker.Stats(time.Hour, time.Now())
-	assert.Equal(t, 0, total)
-	assert.Equal(t, 0, failed)
+	ps := tracker.Stats(time.Hour, time.Now())
+	assert.Equal(t, 0, ps.Total)
+	assert.Equal(t, 0, ps.Failed)
 }
 
 func TestRollingProbeTracker_OutsideWindow(t *testing.T) {
@@ -108,9 +108,9 @@ func TestRollingProbeTracker_OutsideWindow(t *testing.T) {
 	tracker.rings[0].recordAt(now)
 	tracker.mu.Unlock()
 
-	total, failed := tracker.Stats(time.Hour, now.Add(2*time.Hour))
-	assert.Equal(t, 0, total)
-	assert.Equal(t, 0, failed)
+	ps := tracker.Stats(time.Hour, now.Add(2*time.Hour))
+	assert.Equal(t, 0, ps.Total)
+	assert.Equal(t, 0, ps.Failed)
 }
 
 func TestRollingProbeTracker_BucketAdvancement(t *testing.T) {
@@ -122,9 +122,9 @@ func TestRollingProbeTracker_BucketAdvancement(t *testing.T) {
 	tracker.rings[0].recordAt(now.Add(2 * time.Minute)) // bucket 3 (bucket 2 is empty gap)
 	tracker.mu.Unlock()
 
-	total, failed := tracker.Stats(time.Hour, now.Add(3*time.Minute))
-	assert.Equal(t, 2, total)
-	assert.Equal(t, 0, failed)
+	ps := tracker.Stats(time.Hour, now.Add(3*time.Minute))
+	assert.Equal(t, 2, ps.Total)
+	assert.Equal(t, 0, ps.Failed)
 }
 
 func TestRollingProbeTracker_WrapAround(t *testing.T) {
@@ -141,14 +141,14 @@ func TestRollingProbeTracker_WrapAround(t *testing.T) {
 
 	// After 20 minutes of 1-min buckets with 6 buckets, only 6 remain even
 	// for a cutoff far in the past.
-	total, _ := tracker.rings[0].statsSince(now.Add(-time.Hour))
+	ps := tracker.rings[0].statsSince(now.Add(-time.Hour))
 	tracker.mu.Unlock()
 
-	assert.Equal(t, 6, total)
+	assert.Equal(t, 6, ps.Total)
 
 	// The 5m report window itself covers the 5 newest buckets.
-	total, _ = tracker.Stats(5*time.Minute, now)
-	assert.Equal(t, 5, total)
+	ps = tracker.Stats(5*time.Minute, now)
+	assert.Equal(t, 5, ps.Total)
 }
 
 func TestRollingProbeTracker_LongGapResets(t *testing.T) {
@@ -162,9 +162,9 @@ func TestRollingProbeTracker_LongGapResets(t *testing.T) {
 	tracker.rings[0].recordAt(now.Add(24 * time.Hour))
 	tracker.mu.Unlock()
 
-	total, failed := tracker.Stats(5*time.Minute, now.Add(24*time.Hour))
-	assert.Equal(t, 1, total)
-	assert.Equal(t, 0, failed)
+	ps := tracker.Stats(5*time.Minute, now.Add(24*time.Hour))
+	assert.Equal(t, 1, ps.Total)
+	assert.Equal(t, 0, ps.Failed)
 }
 
 func TestRollingProbeTracker_PerPeriodGranularity(t *testing.T) {
@@ -184,12 +184,12 @@ func TestRollingProbeTracker_PerPeriodGranularity(t *testing.T) {
 	tracker.mu.Unlock()
 
 	// The 1m window only sees the most recent probe.
-	total, _ := tracker.Stats(time.Minute, base.Add(2*time.Minute))
-	assert.Equal(t, 1, total)
+	ps := tracker.Stats(time.Minute, base.Add(2*time.Minute))
+	assert.Equal(t, 1, ps.Total)
 
 	// The 1h window sees both.
-	total, _ = tracker.Stats(time.Hour, base.Add(2*time.Minute))
-	assert.Equal(t, 2, total)
+	ps = tracker.Stats(time.Hour, base.Add(2*time.Minute))
+	assert.Equal(t, 2, ps.Total)
 }
 
 func TestRollingProbeTracker_ConcurrentAccess(t *testing.T) {
@@ -207,9 +207,9 @@ func TestRollingProbeTracker_ConcurrentAccess(t *testing.T) {
 
 	wg.Wait()
 
-	total, failed := tracker.Stats(time.Hour, time.Now())
-	assert.Equal(t, 1000, total)
-	assert.Equal(t, 1000, failed)
+	ps := tracker.Stats(time.Hour, time.Now())
+	assert.Equal(t, 1000, ps.Total)
+	assert.Equal(t, 1000, ps.Failed)
 }
 
 func TestRollingProbeTracker_AlignedWindow(t *testing.T) {
@@ -225,14 +225,14 @@ func TestRollingProbeTracker_AlignedWindow(t *testing.T) {
 	tracker.mu.Unlock()
 
 	// 1h window from 12:55:05 → cutoff = 12:00:05 (later bucket boundary)
-	total, failed := tracker.rings[0].statsSince(base.Add(5 * time.Second))
-	assert.Equal(t, 1, total)
-	assert.Equal(t, 0, failed)
+	ps := tracker.rings[0].statsSince(base.Add(5 * time.Second))
+	assert.Equal(t, 1, ps.Total)
+	assert.Equal(t, 0, ps.Failed)
 
 	// Cutoff = 12:00:00 (first bucket boundary): both included
-	total, failed = tracker.rings[0].statsSince(base)
-	assert.Equal(t, 2, total)
-	assert.Equal(t, 0, failed)
+	ps = tracker.rings[0].statsSince(base)
+	assert.Equal(t, 2, ps.Total)
+	assert.Equal(t, 0, ps.Failed)
 }
 
 func TestRollingProbeTracker_NonAlignedWindow(t *testing.T) {
@@ -250,12 +250,12 @@ func TestRollingProbeTracker_NonAlignedWindow(t *testing.T) {
 	// Cutoff = 12:00:03 (middle of first bucket):
 	// Bucket [12:00:00, 12:00:05): starts before cutoff → excluded
 	// Bucket [12:00:05, 12:00:10): starts at or after cutoff → included
-	total, failed := tracker.rings[0].statsSince(base.Add(3 * time.Second))
-	assert.Equal(t, 1, total)
-	assert.Equal(t, 0, failed)
+	ps := tracker.rings[0].statsSince(base.Add(3 * time.Second))
+	assert.Equal(t, 1, ps.Total)
+	assert.Equal(t, 0, ps.Failed)
 
 	// Cutoff = 11:59:59: both buckets included
-	total, failed = tracker.rings[0].statsSince(base.Add(-time.Second))
-	assert.Equal(t, 2, total)
-	assert.Equal(t, 0, failed)
+	ps = tracker.rings[0].statsSince(base.Add(-time.Second))
+	assert.Equal(t, 2, ps.Total)
+	assert.Equal(t, 0, ps.Failed)
 }

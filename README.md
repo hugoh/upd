@@ -100,29 +100,46 @@ The sample configuration above will provide data looking like this:
   "isUp": true,
   "reports": [
     {
-      "period": "1m",
+      "period": "10s",
       "availability": "100.00 %",
-      "downTime": "0s"
+      "downTime": "0s",
+      "totalProbes": 1,
+      "failedProbes": 0,
+      "failureRate": "0.00 %"
     },
     {
       "period": "15m",
       "availability": "100.00 %",
-      "downTime": "0s"
+      "downTime": "0s",
+      "totalProbes": 15,
+      "failedProbes": 0,
+      "failureRate": "0.00 %"
     },
     {
       "period": "1h",
       "availability": "100.00 %",
-      "downTime": "0s"
+      "downTime": "0s",
+      "totalProbes": 60,
+      "failedProbes": 0,
+      "failureRate": "0.00 %"
     },
     {
       "period": "24h",
-      "availability": "Not computed",
-      "downTime": "0s"
+      "coverage": "12h33m23s",
+      "availability": "100.00 %",
+      "downTime": "0s",
+      "totalProbes": 753,
+      "failedProbes": 0,
+      "failureRate": "0.00 %"
     },
     {
       "period": "168h",
-      "availability": "Not computed",
-      "downTime": "0s"
+      "coverage": "12h33m23s",
+      "availability": "100.00 %",
+      "downTime": "0s",
+      "totalProbes": 753,
+      "failedProbes": 0,
+      "failureRate": "0.00 %"
     }
   ],
   "loop": {
@@ -133,7 +150,7 @@ The sample configuration above will provide data looking like this:
     "totalChecksRun": 753
   },
   "updUptime": "12h33m23s",
-  "updVersion": "4.2.0",
+  "updVersion": "4.4.0",
   "generatedAt": "2026-06-09T07:37:00.70887063-05:00"
 }
 ```

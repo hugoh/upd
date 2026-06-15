@@ -7,12 +7,13 @@ const JSONIndentSpaces = "  "
 
 // ReportByPeriod contains uptime statistics for a specific time period.
 type ReportByPeriod struct {
-	Period       ReadableDuration `json:"period"`
-	Availability ReadablePercent  `json:"availability"`
-	Downtime     ReadableDuration `json:"downTime"`
-	TotalProbes  int              `json:"totalProbes"`
-	FailedProbes int              `json:"failedProbes"`
-	FailureRate  ReadablePercent  `json:"failureRate"`
+	Period       ReadableDuration  `json:"period"`
+	Coverage     *ReadableDuration `json:"coverage,omitempty"`
+	Availability ReadablePercent   `json:"availability"`
+	Downtime     ReadableDuration  `json:"downTime"`
+	TotalProbes  int               `json:"totalProbes"`
+	FailedProbes int               `json:"failedProbes"`
+	FailureRate  ReadablePercent   `json:"failureRate"`
 }
 
 // DownActionStatus contains the current state of the down action loop.
