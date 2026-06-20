@@ -127,6 +127,22 @@ func (t *RollingProbeTracker) Stats(period time.Duration, now time.Time) ProbeSt
 	return ProbeStats{}
 }
 
+// StatsAll returns probe results for every configured ring in construction
+// order, under a single lock acquisition. Use this for report generation to
+// ensure all periods reflect the same ring state.
+func (t *RollingProbeTracker) StatsAll(now time.Time) []ProbeStats {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	result := make([]ProbeStats, len(t.rings))
+
+	for i, ring := range t.rings {
+		result[i] = ring.statsSince(now.Add(-ring.period))
+	}
+
+	return result
+}
+
 // newestIdx returns the ring index of the newest bucket. Must be called with
 // the tracker lock held and count > 0.
 func (r *probeRing) newestIdx() int {

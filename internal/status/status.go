@@ -244,13 +244,16 @@ func (s *Status) GenStatReport(periods []time.Duration) *Report {
 	rpt.Loop.TotalChecksRun = s.stateChangeTracker.updateCount
 
 	if s.rollingTracker != nil {
-		for idx, period := range periods {
-			ps := s.rollingTracker.Stats(period, generated)
+		allStats := s.rollingTracker.StatsAll(generated)
+		for idx := range min(len(allStats), len(rpt.Stats)) {
+			ps := allStats[idx]
 			rpt.Stats[idx].TotalProbes = ps.Total
-
 			rpt.Stats[idx].FailedProbes = ps.Failed
+
 			if ps.Total > 0 {
 				rpt.Stats[idx].FailureRate = ReadablePercent(float64(ps.Failed) / float64(ps.Total))
+			} else {
+				rpt.Stats[idx].FailureRate = ReadablePercent(-1)
 			}
 		}
 	}

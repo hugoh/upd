@@ -210,3 +210,36 @@ func TestSetNextCheckAt_ConcurrentAccess(t *testing.T) {
 	<-done
 	<-done
 }
+
+func TestGenStatReport_FailureRateNotComputed_WhenNoProbes(t *testing.T) {
+	s := NewStatus()
+	s.SetRetention(time.Hour)
+	s.Update(true)
+
+	tracker := NewRollingProbeTracker([]time.Duration{time.Minute}, BucketConfig{})
+	s.SetRollingTracker(tracker)
+
+	// No probes recorded yet.
+	rpt := s.GenStatReport([]time.Duration{time.Minute})
+	require.Len(t, rpt.Stats, 1)
+	assert.Equal(t, 0, rpt.Stats[0].TotalProbes)
+	assert.Equal(t, ReadablePercent(-1), rpt.Stats[0].FailureRate)
+}
+
+func TestGenStatReport_FailureRateComputed_WhenProbesExist(t *testing.T) {
+	s := NewStatus()
+	s.SetRetention(time.Hour)
+	s.Update(true)
+
+	tracker := NewRollingProbeTracker([]time.Duration{time.Minute}, BucketConfig{})
+	s.SetRollingTracker(tracker)
+
+	tracker.Record(false)
+	tracker.Record(true)
+
+	rpt := s.GenStatReport([]time.Duration{time.Minute})
+	require.Len(t, rpt.Stats, 1)
+	assert.Equal(t, 2, rpt.Stats[0].TotalProbes)
+	assert.Equal(t, 1, rpt.Stats[0].FailedProbes)
+	assert.Equal(t, ReadablePercent(0.5), rpt.Stats[0].FailureRate)
+}

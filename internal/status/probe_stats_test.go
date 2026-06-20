@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func startOfThisMinute() time.Time {
@@ -258,4 +259,29 @@ func TestRollingProbeTracker_NonAlignedWindow(t *testing.T) {
 	ps = tracker.rings[0].statsSince(base.Add(-time.Second))
 	assert.Equal(t, 2, ps.Total)
 	assert.Equal(t, 0, ps.Failed)
+}
+
+func TestRollingProbeTracker_StatsAll(t *testing.T) {
+	now := time.Now()
+	tracker := NewRollingProbeTracker(
+		[]time.Duration{time.Minute, time.Hour},
+		BucketConfig{},
+	)
+
+	tracker.Record(false)
+	tracker.Record(true)
+
+	all := tracker.StatsAll(now.Add(time.Second))
+	require.Len(t, all, 2)
+	assert.Equal(t, 2, all[0].Total)
+	assert.Equal(t, 1, all[0].Failed)
+	assert.Equal(t, 2, all[1].Total)
+	assert.Equal(t, 1, all[1].Failed)
+}
+
+func TestRollingProbeTracker_StatsAll_Empty(t *testing.T) {
+	tracker := NewRollingProbeTracker([]time.Duration{time.Hour}, BucketConfig{})
+	all := tracker.StatsAll(time.Now())
+	require.Len(t, all, 1)
+	assert.Equal(t, 0, all[0].Total)
 }
