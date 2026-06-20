@@ -188,14 +188,27 @@ func (r *probeRing) advanceTo(bucketTime time.Time) {
 		return
 	}
 
-	for range steps {
-		if r.count == maxBuckets {
-			r.buckets[r.head] = probeBucket{}
-			r.head = (r.head + 1) % maxBuckets
+	if r.count == maxBuckets {
+		// Ring is full: batch-zero the evicted slots and rotate head in one
+		// step instead of looping. The evicted range [head, head+steps) wraps
+		// around, so handle the two contiguous halves separately.
+		newHead := (r.head + steps) % maxBuckets
+		if newHead > r.head {
+			clear(r.buckets[r.head:newHead])
 		} else {
-			r.buckets[(r.head+r.count)%maxBuckets] = probeBucket{}
-			r.count++
+			clear(r.buckets[r.head:])
+			if newHead > 0 {
+				clear(r.buckets[:newHead])
+			}
 		}
+		r.head = newHead
+
+		return
+	}
+
+	for range steps {
+		r.buckets[(r.head+r.count)%maxBuckets] = probeBucket{}
+		r.count++
 	}
 }
 
