@@ -8,9 +8,8 @@ import (
 
 // ProbeStats holds the result of a probe stats query.
 type ProbeStats struct {
-	Total    int
-	Failed   int
-	Coverage time.Duration
+	Total  int
+	Failed int
 }
 
 // probeBucket counts probe results within one bucket interval. Bucket start
@@ -121,10 +120,7 @@ func (t *RollingProbeTracker) Stats(period time.Duration, now time.Time) ProbeSt
 
 	for _, ring := range t.rings {
 		if ring.period == period {
-			result := ring.statsSince(now.Add(-period))
-			result.Coverage = min(time.Duration(ring.count)*ring.interval, period)
-
-			return result
+			return ring.statsSince(now.Add(-period))
 		}
 	}
 
