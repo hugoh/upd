@@ -2,15 +2,15 @@ package status
 
 import (
 	"cmp"
+	"fmt"
 	"sync"
 	"time"
 )
 
 // ProbeStats holds the result of a probe stats query.
 type ProbeStats struct {
-	Total    int
-	Failed   int
-	Coverage time.Duration
+	Total  int
+	Failed int
 }
 
 // probeBucket counts probe results within one bucket interval. Bucket start
@@ -113,22 +113,35 @@ func (t *RollingProbeTracker) Record(failed bool) {
 }
 
 // Stats returns probe results within the given report period before now.
-// Coverage may be less than period at startup. The period must be one of the
-// configured report periods; unknown periods return a zero ProbeStats.
+// Panics if period is not one of the configured report periods — use StatsAll
+// for bulk reads that avoid this constraint.
 func (t *RollingProbeTracker) Stats(period time.Duration, now time.Time) ProbeStats {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	for _, ring := range t.rings {
 		if ring.period == period {
-			result := ring.statsSince(now.Add(-period))
-			result.Coverage = min(time.Duration(ring.count)*ring.interval, period)
-
-			return result
+			return ring.statsSince(now.Add(-period))
 		}
 	}
 
-	return ProbeStats{}
+	panic(fmt.Sprintf("RollingProbeTracker.Stats: no ring for period %v", period))
+}
+
+// StatsAll returns probe results for every configured ring in construction
+// order, under a single lock acquisition. Use this for report generation to
+// ensure all periods reflect the same ring state.
+func (t *RollingProbeTracker) StatsAll(now time.Time) []ProbeStats {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	result := make([]ProbeStats, len(t.rings))
+
+	for i, ring := range t.rings {
+		result[i] = ring.statsSince(now.Add(-ring.period))
+	}
+
+	return result
 }
 
 // newestIdx returns the ring index of the newest bucket. Must be called with
@@ -175,14 +188,29 @@ func (r *probeRing) advanceTo(bucketTime time.Time) {
 		return
 	}
 
-	for range steps {
-		if r.count == maxBuckets {
-			r.buckets[r.head] = probeBucket{}
-			r.head = (r.head + 1) % maxBuckets
+	if r.count == maxBuckets {
+		// Ring is full: batch-zero the evicted slots and rotate head in one
+		// step instead of looping. The evicted range [head, head+steps) wraps
+		// around, so handle the two contiguous halves separately.
+		newHead := (r.head + steps) % maxBuckets
+		if newHead > r.head {
+			clear(r.buckets[r.head:newHead])
 		} else {
-			r.buckets[(r.head+r.count)%maxBuckets] = probeBucket{}
-			r.count++
+			clear(r.buckets[r.head:])
+
+			if newHead > 0 {
+				clear(r.buckets[:newHead])
+			}
 		}
+
+		r.head = newHead
+
+		return
+	}
+
+	for range steps {
+		r.buckets[(r.head+r.count)%maxBuckets] = probeBucket{}
+		r.count++
 	}
 }
 

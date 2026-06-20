@@ -29,6 +29,10 @@ const (
 	TrailingZeroHSuffix = "h0m"
 	// TrailingZeroHMSuffix is the trailing zero hours/minutes suffix.
 	TrailingZeroHMSuffix = "0m"
+
+	// NotComputedDuration is the sentinel value for ReadableDuration that
+	// serialises as "Not computed" rather than a duration string.
+	NotComputedDuration ReadableDuration = -1
 )
 
 // MarshalJSON formats the percentage for JSON output.
@@ -56,5 +60,9 @@ func formatDuration(d time.Duration) string {
 
 // MarshalJSON formats the duration for JSON output.
 func (d ReadableDuration) MarshalJSON() ([]byte, error) {
+	if d == NotComputedDuration {
+		return json.Marshal(NotComputedMsg) //nolint:wrapcheck
+	}
+
 	return json.Marshal(formatDuration(time.Duration(d))) //nolint:wrapcheck
 }

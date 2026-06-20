@@ -248,3 +248,34 @@ func (suite *TestSuiteStats) TestCalcError() {
 	suite.InDelta(1.0, result.Availability, 0.0001)
 	suite.Equal(time.Duration(0), result.Downtime)
 }
+
+func TestCalculateUptime_ClockSkew_ReturnsSafeZero(t *testing.T) {
+	// Simulate end < started (backward clock step). Should not panic or produce
+	// NaN/negative values; should return a zero UptimeResult with no error.
+	tracker := &StateChangeTracker{
+		retention: time.Hour,
+		started:   time.Now(),
+	}
+	tracker.RecordChange(time.Now().Add(-time.Minute), false)
+
+	// end is one second in the past relative to started.
+	result, err := tracker.CalculateUptime(false, time.Minute, time.Now().Add(-time.Second))
+	require.NoError(t, err)
+	assert.InDelta(t, 0.0, result.Availability, 0.0001)
+	assert.Equal(t, time.Duration(0), result.Downtime)
+	assert.Equal(t, time.Duration(0), result.Coverage)
+}
+
+func TestGenReports_ErrorPath_NotComputedDowntime(t *testing.T) {
+	// A tracker with 1h retention asked for a 24h period returns "Not computed"
+	// for both Availability and Downtime rather than a misleading "0s".
+	tracker := &StateChangeTracker{
+		retention: time.Hour,
+		started:   time.Now().Add(-time.Hour),
+	}
+
+	reports := tracker.GenReports(true, time.Now(), []time.Duration{24 * time.Hour})
+	require.Len(t, reports, 1)
+	assert.InDelta(t, float64(-1), float64(reports[0].Availability), 0.0001)
+	assert.Equal(t, NotComputedDuration, reports[0].Downtime)
+}

@@ -98,7 +98,12 @@ func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 		)
 	}
 
-	coverage := min(end.Sub(tracker.started), last)
+	coverage := max(min(end.Sub(tracker.started), last), 0)
+	if coverage == 0 {
+		// Tracker started at or after the query time (e.g. backward clock step).
+		return UptimeResult{}, nil
+	}
+
 	result := tracker.uptimeCalculation(currentState, coverage, end)
 	result.Coverage = coverage
 
@@ -139,6 +144,7 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 			reports[idx] = ReportByPeriod{
 				Period:       ReadableDuration(period),
 				Availability: ReadablePercent(-1),
+				Downtime:     NotComputedDuration,
 			}
 
 			continue
