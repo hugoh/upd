@@ -2,6 +2,7 @@ package status
 
 import (
 	"cmp"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -112,8 +113,8 @@ func (t *RollingProbeTracker) Record(failed bool) {
 }
 
 // Stats returns probe results within the given report period before now.
-// Coverage may be less than period at startup. The period must be one of the
-// configured report periods; unknown periods return a zero ProbeStats.
+// Panics if period is not one of the configured report periods — use StatsAll
+// for bulk reads that avoid this constraint.
 func (t *RollingProbeTracker) Stats(period time.Duration, now time.Time) ProbeStats {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -124,7 +125,7 @@ func (t *RollingProbeTracker) Stats(period time.Duration, now time.Time) ProbeSt
 		}
 	}
 
-	return ProbeStats{}
+	panic(fmt.Sprintf("RollingProbeTracker.Stats: no ring for period %v", period))
 }
 
 // StatsAll returns probe results for every configured ring in construction

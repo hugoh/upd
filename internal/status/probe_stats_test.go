@@ -81,14 +81,12 @@ func TestRollingProbeTracker_Empty(t *testing.T) {
 	assert.Equal(t, 0, ps.Failed)
 }
 
-func TestRollingProbeTracker_UnknownPeriod(t *testing.T) {
+func TestRollingProbeTracker_UnknownPeriod_Panics(t *testing.T) {
 	tracker := newSingleRingTracker(time.Hour, time.Minute)
 
 	tracker.Record(false)
 
-	ps := tracker.Stats(2*time.Hour, time.Now())
-	assert.Equal(t, 0, ps.Total)
-	assert.Equal(t, 0, ps.Failed)
+	assert.Panics(t, func() { tracker.Stats(2*time.Hour, time.Now()) })
 }
 
 func TestRollingProbeTracker_NoPeriods(t *testing.T) {
@@ -96,9 +94,7 @@ func TestRollingProbeTracker_NoPeriods(t *testing.T) {
 
 	tracker.Record(false)
 
-	ps := tracker.Stats(time.Hour, time.Now())
-	assert.Equal(t, 0, ps.Total)
-	assert.Equal(t, 0, ps.Failed)
+	assert.Panics(t, func() { tracker.Stats(time.Hour, time.Now()) })
 }
 
 func TestRollingProbeTracker_OutsideWindow(t *testing.T) {
