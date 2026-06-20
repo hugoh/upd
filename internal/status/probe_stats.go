@@ -197,10 +197,12 @@ func (r *probeRing) advanceTo(bucketTime time.Time) {
 			clear(r.buckets[r.head:newHead])
 		} else {
 			clear(r.buckets[r.head:])
+
 			if newHead > 0 {
 				clear(r.buckets[:newHead])
 			}
 		}
+
 		r.head = newHead
 
 		return

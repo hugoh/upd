@@ -261,7 +261,7 @@ func TestCalculateUptime_ClockSkew_ReturnsSafeZero(t *testing.T) {
 	// end is one second in the past relative to started.
 	result, err := tracker.CalculateUptime(false, time.Minute, time.Now().Add(-time.Second))
 	require.NoError(t, err)
-	assert.Equal(t, float64(0), result.Availability)
+	assert.InDelta(t, 0.0, result.Availability, 0.0001)
 	assert.Equal(t, time.Duration(0), result.Downtime)
 	assert.Equal(t, time.Duration(0), result.Coverage)
 }
@@ -276,6 +276,6 @@ func TestGenReports_ErrorPath_NotComputedDowntime(t *testing.T) {
 
 	reports := tracker.GenReports(true, time.Now(), []time.Duration{24 * time.Hour})
 	require.Len(t, reports, 1)
-	assert.Equal(t, ReadablePercent(-1), reports[0].Availability)
+	assert.InDelta(t, float64(-1), float64(reports[0].Availability), 0.0001)
 	assert.Equal(t, NotComputedDuration, reports[0].Downtime)
 }

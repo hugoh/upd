@@ -223,7 +223,7 @@ func TestGenStatReport_FailureRateNotComputed_WhenNoProbes(t *testing.T) {
 	rpt := s.GenStatReport([]time.Duration{time.Minute})
 	require.Len(t, rpt.Stats, 1)
 	assert.Equal(t, 0, rpt.Stats[0].TotalProbes)
-	assert.Equal(t, ReadablePercent(-1), rpt.Stats[0].FailureRate)
+	assert.InDelta(t, float64(-1), float64(rpt.Stats[0].FailureRate), 0.0001)
 }
 
 func TestGenStatReport_FailureRateComputed_WhenProbesExist(t *testing.T) {
@@ -241,5 +241,5 @@ func TestGenStatReport_FailureRateComputed_WhenProbesExist(t *testing.T) {
 	require.Len(t, rpt.Stats, 1)
 	assert.Equal(t, 2, rpt.Stats[0].TotalProbes)
 	assert.Equal(t, 1, rpt.Stats[0].FailedProbes)
-	assert.Equal(t, ReadablePercent(0.5), rpt.Stats[0].FailureRate)
+	assert.InDelta(t, 0.5, float64(rpt.Stats[0].FailureRate), 0.0001)
 }
