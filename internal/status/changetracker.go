@@ -139,6 +139,7 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 			reports[idx] = ReportByPeriod{
 				Period:       ReadableDuration(period),
 				Availability: ReadablePercent(-1),
+				Downtime:     NotComputedDuration,
 			}
 
 			continue

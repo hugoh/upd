@@ -248,3 +248,17 @@ func (suite *TestSuiteStats) TestCalcError() {
 	suite.InDelta(1.0, result.Availability, 0.0001)
 	suite.Equal(time.Duration(0), result.Downtime)
 }
+
+func TestGenReports_ErrorPath_NotComputedDowntime(t *testing.T) {
+	// A tracker with 1h retention asked for a 24h period returns "Not computed"
+	// for both Availability and Downtime rather than a misleading "0s".
+	tracker := &StateChangeTracker{
+		retention: time.Hour,
+		started:   time.Now().Add(-time.Hour),
+	}
+
+	reports := tracker.GenReports(true, time.Now(), []time.Duration{24 * time.Hour})
+	require.Len(t, reports, 1)
+	assert.Equal(t, ReadablePercent(-1), reports[0].Availability)
+	assert.Equal(t, NotComputedDuration, reports[0].Downtime)
+}
