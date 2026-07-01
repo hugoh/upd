@@ -17,6 +17,7 @@ var (
 	errInvalidLogLevel        = errors.New("must be one of: debug, info, warn")
 	errUnsupportedScheme      = errors.New("unsupported scheme")
 	errTooManyBuckets         = errors.New("report period needs too many buckets")
+	errMissingExec            = errors.New("required when downAction is configured")
 )
 
 func appendErr(errs []error, key string, err error) []error {
@@ -56,6 +57,10 @@ func (c Configuration) validateChecks() error {
 
 func (c Configuration) validateDownAction() error {
 	var errs []error
+
+	if c.DownAction != (DownActionConfig{}) && c.DownAction.Exec == "" {
+		errs = appendErr(errs, "exec", errMissingExec)
+	}
 
 	errs = appendErr(errs, "every.after", checkNonNegative(time.Duration(c.DownAction.Every.After)))
 	errs = appendErr(

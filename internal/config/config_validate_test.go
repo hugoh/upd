@@ -152,6 +152,20 @@ ordered = ["dns://8.8.8.8"]`)
 	assert.Contains(t, err.Error(), "missing required attributes")
 }
 
+func TestValidate_downActionMissingExec(t *testing.T) {
+	config := validConfigBase() + `
+
+[downAction.every]
+after = "60s"
+repeat = "300s"`
+	path := writeTestConfig(t, config)
+
+	_, err := ReadConf(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "missing required attributes")
+	assert.Contains(t, err.Error(), "downAction: exec: required when downAction is configured")
+}
+
 func TestValidate_afterNegative(t *testing.T) {
 	config := validConfigBase() + `
 
