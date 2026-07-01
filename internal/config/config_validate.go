@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/hugoh/upd/internal/check"
 	"github.com/hugoh/upd/internal/status"
 )
 
@@ -18,6 +17,7 @@ var (
 	errInvalidLogLevel        = errors.New("must be one of: debug, info, warn")
 	errUnsupportedScheme      = errors.New("unsupported scheme")
 	errTooManyBuckets         = errors.New("report period needs too many buckets")
+	errMissingExec            = errors.New("required when downAction is configured")
 )
 
 func appendErr(errs []error, key string, err error) []error {
@@ -57,6 +57,10 @@ func (c Configuration) validateChecks() error {
 
 func (c Configuration) validateDownAction() error {
 	var errs []error
+
+	if c.DownAction != (DownActionConfig{}) && c.DownAction.Exec == "" {
+		errs = appendErr(errs, "exec", errMissingExec)
+	}
 
 	errs = appendErr(errs, "every.after", checkNonNegative(time.Duration(c.DownAction.Every.After)))
 	errs = appendErr(
@@ -159,7 +163,6 @@ func validateURIs(uris []string) error {
 	var errs []error
 
 	for idx, uri := range uris {
-		// Same parser as GetChecksCat so validation matches what gets built.
 		parsed, err := url.Parse(uri)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("[%d]: %w", idx, errInvalidURI))
@@ -167,13 +170,10 @@ func validateURIs(uris []string) error {
 			continue
 		}
 
-		switch parsed.Scheme {
-		case check.DNS, check.HTTP, check.HTTPS, check.TCP:
-		default:
-			errs = append(
-				errs,
-				fmt.Errorf("[%d]: %w: %q", idx, errUnsupportedScheme, parsed.Scheme),
-			)
+		// Validate by attempting the same construction GetChecksCat performs,
+		// so a config that passes validation is guaranteed to build.
+		if _, err := probeFromURL(parsed); err != nil {
+			errs = append(errs, fmt.Errorf("[%d]: %w", idx, err))
 		}
 	}
 

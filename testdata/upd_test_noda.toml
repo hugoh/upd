@@ -14,4 +14,9 @@ ordered = [
   "http://clients3.google.com/generate_204",
   "http://www.msftconnecttest.com/connecttest.txt",
 ]
-shuffled = ["dns://1.1.1.1/", "dns://1.0.0.1/", "dns://8.8.8.8/", "dns://8.8.4.4/"]
+shuffled = [
+  "dns://1.1.1.1/www.google.com",
+  "dns://1.0.0.1/www.google.com",
+  "dns://8.8.8.8/www.google.com",
+  "dns://8.8.4.4/www.google.com",
+]

@@ -234,6 +234,10 @@ func probeFromURL(parsedURL *url.URL) (check.Probe, error) {
 	case check.HTTP, check.HTTPS:
 		return check.NewHTTPProbe(parsedURL.String()), nil
 	case check.TCP:
+		if parsedURL.Port() == "" {
+			return nil, fmt.Errorf("%w: missing port", errInvalidURI)
+		}
+
 		return check.NewTCPProbe(net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())), nil
 	default:
 		return nil, fmt.Errorf("%w: %q", errUnsupportedScheme, parsedURL.Scheme)

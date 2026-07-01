@@ -118,6 +118,19 @@ func TestDnsProbe(t *testing.T) {
 		assert.True(t, strings.HasPrefix(got, "error resolving invalid.aa"),
 			"got %q, want prefix %q", got, "error resolving invalid.aa")
 	})
+	t.Run(
+		"returns an error instead of panicking when the resolver returns no addresses",
+		func(t *testing.T) {
+			resolver := &fakeResolver{result: []string{}}
+			dnsProbe := &DNSProbe{Domain: testDomain, resolver: resolver}
+
+			require.NotPanics(t, func() {
+				report := dnsProbe.Execute(t.Context(), testTimeout)
+				err := checkError(t, report)
+				require.ErrorIs(t, err, ErrDNSNoAddresses)
+			})
+		},
+	)
 	t.Run("returns an error if the request times out", func(t *testing.T) {
 		resolver := &fakeResolver{err: context.DeadlineExceeded}
 		dnsProbe := &DNSProbe{Domain: "example.com", resolver: resolver}

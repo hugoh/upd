@@ -80,6 +80,34 @@ func Test_ProcessCheck_StatusChanged_UpStatus_StopsDownAction(t *testing.T) {
 	assert.Nil(t, loop.downActionLoop)
 }
 
+func Test_ProcessCheck_UpStatus_DoesNotBlockOnStopExec(t *testing.T) {
+	loop := emptyNewLoop()
+	ctx := t.Context()
+	da := &DownAction{
+		After:    time.Millisecond,
+		Exec:     testTrue,
+		StopExec: "sleep 5",
+	}
+	loop.downAction = da
+
+	require.NoError(t, loop.DownActionStart(ctx))
+	require.NotNil(t, loop.downActionLoop)
+
+	start := time.Now()
+
+	loop.ProcessCheck(ctx, true)
+
+	elapsed := time.Since(start)
+
+	assert.Nil(
+		t,
+		loop.downActionLoop,
+		"downActionLoop should be cleared synchronously even though StopExec runs in the background",
+	)
+	assert.Less(t, elapsed, time.Second,
+		"ProcessCheck should not block on a slow StopExec command")
+}
+
 func Test_ProcessCheck_StatusChanged_DownStatus_StartsDownAction(t *testing.T) {
 	loop := emptyNewLoop()
 	ctx := t.Context()

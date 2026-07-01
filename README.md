@@ -40,50 +40,20 @@ GLOBAL OPTIONS:
 
 Configuration by default is located in `.upd.toml` in the working directory.
 
-An example is:
+See [`upd.toml`](upd.toml) for a complete, runnable example. Values can
+reference environment variables with `${VAR}` syntax, e.g.:
 
 ```toml
-[checks]
-timeout = "2s"
-
 [checks.every]
-# Will be retrieved from env vars
 normal = "${UPD_NORMAL_CHECK}"
 down = "${UPD_DOWN_CHECK}"
+```
 
-[checks.list]
-ordered = [
-  # From https://en.wikipedia.org/wiki/Captive_portal
-  "http://10.10.1.4/",
-  "http://captive.apple.com/hotspot-detect.html",
-  "http://connectivitycheck.gstatic.com/generate_204",
-]
-shuffled = [
-  "http://clients3.google.com/generate_204",
-  "http://www.msftconnecttest.com/connecttest.txt",
-  "tcp://1.1.1.1:53/",
-  "tcp://1.0.0.1:53/",
-  "tcp://8.8.8.8:53/",
-  "tcp://8.8.4.4:53/",
-  "dns://1.1.1.1/www.google.com",
-]
+Probe-stat bucket granularity per report period is also tunable: each report
+period is split into at least `min` buckets (default 100), and a single
+bucket never aggregates more than `maxSpan` (default 30m):
 
-[downAction]
-exec = "cowsay"
-stopExec = "./testdata/echo-reboot-count.sh"
-
-[downAction.every]
-after = "1s"
-repeat = "3s"
-
-[stats]
-port = 8080
-retention = "10080m"
-reports = ["10s", "15m", "60m", "1440m", "10080m"]
-
-# Optional: probe-stat bucket granularity per report period.
-# Each report period is split into at least `min` buckets (default 100),
-# and a single bucket never aggregates more than `maxSpan` (default 30m).
+```toml
 [stats.buckets]
 min = 100
 maxSpan = "30m"

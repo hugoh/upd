@@ -81,6 +81,7 @@ package logic
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/hugoh/upd/internal/check"
@@ -108,6 +109,7 @@ type Loop struct {
 	checkList      *check.List
 	delays         Delays
 	downAction     *DownAction
+	downActionMu   sync.Mutex
 	downActionLoop *DownActionLoop
 	statServer     *status.StatServer
 	status         *status.Status
@@ -158,6 +160,9 @@ var ErrDownActionRunning = errors.New("cannot start new DownAction when one is a
 
 // DownActionStart initiates the down action execution loop.
 func (l *Loop) DownActionStart(ctx context.Context) error {
+	l.downActionMu.Lock()
+	defer l.downActionMu.Unlock()
+
 	if l.downActionLoop != nil {
 		return ErrDownActionRunning
 	}
@@ -167,15 +172,20 @@ func (l *Loop) DownActionStart(ctx context.Context) error {
 	return nil
 }
 
-// DownActionStop halts the current down action loop.
+// DownActionStop halts the current down action loop, blocking until its
+// StopExec command (if any) has run to completion.
 func (l *Loop) DownActionStop(ctx context.Context) {
-	if l.downActionLoop == nil {
+	l.downActionMu.Lock()
+	dal := l.downActionLoop
+	l.downActionLoop = nil
+	l.downActionMu.Unlock()
+
+	if dal == nil {
 		// Nothing to stop
 		return
 	}
 
-	l.downActionLoop.Stop(ctx)
-	l.downActionLoop = nil
+	dal.Stop(ctx)
 }
 
 // ProcessCheck handles state changes and triggers down actions.
@@ -201,7 +211,10 @@ func (l *Loop) Run(ctx context.Context, statServerConfig *status.StatServerConfi
 
 	for {
 		checkStatus := check.CheckerRun(ctx, checker, l.checkList.All())
-		l.lastSuccess = time.Now()
+		if checkStatus {
+			l.lastSuccess = time.Now()
+		}
+
 		l.ProcessCheck(ctx, checkStatus)
 
 		sleepTime := l.delays.ForStatus(l.status.Up)
@@ -227,13 +240,29 @@ func (l *Loop) Stop(ctx context.Context) {
 	}
 }
 
+func (l *Loop) currentDownActionLoop() *DownActionLoop {
+	l.downActionMu.Lock()
+	defer l.downActionMu.Unlock()
+
+	return l.downActionLoop
+}
+
 func (l *Loop) handleStateChange(ctx context.Context, upStatus bool) {
 	if l.downAction == nil {
 		return
 	}
 
 	if upStatus {
-		l.DownActionStop(ctx)
+		l.downActionMu.Lock()
+		dal := l.downActionLoop
+		l.downActionLoop = nil
+		l.downActionMu.Unlock()
+
+		if dal != nil {
+			// Async: StopExec can take up to StopExecTimeout and must not
+			// block the check loop.
+			go dal.Stop(ctx)
+		}
 	} else {
 		err := l.DownActionStart(ctx)
 		if err != nil {
@@ -254,8 +283,8 @@ func (l *Loop) pushStatus() {
 		l.status.SetLastSuccessAt(l.lastSuccess)
 	}
 
-	if l.downActionLoop != nil {
-		l.status.SetDownActionStatus(l.downActionLoop.Status())
+	if dal := l.currentDownActionLoop(); dal != nil {
+		l.status.SetDownActionStatus(dal.Status())
 	} else {
 		l.status.SetDownActionStatus(status.DownActionStatus{})
 	}

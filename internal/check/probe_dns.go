@@ -28,6 +28,10 @@ var (
 	ErrDNSMissingDomain = errors.New("DNS probe missing domain")
 	// ErrDNSMissingResolver is returned when no resolver is specified.
 	ErrDNSMissingResolver = errors.New("DNS probe missing resolver")
+	// ErrDNSNoAddresses is returned when a lookup succeeds but returns no
+	// addresses. The standard resolver never does this, but a custom
+	// injected DNSResolver could.
+	ErrDNSNoAddresses = errors.New("DNS lookup returned no addresses")
 )
 
 // NewDNSProbe creates a new DNS probe for the given resolver host (host:port
@@ -86,6 +90,12 @@ func (p DNSProbe) Execute(ctx context.Context, timeout time.Duration) *Report {
 	report := BuildReport(p, start)
 	if err != nil {
 		report.error = fmt.Errorf("error resolving %s: %w", p.Domain, err)
+
+		return report
+	}
+
+	if len(addr) == 0 {
+		report.error = fmt.Errorf("error resolving %s: %w", p.Domain, ErrDNSNoAddresses)
 
 		return report
 	}

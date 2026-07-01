@@ -22,6 +22,17 @@ func newSingleRingTracker(period, interval time.Duration) *RollingProbeTracker {
 	)
 }
 
+// recordBucketed locks tracker and records on rings[0] at each offset from
+// base, mirroring how Record() is normally called under the tracker's mutex.
+func recordBucketed(tracker *RollingProbeTracker, base time.Time, offsets ...time.Duration) {
+	tracker.mu.Lock()
+	defer tracker.mu.Unlock()
+
+	for _, offset := range offsets {
+		tracker.rings[0].recordAt(base.Add(offset))
+	}
+}
+
 func TestBucketConfig_Interval_Defaults(t *testing.T) {
 	var cfg BucketConfig
 
@@ -214,12 +225,8 @@ func TestRollingProbeTracker_AlignedWindow(t *testing.T) {
 
 	base := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	tracker.mu.Lock()
-	// Bucket [12:00:00, 12:00:05)
-	tracker.rings[0].recordAt(base.Add(4 * time.Second))
-	// Bucket [12:00:05, 12:00:10)
-	tracker.rings[0].recordAt(base.Add(9 * time.Second))
-	tracker.mu.Unlock()
+	// Bucket [12:00:00, 12:00:05) and bucket [12:00:05, 12:00:10)
+	recordBucketed(tracker, base, 4*time.Second, 9*time.Second)
 
 	// 1h window from 12:55:05 → cutoff = 12:00:05 (later bucket boundary)
 	ps := tracker.rings[0].statsSince(base.Add(5 * time.Second))
@@ -237,12 +244,8 @@ func TestRollingProbeTracker_NonAlignedWindow(t *testing.T) {
 
 	base := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	tracker.mu.Lock()
-	// Bucket [12:00:00, 12:00:05)
-	tracker.rings[0].recordAt(base.Add(4 * time.Second))
-	// Bucket [12:00:05, 12:00:10)
-	tracker.rings[0].recordAt(base.Add(6 * time.Second))
-	tracker.mu.Unlock()
+	// Bucket [12:00:00, 12:00:05) and bucket [12:00:05, 12:00:10)
+	recordBucketed(tracker, base, 4*time.Second, 6*time.Second)
 
 	// Cutoff = 12:00:03 (middle of first bucket):
 	// Bucket [12:00:00, 12:00:05): starts before cutoff → excluded

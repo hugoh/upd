@@ -34,6 +34,29 @@ func setupTestServer(t *testing.T, opts ...func(*StatServerConfig)) *StatHandler
 	return &StatHandler{statServer: server}
 }
 
+// setupUpHandler builds a test handler and marks the connection up.
+func setupUpHandler(t *testing.T, opts ...func(*StatServerConfig)) *StatHandler {
+	t.Helper()
+
+	handler := setupTestServer(t, opts...)
+	handler.statServer.status.Update(true)
+
+	return handler
+}
+
+// serveRequest sends a method request for StatRoute to handler and returns
+// the recorded response.
+func serveRequest(t *testing.T, handler *StatHandler, method string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(method, StatRoute, http.NoBody)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	return rec
+}
+
 func TestStatHandlerInit(t *testing.T) {
 	status := NewStatus()
 	status.SetRetention(1 * time.Hour)
@@ -54,14 +77,12 @@ func TestStatHandlerInit(t *testing.T) {
 }
 
 func TestStatHandler_GenStatReport(t *testing.T) {
-	handler := setupTestServer(t, func(c *StatServerConfig) {
+	handler := setupUpHandler(t, func(c *StatServerConfig) {
 		c.Reports = []time.Duration{
 			time.Minute,
 			5 * time.Minute,
 		}
 	})
-	status := handler.statServer.status
-	status.Update(true)
 
 	report := handler.GenStatReport()
 	require.NotNil(t, report)
@@ -88,14 +109,9 @@ func TestStatHandler_GenStatReport_WithChanges(t *testing.T) {
 }
 
 func TestStatHandler_ServeHTTP(t *testing.T) {
-	handler := setupTestServer(t)
-	status := handler.statServer.status
-	status.Update(true)
+	handler := setupUpHandler(t)
 
-	req := httptest.NewRequest(http.MethodGet, StatRoute, http.NoBody)
-	rec := httptest.NewRecorder()
-
-	handler.ServeHTTP(rec, req)
+	rec := serveRequest(t, handler, http.MethodGet)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
@@ -109,9 +125,7 @@ func TestStatHandler_ServeHTTP(t *testing.T) {
 }
 
 func TestStatHandler_ServeHTTP_MethodNotAllowed(t *testing.T) {
-	handler := setupTestServer(t)
-	status := handler.statServer.status
-	status.Update(true)
+	handler := setupUpHandler(t)
 
 	mux := http.NewServeMux()
 	mux.Handle("GET "+StatRoute, handler)
@@ -124,33 +138,39 @@ func TestStatHandler_ServeHTTP_MethodNotAllowed(t *testing.T) {
 }
 
 func TestStatHandler_ServeHTTP_MethodHead(t *testing.T) {
-	handler := setupTestServer(t)
-	status := handler.statServer.status
-	status.Update(true)
+	handler := setupUpHandler(t)
 
-	req := httptest.NewRequest(http.MethodHead, StatRoute, http.NoBody)
-	rec := httptest.NewRecorder()
-
-	handler.ServeHTTP(rec, req)
+	rec := serveRequest(t, handler, http.MethodHead)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
 func TestStatHandler_ServeHTTP_JSONFormat(t *testing.T) {
-	handler := setupTestServer(t)
-	status := handler.statServer.status
-	status.Update(true)
+	handler := setupUpHandler(t)
 
-	req := httptest.NewRequest(http.MethodGet, StatRoute, http.NoBody)
-	rec := httptest.NewRecorder()
-
-	handler.ServeHTTP(rec, req)
+	rec := serveRequest(t, handler, http.MethodGet)
 
 	body := rec.Body.String()
 	assert.Contains(t, body, `"isUp": true`)
 	assert.Contains(t, body, `"reports"`)
 	assert.Contains(t, body, `"loop"`)
 	assert.Contains(t, body, `"updVersion"`)
+}
+
+// marshalToMap round-trips v through JSON and returns it as a generic map,
+// for tests that assert on field names/values rather than the Go struct.
+func marshalToMap(t *testing.T, v any) map[string]any {
+	t.Helper()
+
+	data, err := json.Marshal(v)
+	require.NoError(t, err)
+
+	var raw map[string]any
+
+	err = json.Unmarshal(data, &raw)
+	require.NoError(t, err)
+
+	return raw
 }
 
 func TestReportByPeriod_JSON_Marshal(t *testing.T) {
@@ -219,13 +239,7 @@ func TestReport_JSONFieldNames(t *testing.T) {
 		},
 	}
 
-	data, err := json.Marshal(report)
-	require.NoError(t, err)
-
-	var raw map[string]any
-
-	err = json.Unmarshal(data, &raw)
-	require.NoError(t, err)
+	raw := marshalToMap(t, report)
 
 	assert.Contains(t, raw, "isUp")
 	assert.Contains(t, raw, "reports")
@@ -281,13 +295,7 @@ func TestReport_SubStructFields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			data, err := json.Marshal(tt.obj)
-			require.NoError(t, err)
-
-			var raw map[string]any
-
-			err = json.Unmarshal(data, &raw)
-			require.NoError(t, err)
+			raw := marshalToMap(t, tt.obj)
 
 			for key, want := range tt.checks {
 				if f, ok := want.(float64); ok {
@@ -307,13 +315,7 @@ func TestReport_DownActionOmittedWhenNil(t *testing.T) {
 		Loop:    &LoopStatus{Interval: ReadableDuration(time.Minute)},
 	}
 
-	data, err := json.Marshal(report)
-	require.NoError(t, err)
-
-	var raw map[string]any
-
-	err = json.Unmarshal(data, &raw)
-	require.NoError(t, err)
+	raw := marshalToMap(t, report)
 
 	assert.NotContains(t, raw, "downAction")
 	assert.Contains(t, raw, "loop")

@@ -211,13 +211,21 @@ func TestSetNextCheckAt_ConcurrentAccess(t *testing.T) {
 	<-done
 }
 
-func TestGenStatReport_FailureRateNotComputed_WhenNoProbes(t *testing.T) {
+// newStatusWithTracker builds a Status with a one-period rolling tracker
+// attached and the connection marked up.
+func newStatusWithTracker() (*Status, *RollingProbeTracker) {
 	s := NewStatus()
 	s.SetRetention(time.Hour)
 	s.Update(true)
 
 	tracker := NewRollingProbeTracker([]time.Duration{time.Minute}, BucketConfig{})
 	s.SetRollingTracker(tracker)
+
+	return s, tracker
+}
+
+func TestGenStatReport_FailureRateNotComputed_WhenNoProbes(t *testing.T) {
+	s, _ := newStatusWithTracker()
 
 	// No probes recorded yet.
 	rpt := s.GenStatReport([]time.Duration{time.Minute})
@@ -227,12 +235,7 @@ func TestGenStatReport_FailureRateNotComputed_WhenNoProbes(t *testing.T) {
 }
 
 func TestGenStatReport_FailureRateComputed_WhenProbesExist(t *testing.T) {
-	s := NewStatus()
-	s.SetRetention(time.Hour)
-	s.Update(true)
-
-	tracker := NewRollingProbeTracker([]time.Duration{time.Minute}, BucketConfig{})
-	s.SetRollingTracker(tracker)
+	s, tracker := newStatusWithTracker()
 
 	tracker.Record(false)
 	tracker.Record(true)

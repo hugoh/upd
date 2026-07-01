@@ -24,38 +24,21 @@ func Test_FormatDuration(t *testing.T) {
 	assert.Equal(t, "1h1m1s", formatDuration(time.Hour+time.Minute+time.Second))
 }
 
-func TestReadablePercent_MarshalJSON(t *testing.T) {
+func TestReadableTypes_MarshalJSON(t *testing.T) {
 	tests := []struct {
 		name     string
-		value    ReadablePercent
+		value    any
 		expected string
 	}{
-		{"zero percent", 0.0, `"0.00 %"`},
-		{"fifty percent", 0.5, `"50.00 %"`},
-		{"hundred percent", 1.0, `"100.00 %"`},
-		{"not computed", -1.0, `"Not computed"`},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			data, err := json.Marshal(tt.value)
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected, string(data))
-		})
-	}
-}
-
-func TestReadableDuration_MarshalJSON(t *testing.T) {
-	tests := []struct {
-		name     string
-		value    ReadableDuration
-		expected string
-	}{
-		{"zero", 0, `"0s"`},
-		{"one second", ReadableDuration(time.Second), `"1s"`},
-		{"one minute", ReadableDuration(time.Minute), `"1m"`},
-		{"one hour", ReadableDuration(time.Hour), `"1h"`},
-		{"complex", ReadableDuration(time.Hour + time.Minute + time.Second), `"1h1m1s"`},
+		{"percent zero", ReadablePercent(0.0), `"0.00 %"`},
+		{"percent fifty", ReadablePercent(0.5), `"50.00 %"`},
+		{"percent hundred", ReadablePercent(1.0), `"100.00 %"`},
+		{"percent not computed", ReadablePercent(-1.0), `"Not computed"`},
+		{"duration zero", ReadableDuration(0), `"0s"`},
+		{"duration one second", ReadableDuration(time.Second), `"1s"`},
+		{"duration one minute", ReadableDuration(time.Minute), `"1m"`},
+		{"duration one hour", ReadableDuration(time.Hour), `"1h"`},
+		{"duration complex", ReadableDuration(time.Hour + time.Minute + time.Second), `"1h1m1s"`},
 	}
 
 	for _, tt := range tests {

@@ -92,6 +92,35 @@ func Test_Stop_RunsStopExecToCompletion(t *testing.T) {
 	require.NoError(t, err, "stop command should run to completion")
 }
 
+func Test_Stop_NoExecAfterStopExecStarted(t *testing.T) {
+	dir := t.TempDir()
+	stopStartedMarker := filepath.Join(dir, "stop-started")
+	violationMarker := filepath.Join(dir, "violation")
+
+	da := &DownAction{
+		After: 1 * time.Millisecond,
+		Every: 1 * time.Millisecond,
+		Exec: "sh -c 'if [ -f " + stopStartedMarker + " ]; then touch " +
+			violationMarker + "; fi'",
+		StopExec: "sh -c 'touch " + stopStartedMarker + " && sleep 0.1'",
+	}
+
+	dal := da.Start(t.Context())
+
+	// Let several Exec iterations fire before stopping, to give a would-be
+	// race between run()'s loop and Stop() a chance to manifest.
+	time.Sleep(15 * time.Millisecond)
+
+	dal.Stop(t.Context())
+
+	// Allow any Exec process started right before cancellation to finish.
+	time.Sleep(200 * time.Millisecond)
+
+	_, err := os.Stat(violationMarker)
+	assert.True(t, os.IsNotExist(err),
+		"Exec must never run once StopExec has started running")
+}
+
 func Test_killCurrentCmd_nilCmd(t *testing.T) {
 	da := &DownAction{}
 	dal, _ := da.NewDownActionLoop(t.Context())
@@ -130,15 +159,16 @@ func Test_ExecuteReplacesStaleCmd(t *testing.T) {
 	assert.Nil(t, dal.currentCmd)
 	dal.cmdMu.Unlock()
 
-	err := dal.Execute(t.Context(), "true")
+	// "sleep" (not "true") so the process is still running when we check
+	// currentCmd below -- an instantly-exiting command races against
+	// waitForCmd's goroutine clearing currentCmd once it reaps the process.
+	err := dal.Execute(t.Context(), "sleep 1")
 	require.NoError(t, err)
 
 	dal.cmdMu.Lock()
 	require.NotNil(t, dal.currentCmd)
 	assert.NotEqual(t, firstPid, dal.currentCmd.Process.Pid, "Should track new process")
 	dal.cmdMu.Unlock()
-
-	time.Sleep(200 * time.Millisecond)
 }
 
 func Test_StopCancelsLoopCtx(t *testing.T) {
@@ -154,6 +184,27 @@ func Test_StopCancelsLoopCtx(t *testing.T) {
 	case <-ctx.Done():
 	case <-timer.C:
 		t.Fatal("loop context should be cancelled after Stop")
+	}
+}
+
+// Test_Stop_WithoutStart verifies Stop() does not block when called on a
+// DownActionLoop created via NewDownActionLoop but never Start()-ed, i.e.
+// with no run() goroutine to eventually signal dal.runWG.
+func Test_Stop_WithoutStart(t *testing.T) {
+	da := &DownAction{}
+	dal, _ := da.NewDownActionLoop(t.Context())
+
+	stopped := make(chan struct{})
+
+	go func() {
+		dal.Stop(t.Context())
+		close(stopped)
+	}()
+
+	select {
+	case <-stopped:
+	case <-time.After(time.Second):
+		t.Fatal("Stop() blocked forever waiting for a run loop that was never started")
 	}
 }
 
