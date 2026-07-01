@@ -1,6 +1,8 @@
 package logic
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -81,12 +83,13 @@ func Test_ProcessCheck_StatusChanged_UpStatus_StopsDownAction(t *testing.T) {
 }
 
 func Test_ProcessCheck_UpStatus_DoesNotBlockOnStopExec(t *testing.T) {
+	marker := filepath.Join(t.TempDir(), "stopped")
 	loop := emptyNewLoop()
 	ctx := t.Context()
 	da := &DownAction{
 		After:    time.Millisecond,
 		Exec:     testTrue,
-		StopExec: "sleep 5",
+		StopExec: "sh -c 'sleep 0.2 && touch " + marker + "'",
 	}
 	loop.downAction = da
 
@@ -106,6 +109,14 @@ func Test_ProcessCheck_UpStatus_DoesNotBlockOnStopExec(t *testing.T) {
 	)
 	assert.Less(t, elapsed, time.Second,
 		"ProcessCheck should not block on a slow StopExec command")
+
+	// Wait for the background StopExec goroutine to finish before the test
+	// exits, so it doesn't outlive the test (goleak would flag it).
+	require.Eventually(t, func() bool {
+		_, err := os.Stat(marker)
+
+		return err == nil
+	}, 2*time.Second, 5*time.Millisecond, "StopExec should have run to completion")
 }
 
 func Test_ProcessCheck_StatusChanged_DownStatus_StartsDownAction(t *testing.T) {

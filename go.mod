@@ -7,6 +7,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.3.1
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v3 v3.9.0
+	go.uber.org/goleak v1.3.0
 )
 
 require (
