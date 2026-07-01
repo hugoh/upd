@@ -259,9 +259,8 @@ func (l *Loop) handleStateChange(ctx context.Context, upStatus bool) {
 		l.downActionMu.Unlock()
 
 		if dal != nil {
-			// Run asynchronously: StopExec can take up to StopExecTimeout to
-			// complete, and must not block the check loop from running on
-			// schedule while it does.
+			// Async: StopExec can take up to StopExecTimeout and must not
+			// block the check loop.
 			go dal.Stop(ctx)
 		}
 	} else {

@@ -29,9 +29,8 @@ var (
 	// ErrDNSMissingResolver is returned when no resolver is specified.
 	ErrDNSMissingResolver = errors.New("DNS probe missing resolver")
 	// ErrDNSNoAddresses is returned when a lookup succeeds but returns no
-	// addresses. The standard resolver never does this (an empty result is
-	// itself reported as an error), but the DNSResolver interface is
-	// injectable and a custom implementation could.
+	// addresses. The standard resolver never does this, but a custom
+	// injected DNSResolver could.
 	ErrDNSNoAddresses = errors.New("DNS lookup returned no addresses")
 )
 
