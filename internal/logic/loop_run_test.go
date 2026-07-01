@@ -60,6 +60,33 @@ func TestRun_ProcessesChecks(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 }
 
+func TestRun_DoesNotUpdateLastSuccessOnFailure(t *testing.T) {
+	loop := NewLoop()
+	// An empty check list means CheckerRun always returns false (no checks
+	// pass), simulating an outage on every iteration.
+	emptyCheckList := &check.List{}
+	loop.Configure(
+		emptyCheckList,
+		Delays{Up: 10 * time.Millisecond, Down: 10 * time.Millisecond},
+		nil,
+		status.BucketConfig{},
+	)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	go func() {
+		loop.Run(ctx, &status.StatServerConfig{})
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+	cancel()
+	time.Sleep(50 * time.Millisecond)
+
+	assert.True(t, loop.lastSuccess.IsZero(),
+		"lastSuccess should never be set when every check fails")
+}
+
 func TestStop_StopsStatServer(t *testing.T) {
 	loop := NewLoop()
 	emptyCheckList := &check.List{}

@@ -201,7 +201,10 @@ func (l *Loop) Run(ctx context.Context, statServerConfig *status.StatServerConfi
 
 	for {
 		checkStatus := check.CheckerRun(ctx, checker, l.checkList.All())
-		l.lastSuccess = time.Now()
+		if checkStatus {
+			l.lastSuccess = time.Now()
+		}
+
 		l.ProcessCheck(ctx, checkStatus)
 
 		sleepTime := l.delays.ForStatus(l.status.Up)
