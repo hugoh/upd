@@ -188,7 +188,7 @@ func Test_StopCancelsLoopCtx(t *testing.T) {
 
 // Test_Stop_WithoutStart verifies Stop() does not block when called on a
 // DownActionLoop created via NewDownActionLoop but never Start()-ed, i.e.
-// with no run() goroutine to eventually close dal.done.
+// with no run() goroutine to eventually signal dal.runWG.
 func Test_Stop_WithoutStart(t *testing.T) {
 	da := &DownAction{}
 	dal, _ := da.NewDownActionLoop(t.Context())

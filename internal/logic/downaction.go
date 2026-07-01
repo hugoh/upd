@@ -35,7 +35,9 @@ type DownActionLoop struct {
 	limitReached atomic.Bool
 	currentCmd   *exec.Cmd
 	cmdMu        sync.Mutex
-	done         chan struct{}
+	// zero value means "nothing to wait for", so Stop() works even if
+	// Start() was never called.
+	runWG sync.WaitGroup
 }
 
 // StopExecTimeout bounds how long the stop command may run.
@@ -81,18 +83,12 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	return nil
 }
 
-// NewDownActionLoop creates a new loop context for the down action. done
-// starts closed since no run loop is running yet; Stop() must not block
-// waiting for a run loop that Start() never launched.
+// NewDownActionLoop creates a new loop context for the down action.
 func (da *DownAction) NewDownActionLoop(ctx context.Context) (*DownActionLoop, context.Context) {
 	ctx, cancelFunc := context.WithCancel(ctx)
-	done := make(chan struct{})
-	close(done)
-
 	dal := &DownActionLoop{
 		da:         da,
 		cancelFunc: cancelFunc,
-		done:       done,
 	}
 	dal.sleepTime.Store(int64(da.After))
 
@@ -102,7 +98,7 @@ func (da *DownAction) NewDownActionLoop(ctx context.Context) (*DownActionLoop, c
 // Start begins the down action loop in a goroutine.
 func (da *DownAction) Start(ctx context.Context) *DownActionLoop {
 	dal, ctx := da.NewDownActionLoop(ctx)
-	dal.done = make(chan struct{})
+	dal.runWG.Add(1)
 
 	logger.DownAction().Debug("kicking off run loop")
 
@@ -111,14 +107,12 @@ func (da *DownAction) Start(ctx context.Context) *DownActionLoop {
 	return dal
 }
 
-// Stop cancels the down action loop, waits for the run loop goroutine to
-// exit so it cannot start a new command after Stop begins cleanup, kills any
-// running command, and runs the stop command to completion. The stop command
-// gets its own timeout-bounded context so loop cancellation cannot kill it.
+// Stop cancels the loop, waits for it to exit so it can't start a new
+// command during cleanup, then runs the stop command to completion.
 func (dal *DownActionLoop) Stop(_ context.Context) {
 	logger.DownAction().Debug("sending shutdown signal")
 	dal.cancelFunc()
-	<-dal.done
+	dal.runWG.Wait()
 	dal.killCurrentCmd()
 
 	if dal.da.StopExec != "" {
@@ -262,7 +256,7 @@ func (dal *DownActionLoop) nextSleep() time.Duration {
 }
 
 func (dal *DownActionLoop) run(ctx context.Context) {
-	defer close(dal.done)
+	defer dal.runWG.Done()
 
 	logger.DownAction().Debug("down action loop started")
 
@@ -277,10 +271,8 @@ func (dal *DownActionLoop) run(ctx context.Context) {
 		case <-time.After(time.Duration(dal.sleepTime.Load())):
 		}
 
-		// select can race with cancellation: the timer case may be chosen
-		// even though ctx was just canceled. Re-check explicitly so Stop's
-		// <-dal.done wait is a reliable guarantee that no new command will
-		// be started after cancellation.
+		// select can pick the timer case even though ctx is already done;
+		// re-check so Stop's runWG.Wait() guarantee actually holds.
 		if ctx.Err() != nil {
 			logger.DownAction().Debug("canceled")
 
