@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/hugoh/upd/internal/check"
 	"github.com/hugoh/upd/internal/status"
 )
 
@@ -159,7 +158,6 @@ func validateURIs(uris []string) error {
 	var errs []error
 
 	for idx, uri := range uris {
-		// Same parser as GetChecksCat so validation matches what gets built.
 		parsed, err := url.Parse(uri)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("[%d]: %w", idx, errInvalidURI))
@@ -167,13 +165,10 @@ func validateURIs(uris []string) error {
 			continue
 		}
 
-		switch parsed.Scheme {
-		case check.DNS, check.HTTP, check.HTTPS, check.TCP:
-		default:
-			errs = append(
-				errs,
-				fmt.Errorf("[%d]: %w: %q", idx, errUnsupportedScheme, parsed.Scheme),
-			)
+		// Validate by attempting the same construction GetChecksCat performs,
+		// so a config that passes validation is guaranteed to build.
+		if _, err := probeFromURL(parsed); err != nil {
+			errs = append(errs, fmt.Errorf("[%d]: %w", idx, err))
 		}
 	}
 

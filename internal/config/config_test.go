@@ -154,12 +154,11 @@ func TestDNSCheckValidation_MissingDomain(t *testing.T) {
 }
 
 func TestDNSCheckValidation_MissingResolver(t *testing.T) {
-	conf, err := readTestConfig("upd_test_dns_missing_resolver.toml")
-	require.NoError(t, err)
-
-	_, checkErr := conf.GetChecks()
-	require.Error(t, checkErr)
-	assert.ErrorIs(t, checkErr, check.ErrDNSMissingResolver)
+	// validateURIs now builds the same probe GetChecks would, so a missing
+	// resolver is caught at validation time rather than deferred to GetChecks.
+	_, err := readTestConfig("upd_test_dns_missing_resolver.toml")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, check.ErrDNSMissingResolver)
 }
 
 func TestLogSetup(t *testing.T) {

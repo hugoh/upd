@@ -120,6 +120,38 @@ shuffled = ["http://example.com/", "://invalid"]`)
 	assert.Contains(t, err.Error(), "missing required attributes")
 }
 
+func TestValidate_tcpMissingPort(t *testing.T) {
+	path := writeTestConfig(t, `[checks]
+timeout = "2000ms"
+
+[checks.every]
+normal = "120s"
+down = "20s"
+
+[checks.list]
+ordered = ["tcp://example.com"]`)
+
+	_, err := ReadConf(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "missing required attributes")
+}
+
+func TestValidate_dnsMissingDomain(t *testing.T) {
+	path := writeTestConfig(t, `[checks]
+timeout = "2000ms"
+
+[checks.every]
+normal = "120s"
+down = "20s"
+
+[checks.list]
+ordered = ["dns://8.8.8.8"]`)
+
+	_, err := ReadConf(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "missing required attributes")
+}
+
 func TestValidate_afterNegative(t *testing.T) {
 	config := validConfigBase() + `
 
