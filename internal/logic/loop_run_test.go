@@ -27,27 +27,42 @@ func newTestLoop(
 }
 
 // runLoopAsync starts loop.Run in a goroutine bound to a cancelable context
-// and returns the cancel func; the context is also canceled on test cleanup.
-func runLoopAsync(t *testing.T, loop *Loop) context.CancelFunc {
+// and returns the cancel func plus a channel closed once Run() returns; the
+// context is also canceled on test cleanup.
+func runLoopAsync(t *testing.T, loop *Loop) (context.CancelFunc, <-chan struct{}) {
 	t.Helper()
 
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
+	done := make(chan struct{})
+
 	go func() {
+		defer close(done)
+
 		loop.Run(ctx, &status.StatServerConfig{})
 	}()
 
-	return cancel
+	return cancel, done
+}
+
+// waitDone blocks until done is closed or fails the test after timeout.
+func waitDone(t *testing.T, done <-chan struct{}, timeout time.Duration) {
+	t.Helper()
+
+	select {
+	case <-done:
+	case <-time.After(timeout):
+		t.Fatal("Run() did not exit within expected time")
+	}
 }
 
 func TestRun_StopsOnContextCancel(t *testing.T) {
 	loop := newTestLoop(t, &check.List{}, Delays{Up: 1 * time.Second, Down: 1 * time.Second})
-	cancel := runLoopAsync(t, loop)
+	cancel, done := runLoopAsync(t, loop)
 
-	time.Sleep(50 * time.Millisecond)
 	cancel()
-	time.Sleep(100 * time.Millisecond)
+	waitDone(t, done, 1*time.Second)
 }
 
 func TestRun_ProcessesChecks(t *testing.T) {
@@ -67,7 +82,9 @@ func TestRun_ProcessesChecks(t *testing.T) {
 	)
 	runLoopAsync(t, loop)
 
-	time.Sleep(100 * time.Millisecond)
+	assert.Eventually(t, func() bool {
+		return loop.status.GenStatReport(nil).Loop.NextCheck != 0
+	}, 1*time.Second, 5*time.Millisecond, "loop should have processed at least one check")
 }
 
 func TestRun_DoesNotUpdateLastSuccessOnFailure(t *testing.T) {
@@ -78,11 +95,14 @@ func TestRun_DoesNotUpdateLastSuccessOnFailure(t *testing.T) {
 		&check.List{},
 		Delays{Up: 10 * time.Millisecond, Down: 10 * time.Millisecond},
 	)
-	cancel := runLoopAsync(t, loop)
+	cancel, done := runLoopAsync(t, loop)
 
-	time.Sleep(100 * time.Millisecond)
+	assert.Eventually(t, func() bool {
+		return loop.status.GenStatReport(nil).Loop.NextCheck != 0
+	}, 1*time.Second, 5*time.Millisecond, "loop should have processed at least one check")
+
 	cancel()
-	time.Sleep(50 * time.Millisecond)
+	waitDone(t, done, 1*time.Second)
 
 	assert.True(t, loop.lastSuccess.IsZero(),
 		"lastSuccess should never be set when every check fails")

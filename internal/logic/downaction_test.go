@@ -36,13 +36,16 @@ func Test_ExecuteSucceed(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_ExecuteFail(t *testing.T) {
+// A non-zero exit code is handled asynchronously by waitForCmd and never
+// surfaces through Execute's return value.
+func Test_ExecuteStartSucceedsEvenIfCommandFails(t *testing.T) {
 	da := &DownAction{
 		Exec: testFalse,
 	}
 	dal, _ := da.NewDownActionLoop(t.Context())
 	err := dal.Execute(t.Context(), da.Exec)
-	require.NoError(t, err, "Success in starting a command that fails")
+	require.NoError(t, err)
+	dal.cmdWG.Wait()
 }
 
 func Test_ExecuteNonExistent(t *testing.T) {
@@ -61,7 +64,7 @@ func Test_ExecuteStderrCapture(t *testing.T) {
 	err := dal.Execute(t.Context(), "sh -c 'echo stderr-output >&2; exit 1'")
 	require.NoError(t, err)
 
-	time.Sleep(200 * time.Millisecond)
+	dal.cmdWG.Wait()
 }
 
 func Test_ExecuteStderrCapture_Trimmed(t *testing.T) {
@@ -72,7 +75,7 @@ func Test_ExecuteStderrCapture_Trimmed(t *testing.T) {
 		"sh -c 'printf \"\n\n  spaced-stderr  \n\n\" >&2; exit 1'")
 	require.NoError(t, err)
 
-	time.Sleep(200 * time.Millisecond)
+	dal.cmdWG.Wait()
 }
 
 func Test_Stop_RunsStopExecToCompletion(t *testing.T) {
@@ -84,7 +87,12 @@ func Test_Stop_RunsStopExecToCompletion(t *testing.T) {
 
 	dal := da.Start(t.Context())
 
-	time.Sleep(100 * time.Millisecond)
+	require.Eventually(t, func() bool {
+		dal.cmdMu.Lock()
+		defer dal.cmdMu.Unlock()
+
+		return dal.currentCmd != nil
+	}, time.Second, time.Millisecond, "Exec should have started")
 
 	dal.Stop(t.Context())
 
@@ -109,12 +117,11 @@ func Test_Stop_NoExecAfterStopExecStarted(t *testing.T) {
 
 	// Let several Exec iterations fire before stopping, to give a would-be
 	// race between run()'s loop and Stop() a chance to manifest.
-	time.Sleep(15 * time.Millisecond)
+	require.Eventually(t, func() bool {
+		return dal.iteration.Load() >= 3
+	}, time.Second, time.Millisecond, "several Exec iterations should have fired")
 
 	dal.Stop(t.Context())
-
-	// Allow any Exec process started right before cancellation to finish.
-	time.Sleep(200 * time.Millisecond)
 
 	_, err := os.Stat(violationMarker)
 	assert.True(t, os.IsNotExist(err),
@@ -239,7 +246,11 @@ func Test_StartAndStop(t *testing.T) {
 	}
 	dal := da.Start(t.Context())
 	assert.NotNil(t, dal, "DownAction loop is running")
-	time.Sleep(50 * time.Millisecond)
+
+	assert.Eventually(t, func() bool {
+		return dal.iteration.Load() >= 1
+	}, time.Second, time.Millisecond, "at least one iteration should have run")
+
 	dal.Stop(t.Context())
 }
 

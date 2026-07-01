@@ -2,6 +2,7 @@ package status
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,6 +13,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// freeTCPPort asks the OS for an unused TCP port so tests don't collide on a
+// fixed port when run in parallel or alongside other test binaries.
+func freeTCPPort(t *testing.T) int {
+	t.Helper()
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	defer func() { _ = l.Close() }()
+
+	addr, ok := l.Addr().(*net.TCPAddr)
+	require.True(t, ok)
+
+	return addr.Port
+}
+
 func newStatServer(t *testing.T, config *StatServerConfig) *StatServer {
 	t.Helper()
 
@@ -20,7 +37,16 @@ func newStatServer(t *testing.T, config *StatServerConfig) *StatServer {
 	server := StartStatServer(status, config)
 	require.NotNil(t, server)
 
-	time.Sleep(50 * time.Millisecond)
+	require.Eventually(t, func() bool {
+		conn, err := net.DialTimeout("tcp", server.server.Addr, 100*time.Millisecond)
+		if err != nil {
+			return false
+		}
+
+		_ = conn.Close()
+
+		return true
+	}, 2*time.Second, 5*time.Millisecond, "stat server should start listening")
 
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
@@ -32,13 +58,13 @@ func newStatServer(t *testing.T, config *StatServerConfig) *StatServer {
 	return server
 }
 
-// newDefaultStatServer starts a stat server with a standard test config
-// (fixed port, one report period).
+// newDefaultStatServer starts a stat server on an ephemeral port with a
+// standard test config (one report period).
 func newDefaultStatServer(t *testing.T) *StatServer {
 	t.Helper()
 
 	return newStatServer(t, &StatServerConfig{
-		Port:    18765,
+		Port:    freeTCPPort(t),
 		Reports: []time.Duration{time.Minute},
 	})
 }
@@ -63,7 +89,7 @@ func TestStartStatServer_WithPort(t *testing.T) {
 
 func TestStatServer_Start_WithTimeouts(t *testing.T) {
 	config := &StatServerConfig{
-		Port:         18765,
+		Port:         freeTCPPort(t),
 		Reports:      []time.Duration{time.Minute},
 		ReadTimeout:  2 * time.Second,
 		WriteTimeout: 2 * time.Second,

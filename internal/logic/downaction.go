@@ -38,6 +38,9 @@ type DownActionLoop struct {
 	// zero value means "nothing to wait for", so Stop() works even if
 	// Start() was never called.
 	runWG sync.WaitGroup
+	// cmdWG tracks in-flight waitForCmd goroutines spawned by Execute, so
+	// Stop() can guarantee no such goroutine outlives it.
+	cmdWG sync.WaitGroup
 }
 
 // StopExecTimeout bounds how long the stop command may run.
@@ -78,7 +81,9 @@ func (dal *DownActionLoop) Execute(ctx context.Context, execString string) error
 	dal.currentCmd = cmd
 	dal.cmdMu.Unlock()
 
-	go dal.waitForCmd(cmd, stderrBuf)
+	dal.cmdWG.Go(func() {
+		dal.waitForCmd(cmd, stderrBuf)
+	})
 
 	return nil
 }
@@ -114,6 +119,7 @@ func (dal *DownActionLoop) Stop(_ context.Context) {
 	dal.cancelFunc()
 	dal.runWG.Wait()
 	dal.killCurrentCmd()
+	dal.cmdWG.Wait()
 
 	if dal.da.StopExec != "" {
 		//nolint:contextcheck // intentionally detached: must survive loop cancellation

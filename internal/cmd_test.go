@@ -137,6 +137,8 @@ func TestCmd_Version(t *testing.T) {
 	os.Stdout = oldStdout
 
 	_, _ = buf.ReadFrom(r)
+
+	assert.Contains(t, buf.String(), "upd version")
 }
 
 func TestCmd_Help(t *testing.T) {

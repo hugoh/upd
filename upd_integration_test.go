@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -15,6 +16,35 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+const checkTarget = "http://captive.apple.com/hotspot-detect.html"
+
+func requireNetwork(t *testing.T) {
+	t.Helper()
+
+	resp, err := http.Head(checkTarget)
+	if err != nil {
+		t.Skipf("network unavailable, skipping integration test: %v", err)
+	}
+
+	_ = resp.Body.Close()
+}
+
+// freePort asks the OS for an unused TCP port to avoid collisions between
+// concurrent test runs.
+func freePort(t *testing.T) int {
+	t.Helper()
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	defer func() { _ = l.Close() }()
+
+	addr, ok := l.Addr().(*net.TCPAddr)
+	require.True(t, ok)
+
+	return addr.Port
+}
 
 func buildAndStartUpd(t *testing.T, configContent string) *exec.Cmd {
 	t.Helper()
@@ -39,7 +69,17 @@ func buildAndStartUpd(t *testing.T, configContent string) *exec.Cmd {
 
 	t.Cleanup(func() {
 		_ = cmd.Process.Signal(os.Interrupt)
-		_ = cmd.Wait()
+
+		done := make(chan error, 1)
+		go func() { done <- cmd.Wait() }()
+
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Log("upd did not exit after SIGINT within 5s; killing")
+			_ = cmd.Process.Kill()
+			<-done
+		}
 	})
 
 	return cmd
@@ -67,7 +107,10 @@ func waitForUpd(t *testing.T, url string, timeout time.Duration) {
 // TestEndToEnd builds the binary, starts it with a minimal config, and
 // verifies the binary starts and responds on the stats endpoint.
 func TestEndToEnd(t *testing.T) {
-	configContent := strings.TrimSpace(`
+	requireNetwork(t)
+
+	port := freePort(t)
+	configContent := fmt.Sprintf(strings.TrimSpace(`
 [checks]
 timeout = "10s"
 
@@ -76,19 +119,21 @@ normal = "30s"
 down = "10s"
 
 [checks.list]
-ordered = ["http://captive.apple.com/hotspot-detect.html"]
+ordered = ["%s"]
 
 [stats]
-port = 18765
-`)
+port = %d
+`), checkTarget, port)
 	buildAndStartUpd(t, configContent)
-	waitForUpd(t, "http://127.0.0.1:18765/stats.json", 5*time.Second)
+	waitForUpd(t, fmt.Sprintf("http://127.0.0.1:%d/stats.json", port), 5*time.Second)
 }
 
 // TestEndToEnd_StatsServer builds, starts upd with stats on a known port,
 // then queries the /stats endpoint.
 func TestEndToEnd_StatsServer(t *testing.T) {
-	port := "19789"
+	requireNetwork(t)
+
+	port := freePort(t)
 	configContent := fmt.Sprintf(strings.TrimSpace(`
 [checks]
 timeout = "10s"
@@ -98,15 +143,15 @@ normal = "2s"
 down = "1s"
 
 [checks.list]
-ordered = ["http://captive.apple.com/hotspot-detect.html"]
+ordered = ["%s"]
 
 [stats]
-port = %s
+port = %d
 reports = ["1m"]
-`), port)
+`), checkTarget, port)
 	buildAndStartUpd(t, configContent)
 
-	url := fmt.Sprintf("http://127.0.0.1:%s/stats.json", port)
+	url := fmt.Sprintf("http://127.0.0.1:%d/stats.json", port)
 	waitForUpd(t, url, 5*time.Second)
 
 	resp, err := http.Get(url)
