@@ -40,7 +40,6 @@ nfpms:
       - deb
       - rpm
     bindir: /usr/bin
-
 changelog:
   use: git
   sort: asc
