@@ -159,15 +159,16 @@ func Test_ExecuteReplacesStaleCmd(t *testing.T) {
 	assert.Nil(t, dal.currentCmd)
 	dal.cmdMu.Unlock()
 
-	err := dal.Execute(t.Context(), "true")
+	// "sleep" (not "true") so the process is still running when we check
+	// currentCmd below -- an instantly-exiting command races against
+	// waitForCmd's goroutine clearing currentCmd once it reaps the process.
+	err := dal.Execute(t.Context(), "sleep 1")
 	require.NoError(t, err)
 
 	dal.cmdMu.Lock()
 	require.NotNil(t, dal.currentCmd)
 	assert.NotEqual(t, firstPid, dal.currentCmd.Process.Pid, "Should track new process")
 	dal.cmdMu.Unlock()
-
-	time.Sleep(200 * time.Millisecond)
 }
 
 func Test_StopCancelsLoopCtx(t *testing.T) {
