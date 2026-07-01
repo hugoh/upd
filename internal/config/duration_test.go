@@ -11,15 +11,18 @@ import (
 
 func TestDurationUnmarshalText(t *testing.T) {
 	tests := []struct {
-		name string
-		text string
-		want time.Duration
+		name    string
+		text    string
+		want    time.Duration
+		wantErr string
 	}{
-		{"seconds", "10s", 10 * time.Second},
-		{"minutes", "5m", 5 * time.Minute},
-		{"hours", "1h30m", 90 * time.Minute},
-		{"milliseconds", "500ms", 500 * time.Millisecond},
-		{"zero", "0s", 0},
+		{name: "seconds", text: "10s", want: 10 * time.Second},
+		{name: "minutes", text: "5m", want: 5 * time.Minute},
+		{name: "hours", text: "1h30m", want: 90 * time.Minute},
+		{name: "milliseconds", text: "500ms", want: 500 * time.Millisecond},
+		{name: "zero", text: "0s", want: 0},
+		{name: "invalid", text: "abc", wantErr: "invalid duration"},
+		{name: "empty", text: "", wantErr: "invalid duration"},
 	}
 
 	for _, tt := range tests {
@@ -27,30 +30,16 @@ func TestDurationUnmarshalText(t *testing.T) {
 			var d Duration
 
 			err := d.UnmarshalText([]byte(tt.text))
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+
+				return
+			}
+
 			require.NoError(t, err)
 			assert.Equal(t, Duration(tt.want), d)
 			assert.Equal(t, tt.want, d.StdDuration())
-		})
-	}
-}
-
-func TestDurationUnmarshalText_errors(t *testing.T) {
-	tests := []struct {
-		name    string
-		text    string
-		wantErr string
-	}{
-		{"invalid", "abc", "invalid duration"},
-		{"empty", "", "invalid duration"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var d Duration
-
-			err := d.UnmarshalText([]byte(tt.text))
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.wantErr)
 		})
 	}
 }

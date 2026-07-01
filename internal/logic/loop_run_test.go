@@ -10,22 +10,40 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRun_StopsOnContextCancel(t *testing.T) {
+// newTestLoop builds and configures a Loop for tests that drive Run/Stop
+// directly, keeping the check-list/delays/periods setup out of each test.
+func newTestLoop(
+	t *testing.T,
+	checkList *check.List,
+	delays Delays,
+	periods ...time.Duration,
+) *Loop {
+	t.Helper()
+
 	loop := NewLoop()
-	emptyCheckList := &check.List{}
-	loop.Configure(
-		emptyCheckList,
-		Delays{Up: 1 * time.Second, Down: 1 * time.Second},
-		nil,
-		status.BucketConfig{},
-	)
+	loop.Configure(checkList, delays, nil, status.BucketConfig{}, periods...)
+
+	return loop
+}
+
+// runLoopAsync starts loop.Run in a goroutine bound to a cancelable context
+// and returns the cancel func; the context is also canceled on test cleanup.
+func runLoopAsync(t *testing.T, loop *Loop) context.CancelFunc {
+	t.Helper()
 
 	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
+	t.Cleanup(cancel)
 
 	go func() {
 		loop.Run(ctx, &status.StatServerConfig{})
 	}()
+
+	return cancel
+}
+
+func TestRun_StopsOnContextCancel(t *testing.T) {
+	loop := newTestLoop(t, &check.List{}, Delays{Up: 1 * time.Second, Down: 1 * time.Second})
+	cancel := runLoopAsync(t, loop)
 
 	time.Sleep(50 * time.Millisecond)
 	cancel()
@@ -33,7 +51,6 @@ func TestRun_StopsOnContextCancel(t *testing.T) {
 }
 
 func TestRun_ProcessesChecks(t *testing.T) {
-	loop := NewLoop()
 	probe := check.Probe(check.NewHTTPProbe("http://example.invalid"))
 	dummyCheck := &check.Check{
 		Probe:   probe,
@@ -43,41 +60,25 @@ func TestRun_ProcessesChecks(t *testing.T) {
 		Ordered: check.Checks{dummyCheck},
 	}
 
-	loop.Configure(
+	loop := newTestLoop(
+		t,
 		checkList,
 		Delays{Up: 10 * time.Millisecond, Down: 10 * time.Millisecond},
-		nil,
-		status.BucketConfig{},
 	)
-
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-
-	go func() {
-		loop.Run(ctx, &status.StatServerConfig{})
-	}()
+	runLoopAsync(t, loop)
 
 	time.Sleep(100 * time.Millisecond)
 }
 
 func TestRun_DoesNotUpdateLastSuccessOnFailure(t *testing.T) {
-	loop := NewLoop()
 	// An empty check list means CheckerRun always returns false (no checks
 	// pass), simulating an outage on every iteration.
-	emptyCheckList := &check.List{}
-	loop.Configure(
-		emptyCheckList,
+	loop := newTestLoop(
+		t,
+		&check.List{},
 		Delays{Up: 10 * time.Millisecond, Down: 10 * time.Millisecond},
-		nil,
-		status.BucketConfig{},
 	)
-
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-
-	go func() {
-		loop.Run(ctx, &status.StatServerConfig{})
-	}()
+	cancel := runLoopAsync(t, loop)
 
 	time.Sleep(100 * time.Millisecond)
 	cancel()
@@ -88,14 +89,7 @@ func TestRun_DoesNotUpdateLastSuccessOnFailure(t *testing.T) {
 }
 
 func TestStop_StopsStatServer(t *testing.T) {
-	loop := NewLoop()
-	emptyCheckList := &check.List{}
-	loop.Configure(
-		emptyCheckList,
-		Delays{Up: 1 * time.Second, Down: 1 * time.Second},
-		nil,
-		status.BucketConfig{},
-	)
+	loop := newTestLoop(t, &check.List{}, Delays{Up: 1 * time.Second, Down: 1 * time.Second})
 
 	ctx := t.Context()
 
@@ -107,16 +101,8 @@ func TestStop_StopsStatServer(t *testing.T) {
 }
 
 func TestRun_StopsTimerOnContextCancel(t *testing.T) {
-	loop := NewLoop()
-	emptyCheckList := &check.List{}
 	longDelay := 10 * time.Second
-	loop.Configure(
-		emptyCheckList,
-		Delays{Up: longDelay, Down: longDelay},
-		nil,
-		status.BucketConfig{},
-		0,
-	)
+	loop := newTestLoop(t, &check.List{}, Delays{Up: longDelay, Down: longDelay}, 0)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,16 +21,22 @@ func writeTestConfig(t *testing.T, content string) string {
 	return path
 }
 
-func validConfigBase() string {
-	return `[checks]
-timeout = "2000ms"
+// checksConfig builds a [checks] block with the given timeout and
+// [checks.list] body (e.g. `ordered = [...]` or `shuffled = [...]`).
+func checksConfig(timeout, listBody string) string {
+	return fmt.Sprintf(`[checks]
+timeout = %q
 
 [checks.every]
 normal = "120s"
 down = "20s"
 
 [checks.list]
-ordered = ["http://example.com/"]`
+%s`, timeout, listBody)
+}
+
+func validConfigBase() string {
+	return checksConfig("2000ms", `ordered = ["http://example.com/"]`)
 }
 
 func TestValidate_missingChecks(t *testing.T) {
@@ -73,15 +80,7 @@ ordered = ["http://example.com/"]`)
 }
 
 func TestValidate_timeoutZero(t *testing.T) {
-	path := writeTestConfig(t, `[checks]
-timeout = "0s"
-
-[checks.every]
-normal = "120s"
-down = "20s"
-
-[checks.list]
-ordered = ["http://example.com/"]`)
+	path := writeTestConfig(t, checksConfig("0s", `ordered = ["http://example.com/"]`))
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
@@ -89,15 +88,10 @@ ordered = ["http://example.com/"]`)
 }
 
 func TestValidate_orderedInvalidURI(t *testing.T) {
-	path := writeTestConfig(t, `[checks]
-timeout = "2000ms"
-
-[checks.every]
-normal = "120s"
-down = "20s"
-
-[checks.list]
-ordered = ["http://example.com/", "://invalid"]`)
+	path := writeTestConfig(
+		t,
+		checksConfig("2000ms", `ordered = ["http://example.com/", "://invalid"]`),
+	)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
@@ -105,15 +99,10 @@ ordered = ["http://example.com/", "://invalid"]`)
 }
 
 func TestValidate_shuffledInvalidURI(t *testing.T) {
-	path := writeTestConfig(t, `[checks]
-timeout = "2000ms"
-
-[checks.every]
-normal = "120s"
-down = "20s"
-
-[checks.list]
-shuffled = ["http://example.com/", "://invalid"]`)
+	path := writeTestConfig(
+		t,
+		checksConfig("2000ms", `shuffled = ["http://example.com/", "://invalid"]`),
+	)
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
@@ -121,15 +110,7 @@ shuffled = ["http://example.com/", "://invalid"]`)
 }
 
 func TestValidate_tcpMissingPort(t *testing.T) {
-	path := writeTestConfig(t, `[checks]
-timeout = "2000ms"
-
-[checks.every]
-normal = "120s"
-down = "20s"
-
-[checks.list]
-ordered = ["tcp://example.com"]`)
+	path := writeTestConfig(t, checksConfig("2000ms", `ordered = ["tcp://example.com"]`))
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
@@ -137,15 +118,7 @@ ordered = ["tcp://example.com"]`)
 }
 
 func TestValidate_dnsMissingDomain(t *testing.T) {
-	path := writeTestConfig(t, `[checks]
-timeout = "2000ms"
-
-[checks.every]
-normal = "120s"
-down = "20s"
-
-[checks.list]
-ordered = ["dns://8.8.8.8"]`)
+	path := writeTestConfig(t, checksConfig("2000ms", `ordered = ["dns://8.8.8.8"]`))
 
 	_, err := ReadConf(path)
 	require.Error(t, err)
@@ -276,15 +249,7 @@ idleTimeout = "-5s"`
 func TestValidate_logLevelInvalid(t *testing.T) {
 	path := writeTestConfig(t, `logLevel = "invalid"
 
-[checks]
-timeout = "2000ms"
-
-[checks.every]
-normal = "120s"
-down = "20s"
-
-[checks.list]
-ordered = ["http://example.com/"]`)
+`+validConfigBase())
 
 	_, err := ReadConf(path)
 	require.Error(t, err)

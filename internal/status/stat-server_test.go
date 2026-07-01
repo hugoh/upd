@@ -32,6 +32,17 @@ func newStatServer(t *testing.T, config *StatServerConfig) *StatServer {
 	return server
 }
 
+// newDefaultStatServer starts a stat server with a standard test config
+// (fixed port, one report period).
+func newDefaultStatServer(t *testing.T) *StatServer {
+	t.Helper()
+
+	return newStatServer(t, &StatServerConfig{
+		Port:    18765,
+		Reports: []time.Duration{time.Minute},
+	})
+}
+
 func TestStartStatServer_NoPort(t *testing.T) {
 	status := NewStatus()
 	status.SetRetention(1 * time.Hour)
@@ -45,12 +56,7 @@ func TestStartStatServer_NoPort(t *testing.T) {
 }
 
 func TestStartStatServer_WithPort(t *testing.T) {
-	config := &StatServerConfig{
-		Port:    18765,
-		Reports: []time.Duration{time.Minute},
-	}
-
-	server := newStatServer(t, config)
+	server := newDefaultStatServer(t)
 	require.NotNil(t, server.status)
 	require.NotNil(t, server.config)
 }
@@ -72,12 +78,7 @@ func TestStatServer_Start_WithTimeouts(t *testing.T) {
 }
 
 func TestStatServer_Start_UsesDefaultTimeouts(t *testing.T) {
-	config := &StatServerConfig{
-		Port:    18765,
-		Reports: []time.Duration{time.Minute},
-	}
-
-	server := newStatServer(t, config)
+	server := newDefaultStatServer(t)
 	require.NotNil(t, server.server)
 	assert.Equal(t, DefaultStatServerReadTimeout, server.server.ReadTimeout)
 	assert.Equal(t, DefaultStatServerWriteTimeout, server.server.WriteTimeout)
@@ -94,22 +95,12 @@ func TestShutdown_NilServer(t *testing.T) {
 }
 
 func TestShutdown_GracefulShutdown(t *testing.T) {
-	config := &StatServerConfig{
-		Port:    18765,
-		Reports: []time.Duration{time.Minute},
-	}
-
-	server := newStatServer(t, config)
+	server := newDefaultStatServer(t)
 	require.NotNil(t, server.server)
 }
 
 func TestStatServer_Route(t *testing.T) {
-	config := &StatServerConfig{
-		Port:    18765,
-		Reports: []time.Duration{time.Minute},
-	}
-
-	server := newStatServer(t, config)
+	server := newDefaultStatServer(t)
 	require.NotNil(t, server.server)
 
 	url := "http://localhost" + server.server.Addr + StatRoute
