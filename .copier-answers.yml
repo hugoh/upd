@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
-_commit: 7e56587
+_commit: b341f90
 _src_path: gh:hugoh/go-tools
 codecov_ignore:
 - internal/version
@@ -20,6 +20,7 @@ golangci_test_exclude_linters:
 - err113
 - noctx
 - varnamelen
+goreleaser_before_hooks: []
 goreleaser_version_pkg: github.com/hugoh/upd/internal/version
 has_fuzz: false
 has_gen: false
@@ -29,6 +30,7 @@ has_test_int: true
 hk_has_golangci_step: true
 hk_has_goreleaser_step: false
 hk_prepush_with_go_ci: false
+nfpm_extra_contents: []
 project_description: Tool to monitor if the network connection is up
 project_name: upd
 test_int_cmd: gotestsum -- -race -tags=integration ./...
