@@ -6,6 +6,8 @@ package internal
 
 import (
 	"context"
+	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -15,7 +17,6 @@ import (
 	"github.com/hugoh/upd/internal/logger"
 	"github.com/hugoh/upd/internal/logic"
 	"github.com/hugoh/upd/internal/version"
-	"github.com/urfave/cli/v3"
 )
 
 const (
@@ -35,6 +36,12 @@ const (
 	// ConfigDebug is the debug flag name.
 	ConfigDebug string = "debug"
 )
+
+// Flags holds the parsed command-line flags.
+type Flags struct {
+	ConfigPath string
+	Debug      bool
+}
 
 // SetupLoop initializes the loop with configuration from the given file.
 func SetupLoop(loop *logic.Loop, configPath string) (*config.Configuration, error) {
@@ -60,8 +67,8 @@ func SetupLoop(loop *logic.Loop, configPath string) (*config.Configuration, erro
 }
 
 // Run is the main application entry point handling signals and configuration reload.
-func Run(appCtx context.Context, cmd *cli.Command) error {
-	logger.LogSetup(cmd.Bool(ConfigDebug))
+func Run(appCtx context.Context, flags Flags) error {
+	logger.LogSetup(flags.Debug)
 
 	rootCtx, stopSignalHandlers := signal.NotifyContext(appCtx, syscall.SIGINT, syscall.SIGTERM)
 	defer stopSignalHandlers()
@@ -88,7 +95,7 @@ func Run(appCtx context.Context, cmd *cli.Command) error {
 		go func(ctx context.Context) {
 			defer close(done)
 
-			newConf, err := SetupLoop(loop, cmd.String(ConfigConfig))
+			newConf, err := SetupLoop(loop, flags.ConfigPath)
 			if err != nil {
 				errCh <- fmt.Errorf("cannot configure app: %w", err)
 
@@ -157,34 +164,70 @@ func waitForWorker(
 	}
 }
 
+// ParseFlags parses the given command-line arguments (excluding the program
+// name) into Flags. It returns flag.ErrHelp when --help or --version was
+// requested and already handled, in which case the caller should exit
+// without running the app.
+func ParseFlags(args []string) (Flags, error) {
+	var (
+		flags       Flags
+		showVersion bool
+	)
+
+	flagSet := flag.NewFlagSet(AppName, flag.ContinueOnError)
+	flagSet.Usage = func() {
+		usage := fmt.Sprintf(
+			"%s - %s\n\nUsage:\n  %s [flags]\n\nFlags:\n",
+			AppName,
+			AppShort,
+			AppName,
+		)
+		if _, err := fmt.Fprint(flagSet.Output(), usage); err != nil {
+			return
+		}
+
+		flagSet.PrintDefaults()
+	}
+
+	flagSet.StringVar(
+		&flags.ConfigPath,
+		ConfigConfig,
+		config.DefaultConfig,
+		"use the specified TOML configuration file",
+	)
+	flagSet.StringVar(&flags.ConfigPath, "c", config.DefaultConfig, "shorthand for --"+ConfigConfig)
+	flagSet.BoolVar(&flags.Debug, ConfigDebug, false, "display debugging output in the console")
+	flagSet.BoolVar(&flags.Debug, "d", false, "shorthand for --"+ConfigDebug)
+	flagSet.BoolVar(&showVersion, "version", false, "print the version and exit")
+
+	if err := flagSet.Parse(args); err != nil {
+		return Flags{}, fmt.Errorf("failed to parse flags: %w", err)
+	}
+
+	if showVersion {
+		versionLine := fmt.Sprintf("%s version %s\n", AppName, version.Version())
+		if _, err := fmt.Fprint(os.Stdout, versionLine); err != nil {
+			return Flags{}, fmt.Errorf("failed to print version: %w", err)
+		}
+
+		return Flags{}, flag.ErrHelp
+	}
+
+	return flags, nil
+}
+
 // Cmd creates and runs the CLI application.
 func Cmd() error {
-	flags := []cli.Flag{
-		&cli.StringFlag{
-			Name:      ConfigConfig,
-			Aliases:   []string{"c"},
-			Usage:     "use the specified TOML configuration file",
-			Value:     config.DefaultConfig,
-			TakesFile: true,
-		},
-		&cli.BoolFlag{
-			Name:    ConfigDebug,
-			Aliases: []string{"d"},
-			Value:   false,
-			Usage:   "display debugging output in the console",
-		},
-	}
-
-	app := &cli.Command{
-		Name:    AppName,
-		Usage:   AppShort,
-		Version: version.Version(),
-		Flags:   flags,
-		Action:  Run,
-	}
-
-	err := app.Run(context.Background(), os.Args)
+	flags, err := ParseFlags(os.Args[1:])
 	if err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
+
+		return err
+	}
+
+	if err := Run(context.Background(), flags); err != nil {
 		return fmt.Errorf("failed to run app: %w", err)
 	}
 

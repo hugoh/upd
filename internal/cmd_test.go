@@ -12,7 +12,6 @@ import (
 	"github.com/hugoh/upd/internal/logic"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli/v3"
 )
 
 // Must match internal/config/config_test.go.
@@ -22,16 +21,8 @@ func TestRun_NoMultipleRestartsOnSuccess(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 500*time.Millisecond)
 	defer cancel()
 
-	cmd := &cli.Command{
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  ConfigConfig,
-				Value: testConfigDir + "/upd_test_minimal.toml",
-			},
-			&cli.BoolFlag{
-				Name: ConfigDebug,
-			},
-		},
+	cmd := Flags{
+		ConfigPath: testConfigDir + "/upd_test_minimal.toml",
 	}
 
 	startTime := time.Now()
@@ -44,16 +35,8 @@ func TestRun_NoMultipleRestartsOnSuccess(t *testing.T) {
 func TestRun_WaitsForWorkerCompletion(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 
-	cmd := &cli.Command{
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  ConfigConfig,
-				Value: testConfigDir + "/upd_test_minimal.toml",
-			},
-			&cli.BoolFlag{
-				Name: ConfigDebug,
-			},
-		},
+	cmd := Flags{
+		ConfigPath: testConfigDir + "/upd_test_minimal.toml",
 	}
 
 	done := make(chan struct{})
@@ -87,16 +70,8 @@ func TestRun_SighupReloadsConfig(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
-	cmd := &cli.Command{
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  ConfigConfig,
-				Value: cfgPath,
-			},
-			&cli.BoolFlag{
-				Name: ConfigDebug,
-			},
-		},
+	cmd := Flags{
+		ConfigPath: cfgPath,
 	}
 
 	errResult := make(chan error, 1)
