@@ -4,8 +4,8 @@ _src_path: gh:hugoh/go-tools
 codecov_ignore:
 - internal/version
 codecov_style: simple
-cog_omit_type: lint
-coverage_backends_override: false
+cog_omit_types:
+- lint
 coverage_total: 80
 dev_watch: false
 dprint_has_excludes: true
@@ -35,4 +35,5 @@ project_description: Tool to monitor if the network connection is up
 project_name: upd
 test_int_cmd: gotestsum -- -race -tags=integration ./...
 testcoverage_excludes: []
+testcoverage_overrides: []
 
