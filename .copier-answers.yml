@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
-_commit: v1.2.0
+_commit: v1.2.2
 _src_path: gh:hugoh/go-tools
 codecov_ignore:
 - internal/version
@@ -36,3 +36,4 @@ project_name: upd
 test_int_cmd: gotestsum -- -race -tags=integration ./...
 testcoverage_excludes: []
 testcoverage_overrides: []
+
