@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
-_commit: v1.5.2
+_commit: v1.9.0
 _src_path: https://github.com/hugoh/go-tools.git
 codecov_ignore:
 - internal/version
@@ -7,7 +7,6 @@ codecov_style: simple
 cog_omit_types:
 - lint
 coverage_total: 80
-dev_watch: false
 golangci_extra_disable:
 - depguard
 - exhaustruct
@@ -21,6 +20,7 @@ golangci_test_exclude_linters:
 - varnamelen
 goreleaser_before_hooks: []
 goreleaser_version_pkg: github.com/hugoh/upd/internal/version
+has_executable: true
 has_fuzz: false
 has_gen: false
 has_goreleaser: true
@@ -36,5 +36,3 @@ test_int_cmd: gotestsum -- -race -tags=integration ./...
 testcoverage_excludes: []
 testcoverage_overrides: []
 
-
-#copier updated
