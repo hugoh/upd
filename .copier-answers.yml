@@ -1,9 +1,6 @@
 # Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
-_commit: v1.9.0
+_commit: v1.10.0
 _src_path: https://github.com/hugoh/go-tools.git
-codecov_ignore:
-- internal/version
-codecov_style: simple
 cog_omit_types:
 - lint
 coverage_total: 80
@@ -26,9 +23,6 @@ has_gen: false
 has_goreleaser: true
 has_homebrew_cask: false
 has_test_int: true
-hk_has_golangci_step: true
-hk_has_goreleaser_step: false
-hk_prepush_with_go_ci: false
 nfpm_extra_contents: []
 project_description: Tool to monitor if the network connection is up
 project_name: upd
@@ -36,5 +30,3 @@ test_int_cmd: gotestsum -- -race -tags=integration ./...
 testcoverage_excludes: []
 testcoverage_overrides: []
 
-
-#copier updated
