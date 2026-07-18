@@ -2,10 +2,6 @@
 #MISE description="Lint Go source"
 #MISE sources=["**/*.go"]
 #USAGE flag "--fix" help="Automatically fix issues"
-<<<<<<< before updating
-golangci-lint run "${usage_fix:+--fix}" ./...
-=======
 flags=()
 [ "${usage_fix:-}" != "" ] && flags+=(--fix)
 golangci-lint run "${flags[@]}" ./...
->>>>>>> after updating
