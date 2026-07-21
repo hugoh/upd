@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
-_commit: v1.13.3
+_commit: v1.15.0
 _src_path: https://github.com/hugoh/go-tools.git
 cog_omit_types:
 - lint
@@ -22,6 +22,7 @@ has_fuzz: false
 has_gen: false
 has_goreleaser: true
 has_homebrew_cask: false
+has_pages: false
 has_test_int: true
 nfpm_extra_contents: []
 project_description: Tool to monitor if the network connection is up
