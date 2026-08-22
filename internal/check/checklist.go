@@ -25,7 +25,7 @@ func (cl *List) All() iter.Seq[*Check] {
 			}
 		}
 
-		for _, i := range rand.Perm(len(cl.Shuffled)) {
+		for _, i := range rand.Perm(len(cl.Shuffled)) { //nolint:gosec // G404: shuffling order, not security-sensitive
 			if !yield(cl.Shuffled[i]) {
 				return
 			}
