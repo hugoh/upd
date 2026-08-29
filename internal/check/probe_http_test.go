@@ -70,26 +70,6 @@ func TestHttpProbe_UserAgentHeader(t *testing.T) {
 	assert.Equal(t, "upd/dev", gotUA)
 }
 
-func TestHttpProbe_DrainsBodyForConnectionReuse(t *testing.T) {
-	body := strings.NewReader(strings.Repeat("x", 1024))
-	probe := &HTTPProbe{
-		URL: testURL,
-		client: &http.Client{
-			Transport: &fakeRoundTripper{
-				resp: &http.Response{
-					StatusCode: http.StatusOK,
-					Status:     testOKStatus,
-					Body:       io.NopCloser(body),
-				},
-			},
-		},
-	}
-
-	report := probe.Execute(t.Context(), testTimeout)
-	require.NoError(t, report.error)
-	assert.Zero(t, body.Len(), "response body should be drained")
-}
-
 func TestHttpProbe_RequestFails(t *testing.T) {
 	probe := &HTTPProbe{
 		URL: testURL,

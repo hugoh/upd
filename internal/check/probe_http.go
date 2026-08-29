@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -15,11 +14,6 @@ import (
 const (
 	// UserAgentPrefix is prepended to the version in the User-Agent header.
 	UserAgentPrefix = "upd/"
-
-	// maxBodyDrain caps how much of the response body is read before closing
-	// so the pooled connection can be reused without downloading arbitrarily
-	// large bodies.
-	maxBodyDrain = 4096
 )
 
 // updClient is a shared HTTP client for all HTTP probes.
@@ -86,9 +80,6 @@ func (p *HTTPProbe) Execute(ctx context.Context, timeout time.Duration) *Report 
 			report.error = fmt.Errorf("error closing response body: %w", closeErr)
 		}
 	}()
-
-	// Drain (bounded) so the pooled connection can be reused.
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxBodyDrain))
 
 	report.response = resp.Status
 
