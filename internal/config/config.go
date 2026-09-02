@@ -129,7 +129,7 @@ type Configuration struct {
 	LogLevel   string           `toml:"logLevel"`
 }
 
-func configError(msg string, path string, err error) (*Configuration, error) {
+func configError(msg, path string, err error) (*Configuration, error) {
 	logger.Config().Error(msg, "file", path, "error", err)
 
 	return nil, fmt.Errorf("%s: %w", msg, err)
