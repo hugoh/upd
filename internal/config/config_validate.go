@@ -111,7 +111,8 @@ func (s StatsConfig) validateReports() error {
 		if n := bucketCfg.BucketCount(period); n > status.MaxBucketsPerPeriod {
 			errs = append(errs, fmt.Errorf(
 				"[%d]: %w (%d > %d): increase buckets.maxSpan",
-				idx, errTooManyBuckets, n, status.MaxBucketsPerPeriod))
+				idx, errTooManyBuckets, n, status.MaxBucketsPerPeriod,
+			))
 		}
 	}
 
