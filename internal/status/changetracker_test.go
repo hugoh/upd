@@ -53,11 +53,14 @@ func TestRecordChange_HeadAndTailSetCorrectly(t *testing.T) {
 	tracker := GetTracker()
 	now := time.Now()
 	tracker.RecordChange(now, true)
-	assert.NotNil(t, tracker.head)
-	assert.NotNil(t, tracker.tail)
-	assert.Equal(t, tracker.head, tracker.tail)
-	assert.Equal(t, now, tracker.head.timestamp)
-	assert.True(t, tracker.head.up)
+	front := tracker.changes.Front()
+	back := tracker.changes.Back()
+
+	require.NotNil(t, front)
+	require.NotNil(t, back)
+	assert.Equal(t, front, back)
+	assert.Equal(t, now, front.Value.(*StateChange).timestamp) //nolint:forcetypeassert
+	assert.True(t, front.Value.(*StateChange).up)              //nolint:forcetypeassert
 }
 
 func TestRecordChange_IgnoresDuplicateConsecutiveStates(t *testing.T) {
@@ -74,8 +77,8 @@ func TestRecordChange_AddsNewStateChange(t *testing.T) {
 	tracker.RecordChange(now, true)
 	tracker.RecordChange(now.Add(1*time.Minute), false)
 	assert.Equal(t, 2, tracker.RecordsCount())
-	assert.False(t, tracker.tail.up)
-	assert.True(t, tracker.head.up)
+	assert.False(t, tracker.changes.Back().Value.(*StateChange).up) //nolint:forcetypeassert
+	assert.True(t, tracker.changes.Front().Value.(*StateChange).up) //nolint:forcetypeassert
 }
 
 func TestPrune_RemovesOldRecords(t *testing.T) {
@@ -86,7 +89,9 @@ func TestPrune_RemovesOldRecords(t *testing.T) {
 	tracker.RecordChange(now.Add(-5*time.Minute), false)
 	tracker.Prune(now)
 	assert.Equal(t, 1, tracker.RecordsCount())
-	assert.Equal(t, now.Add(-5*time.Minute), tracker.head.timestamp)
+
+	front := tracker.changes.Front().Value.(*StateChange) //nolint:forcetypeassert
+	assert.Equal(t, now.Add(-5*time.Minute), front.timestamp)
 }
 
 func TestPrune_EmptiesListIfAllOld(t *testing.T) {
@@ -95,8 +100,8 @@ func TestPrune_EmptiesListIfAllOld(t *testing.T) {
 	tracker.retention = 1 * time.Minute
 	tracker.RecordChange(now.Add(-10*time.Minute), true)
 	tracker.Prune(now)
-	assert.Nil(t, tracker.head)
-	assert.Nil(t, tracker.tail)
+	assert.Nil(t, tracker.changes.Front())
+	assert.Nil(t, tracker.changes.Back())
 	assert.Equal(t, 0, tracker.RecordsCount())
 }
 
