@@ -1,6 +1,7 @@
 package status
 
 import (
+	"container/list"
 	"errors"
 	"fmt"
 	"time"
@@ -21,14 +22,11 @@ type UptimeResult struct {
 type StateChange struct {
 	timestamp time.Time
 	up        bool
-	prev      *StateChange
-	next      *StateChange
 }
 
-// StateChangeTracker manages a doubly-linked list of state changes for uptime calculations.
+// StateChangeTracker manages a list of state changes for uptime calculations.
 type StateChangeTracker struct {
-	head        *StateChange
-	tail        *StateChange
+	changes     list.List
 	retention   time.Duration
 	updateCount uint32
 	lastUpdated time.Time
@@ -41,26 +39,14 @@ func (tracker *StateChangeTracker) RecordChange(timestamp time.Time, state bool)
 	tracker.lastUpdated = timestamp
 
 	// Ignore duplicate consecutive states
-	if tracker.tail != nil && tracker.tail.up == state {
-		return
+	if back := tracker.changes.Back(); back != nil {
+		//nolint:forcetypeassert // list only ever holds *StateChange
+		if back.Value.(*StateChange).up == state {
+			return
+		}
 	}
 
-	newChange := &StateChange{
-		timestamp: timestamp,
-		up:        state,
-		prev:      tracker.tail,
-	}
-
-	if tracker.tail != nil {
-		tracker.tail.next = newChange
-	}
-
-	tracker.tail = newChange
-
-	if tracker.head == nil {
-		tracker.head = newChange
-	}
-
+	tracker.changes.PushBack(&StateChange{timestamp: timestamp, up: state})
 	tracker.Prune(timestamp)
 }
 
@@ -68,17 +54,17 @@ func (tracker *StateChangeTracker) RecordChange(timestamp time.Time, state bool)
 func (tracker *StateChangeTracker) Prune(currentTime time.Time) {
 	retentionLimit := currentTime.Add(-tracker.retention)
 
-	// Remove nodes at the head of the list that are outside retention
-	for tracker.head != nil && tracker.head.timestamp.Before(retentionLimit) {
-		tracker.head = tracker.head.next
-		if tracker.head != nil {
-			tracker.head.prev = nil
-		}
-	}
+	for elem := tracker.changes.Front(); elem != nil; {
+		next := elem.Next()
 
-	// If the list becomes empty, reset the Tail
-	if tracker.head == nil {
-		tracker.tail = nil
+		//nolint:forcetypeassert // list only ever holds *StateChange
+		if !elem.Value.(*StateChange).timestamp.Before(retentionLimit) {
+			break
+		}
+
+		tracker.changes.Remove(elem)
+
+		elem = next
 	}
 }
 
@@ -114,15 +100,7 @@ func (tracker *StateChangeTracker) CalculateUptime(currentState bool,
 // This method is primarily used for testing and debugging.
 // The count includes only records that are within the retention period.
 func (tracker *StateChangeTracker) RecordsCount() int {
-	recordsNumber := 0
-
-	cur := tracker.head
-	for cur != nil {
-		recordsNumber++
-		cur = cur.next
-	}
-
-	return recordsNumber
+	return tracker.changes.Len()
 }
 
 // GenReports generates uptime reports for multiple time periods.
@@ -170,7 +148,8 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
 	last time.Duration, end time.Time,
 ) UptimeResult {
-	if tracker.tail == nil {
+	tail := tracker.changes.Back()
+	if tail == nil {
 		// No records other than the current status
 		if currentState {
 			return UptimeResult{Availability: 1.0}
@@ -182,7 +161,7 @@ func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
 	uptime := time.Duration(0)
 	start := end.Add(-last)
 
-	current := tracker.tail
+	current := tail
 	endOfPeriod := end
 
 	var (
@@ -191,9 +170,10 @@ func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
 	)
 
 	for current != nil {
-		lastStateRecorded = current.up
+		change := current.Value.(*StateChange) //nolint:forcetypeassert // list only ever holds *StateChange
+		lastStateRecorded = change.up
 
-		lastTimestampSeen = current.timestamp
+		lastTimestampSeen = change.timestamp
 		if lastTimestampSeen.Before(start) {
 			lastTimestampSeen = start
 		}
@@ -207,7 +187,7 @@ func (tracker *StateChangeTracker) uptimeCalculation(currentState bool,
 		}
 
 		endOfPeriod = lastTimestampSeen
-		current = current.prev
+		current = current.Prev()
 	}
 
 	if lastTimestampSeen.After(start) {
