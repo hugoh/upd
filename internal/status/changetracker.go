@@ -114,9 +114,7 @@ func (tracker *StateChangeTracker) GenReports(currentState bool, end time.Time,
 
 	reports := make([]ReportByPeriod, reportCount)
 
-	for idx := range periods {
-		period := periods[idx]
-
+	for idx, period := range periods {
 		result, err := tracker.CalculateUptime(currentState, period, end)
 		if err != nil {
 			reports[idx] = ReportByPeriod{
