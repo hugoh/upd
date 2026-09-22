@@ -20,7 +20,7 @@ const (
 	// NotComputedMsg is displayed when a value cannot be computed.
 	NotComputedMsg = "Not computed"
 	// PercentFormat is the format string for percentage display.
-	PercentFormat = "%.2f %%"
+	PercentFormat = "%.3f %%"
 	// TrailingZeroSSuffix is the trailing zero seconds suffix.
 	TrailingZeroSSuffix = "0s"
 	// TrailingZeroMSuffix is the trailing zero minutes suffix.

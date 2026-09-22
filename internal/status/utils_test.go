@@ -30,9 +30,9 @@ func TestReadableTypes_MarshalJSON(t *testing.T) {
 		value    any
 		expected string
 	}{
-		{"percent zero", ReadablePercent(0.0), `"0.00 %"`},
-		{"percent fifty", ReadablePercent(0.5), `"50.00 %"`},
-		{"percent hundred", ReadablePercent(1.0), `"100.00 %"`},
+		{"percent zero", ReadablePercent(0.0), `"0.000 %"`},
+		{"percent fifty", ReadablePercent(0.5), `"50.000 %"`},
+		{"percent hundred", ReadablePercent(1.0), `"100.000 %"`},
 		{"percent not computed", ReadablePercent(-1.0), `"Not computed"`},
 		{"duration zero", ReadableDuration(0), `"0s"`},
 		{"duration one second", ReadableDuration(time.Second), `"1s"`},
