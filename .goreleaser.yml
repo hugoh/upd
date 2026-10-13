@@ -32,7 +32,6 @@ builds:
     ldflags:
       - -s -w
       - -X github.com/hugoh/upd/internal/version.version={{.Version}}
-
 nfpms:
   - maintainer: "Hugo Haas <hugoh@hugoh.net>"
     description: "Tool to monitor if the network connection is up"
