@@ -9,6 +9,17 @@ It works by:
 
 ## Installation
 
+### Debian/Ubuntu (apt)
+
+```sh
+curl -1sLf 'https://dl.cloudsmith.io/public/hugoh/apt/setup.deb.sh' | sudo -E bash
+sudo apt install upd
+```
+
+Package repository hosting is graciously provided by [Cloudsmith](https://cloudsmith.com).
+
+### Binary
+
 Download the latest release and extract the `upd` or `upd.exe` binary.
 
 ## Help
