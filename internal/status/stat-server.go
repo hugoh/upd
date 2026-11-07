@@ -3,7 +3,8 @@ package status
 import (
 	"cmp"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -111,10 +112,7 @@ func (h *StatHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 func writeJSON(w http.ResponseWriter, data any) {
 	w.Header().Set("Content-Type", "application/json")
 
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", JSONIndentSpaces)
-
-	if err := enc.Encode(data); err != nil {
+	if err := json.MarshalWrite(w, data, jsontext.WithIndent(JSONIndentSpaces)); err != nil {
 		logger.Stats().Error("error writing JSON response", "error", err)
 	}
 }

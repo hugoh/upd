@@ -3,7 +3,7 @@
 package main
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net"
 	"net/http"
@@ -162,7 +162,7 @@ reports = ["1m"]
 
 	var raw map[string]any
 
-	err = json.NewDecoder(resp.Body).Decode(&raw)
+	err = json.UnmarshalRead(resp.Body, &raw)
 	require.NoError(t, err, "response should be valid JSON")
 
 	require.Contains(t, raw, "isUp")

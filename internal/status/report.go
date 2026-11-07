@@ -25,7 +25,7 @@ type DownActionStatus struct {
 
 // LoopStatus contains the current state of the monitoring loop.
 type LoopStatus struct {
-	LastSuccess     ReadableDuration `json:"lastSuccess,omitempty"`
+	LastSuccess     ReadableDuration `json:"lastSuccess,omitzero"`
 	NextCheck       ReadableDuration `json:"nextCheck"`
 	Interval        ReadableDuration `json:"interval"`
 	TimeSinceUpdate ReadableDuration `json:"timeSinceLastUpdate"`

@@ -1,7 +1,8 @@
 package status
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -202,7 +203,7 @@ func TestReport_JSON_Marshal(t *testing.T) {
 		Generated: time.Now(),
 	}
 
-	data, err := json.MarshalIndent(report, "", JSONIndentSpaces)
+	data, err := json.Marshal(report, jsontext.WithIndent(JSONIndentSpaces))
 	require.NoError(t, err)
 
 	var raw map[string]any
