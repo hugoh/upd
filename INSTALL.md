@@ -31,6 +31,20 @@ sudo apt install ./upd_*.deb
 sudo dnf install ./upd_*.rpm
 ```
 
+## Release binaries
+
+The [releases page](https://github.com/hugoh/upd/releases) has an archive per platform; each holds
+the `upd` binary, with a `checksums.txt` for all of them:
+
+| Archive | For |
+|---|---|
+| `upd_<version>_linux_amd64.tar.gz`, `…_linux_arm64.tar.gz` | Linux with glibc (Debian, Ubuntu, Fedora, ...) |
+| `upd_<version>_linux_amd64_musl.tar.gz`, `…_linux_arm64_musl.tar.gz` | Static binaries: Alpine, OpenWrt, containers without glibc |
+| `upd_<version>_darwin_arm64.tar.gz` | macOS on Apple silicon |
+
+There are no builds for Windows, FreeBSD, 32-bit systems or macOS on Intel.
+Pre-releases (such as `5.0.0-rc.1`) are published here only, not to the package repositories.
+
 ## mise
 
 ```sh

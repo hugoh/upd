@@ -85,6 +85,9 @@ binary on the Tokio runtime.
 
 ## Differences from the Go version
 
+The user-facing list, with what to change, is "Upgrading from 4.x" in the README. This is the
+same list with the reasons.
+
 - An invalid config on SIGHUP keeps the old one running instead of exiting.
 - Unknown TOML keys are errors, including `stats.writeTimeout` and `idleTimeout`, which the Go
   version accepted. `readTimeout` limits how long a client may take to send its request.
@@ -92,7 +95,9 @@ binary on the Tokio runtime.
   `expBackoffLimit`, `buckets.min`, `buckets.maxSpan` and the timeouts must be positive when set.
 - `${VAR}` is expanded in string values after parsing, not in the raw text, so comments are
   untouched. The first problem found is reported, with its key, instead of all of them.
-- `logLevel` accepts `error` to `trace`. The default config file is searched for along the XDG base directories (the `xdg` crate), after
+- Commands are split and checked when the configuration is loaded.
+- `logLevel` accepts `error` to `trace`; `--debug` wins over it.
+- The default config file is searched for along the XDG base directories (the `xdg` crate), after
   `./.upd.toml` and before `/etc/upd/upd.toml`.
 - `checks.every.normal` and `down` are limited to 24 h.
 - HTTP probes do not follow redirects: any response means the connection works.
@@ -101,11 +106,16 @@ binary on the Tokio runtime.
   observed time spent up, accurate to one bucket (at most 30 min, about 1% of the period by
   default), and each stretch between two rounds counts in the bucket of the later round. The
   report keeps its history across a reload as long as `stats.reports` and `stats.buckets` are
-  unchanged.
+  unchanged. `generatedAt` is UTC with milliseconds.
 - `stopExec` runs only when the connection comes back after `exec` ran at least once, not when
   upd shuts down or reloads.
-- Captured stderr of down-action commands is capped at 8 KiB.
+- Captured stderr of down-action commands is capped at 8 KiB, and a command's process group is
+  killed with it.
+- Logging is `tracing`'s text format, coloured only on a terminal, instead of `slog`'s.
+- The version flag is `-V`, as clap spells it, not `-v`.
 - Release builds are glibc binaries for Linux x86_64 and aarch64 and a macOS aarch64 binary, plus
   static musl binaries for Linux, which run on systems without glibc such as OpenWrt. The glibc
   archives keep the Go names (`upd_<version>_linux_arm64.tar.gz`); the musl ones add `_musl`
   (`upd_<version>_linux_arm64_musl.tar.gz`). The deb and rpm packages use the glibc binaries.
+  Windows, FreeBSD, 32-bit and macOS on Intel are not built: the `xdg` crate and the signal
+  handling are Unix-only, and the Go release's other targets were not carried over.
