@@ -4,15 +4,6 @@ name: cross
 on:
   pull_request:
     branches: [main]
-    paths:
-      - Cargo.toml
-      - Cargo.lock
-      - rust-toolchain.toml
-      - mise.toml
-      - mise.release.toml
-      - mise.package.toml
-      - .anodizer.yaml
-      - .github/workflows/cross.yml
   workflow_dispatch:
 
 permissions: {}
@@ -22,10 +13,35 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      build: ${{ steps.filter.outputs.build }}
+    steps:
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            build:
+              - Cargo.toml
+              - Cargo.lock
+              - rust-toolchain.toml
+              - mise.toml
+              - mise.release.toml
+              - mise.package.toml
+              - .anodizer.yaml
+              - .github/workflows/cross.yml
+
   # Proves every release target still builds and packages, without publishing. It mirrors the
   # release's build and merge jobs.
   anodizer:
     name: anodizer (${{ matrix.name }})
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.build == 'true'
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -86,3 +102,13 @@ jobs:
             [ -f "dist/$shard/context.json" ] || { echo "::error::missing dist/$shard/context.json"; exit 1; }
           done
       - run: anodizer release --snapshot --merge
+
+  # Single required check: path-filtered jobs that never run would leave their own checks pending.
+  anodizer-gate:
+    needs: [changes, anodizer, merge]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = false ]
