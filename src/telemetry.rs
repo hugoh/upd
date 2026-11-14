@@ -1,5 +1,7 @@
 //! Logging to stderr, with a level that can change while running.
 
+use std::io::IsTerminal;
+
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Registry, fmt, reload};
@@ -26,7 +28,14 @@ pub fn init(debug: bool) -> Telemetry {
     // A second init in the same process (tests) keeps the first subscriber.
     let _ = Registry::default()
         .with(layer)
-        .with(fmt::layer().with_writer(std::io::stderr))
+        .with(
+            fmt::layer()
+                .with_writer(std::io::stderr)
+                .with_ansi(use_ansi(
+                    std::io::stderr().is_terminal(),
+                    std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty()),
+                )),
+        )
         .try_init();
 
     Telemetry {
@@ -34,6 +43,11 @@ pub fn init(debug: bool) -> Telemetry {
         debug,
         base,
     }
+}
+
+/// Colour is for people at a terminal: syslog and log files would show the escape codes.
+fn use_ansi(stderr_is_terminal: bool, no_color: bool) -> bool {
+    stderr_is_terminal && !no_color
 }
 
 /// Dependencies stay at warnings; upd logs at `level`.
@@ -62,6 +76,16 @@ impl Telemetry {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn colour_is_for_terminals_and_not_when_asked_otherwise() {
+        assert!(use_ansi(true, false));
+        assert!(
+            !use_ansi(false, false),
+            "log files and syslog get no escape codes"
+        );
+        assert!(!use_ansi(true, true), "NO_COLOR is honoured");
+    }
 
     #[test]
     fn directives_keep_dependencies_quiet() {
