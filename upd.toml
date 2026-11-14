@@ -24,8 +24,8 @@ shuffled = [
 ]
 
 [downAction]
-exec = "cowsay"
-stopExec = "./testdata/echo-reboot-count.sh"
+exec = "sh -c 'echo connection down, run $UPD_ITERATION'"
+stopExec = "echo connection is back"
 
 [downAction.every]
 after = "1s"

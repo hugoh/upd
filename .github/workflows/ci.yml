@@ -1,4 +1,3 @@
-# DO NOT EDIT — managed by hugoh/go-tools via copier.
 ---
 name: CI
 
@@ -14,6 +13,14 @@ on:
         description: "Version bump type"
         default: auto
         options: [auto, patch, minor, major]
+      version:
+        type: string
+        description: "Release exactly this version, such as 5.0.0-rc.1 (a version with a suffix is a pre-release); overrides bump_type"
+        default: ""
+      dry_run:
+        type: boolean
+        description: "Rehearse the release (plan, preflight, tag) without pushing the tag or publishing; allowed on any branch"
+        default: false
 
 permissions: {}
 
@@ -24,24 +31,262 @@ concurrency:
 
 jobs:
   hk:
-    uses: hugoh/go-tools/.github/workflows/go-hk.yml@01872c2bf8fd9688f8a6b25c15567414e2cb6794 # v1.31.7
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
+      statuses: write
+    steps:
+      - uses: hugoh/gh-workflows/setup@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
+        with:
+          fetch-depth: "0"
+      - uses: ./.github/actions/rust-setup
+        with:
+          shared-key: lint
+      - uses: hugoh/gh-workflows/hk-check@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
+        env:
+          PINACT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  goci:
-    uses: hugoh/go-tools/.github/workflows/go-ci.yml@01872c2bf8fd9688f8a6b25c15567414e2cb6794 # v1.31.7
+  test:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    env:
+      MISE_ENV: ci
+    steps:
+      - uses: hugoh/gh-workflows/setup@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: test
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Fetch CRAP baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: mise run crap:fetch
+      - name: Tests and coverage
+        run: mise run ci:test
+      - name: Record CRAP baseline
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: mise run crap:baseline
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: crap-baseline
+          path: crap-baseline.json
+          if-no-files-found: error
+
+  plan:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+    steps:
+      - name: Guard manual dispatch to main
+        if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' && !inputs.dry_run
+        env:
+          GITHUB_REF: ${{ github.ref }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          # A pre-release (a version with a suffix) may be cut from any branch.
+          case "$RELEASE_VERSION" in *-*) exit 0 ;; esac
+          echo "::error::A stable release must be dispatched on main (got ${GITHUB_REF}); pre-releases need a version such as 5.0.0-rc.1"
+          exit 1
+      - uses: hugoh/gh-workflows/setup@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
+        with:
+          fetch-depth: "0"
+      - name: Plan the release
+        id: plan
+        env:
+          BUMP_TYPE: ${{ inputs.bump_type || 'auto' }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          args=(--dry-run)
+          [ "$BUMP_TYPE" = auto ] || args+=(--default-bump "$BUMP_TYPE")
+          [ -z "$RELEASE_VERSION" ] || args+=(--version "$RELEASE_VERSION")
+          plan=$(anodizer tag "${args[@]}")
+          part=$(sed -n 's/^part=//p' <<<"$plan")
+          tag=$(sed -n 's/^new_tag=//p' <<<"$plan")
+          # An explicit version is released whatever the commits say.
+          if [ -z "$tag" ] || { [ -z "$RELEASE_VERSION" ] && [ "$part" = none ]; }; then
+            echo "No releasable commits since the last tag"
+            exit 0
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
 
-  release:
-    needs: [hk, goci]
-    uses: hugoh/go-tools/.github/workflows/go-release.yml@01872c2bf8fd9688f8a6b25c15567414e2cb6794 # v1.31.7
+  preflight:
+    needs: plan
+    if: needs.plan.outputs.tag != ''
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    # contents: write so the GitHub push probe passes.
     permissions:
       contents: write
-    with:
-      bump_type: ${{ inputs.bump_type || 'auto' }}
-      has_goreleaser: true
-    secrets:
-      gh_token: ${{ secrets.GITHUB_TOKEN }}
-      tap_github_token: ${{ secrets.TAP_GITHUB_TOKEN }}
-      cloudsmith_api_key: ${{ secrets.CLOUDSMITH_API_KEY }}
+    env:
+      MISE_ENV: package
+    steps:
+      - uses: hugoh/gh-workflows/setup@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
+        with:
+          fetch-depth: "0"
+      - uses: ./.github/actions/rust-setup
+        with:
+          shared-key: lint
+          save-if: "false"
+      - uses: ./.github/actions/apply-tag
+        with:
+          tag: ${{ needs.plan.outputs.tag }}
+      - name: Preflight
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+        run: anodizer preflight
+
+  tag:
+    needs: [plan, hk, test, preflight]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      # Empty on a dry run, so build and release are skipped.
+      tag: ${{ !inputs.dry_run && steps.validate.outputs.tag || '' }}
+    env:
+      MISE_ENV: package
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    steps:
+      - uses: hugoh/gh-workflows/setup@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
+        with:
+          fetch-depth: "0"
+      - uses: ./.github/actions/rust-setup
+        with:
+          cache: "false"
+      - uses: ./.github/actions/apply-tag
+        with:
+          tag: ${{ needs.plan.outputs.tag }}
+      - name: Validate release
+        id: validate
+        run: |
+          mise run lint:release
+          TAG=$(git tag --points-at HEAD | head -1)
+          if [ -z "$TAG" ]; then
+            echo "No tag at HEAD — skipping release"
+            exit 0
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+      - name: Push tag
+        if: steps.validate.outputs.tag != '' && !inputs.dry_run
+        env:
+          TAG: ${{ steps.validate.outputs.tag }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}"
+          git push origin "${TAG}"
+
+  # One job per OS family: the Linux targets are cross-compiled together on a Linux runner
+  # (.anodizer.yaml, cross: auto); the macOS target needs Apple's SDK, so it builds natively.
+  build:
+    name: build (${{ matrix.name }})
+    needs: tag
+    if: needs.tag.outputs.tag != ''
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # A binary this runner can execute, to check it reports the tag's version.
+          - {name: linux, os: ubuntu-latest, check: x86_64-unknown-linux-musl}
+          - {name: darwin, os: macos-latest, check: aarch64-apple-darwin}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    env:
+      MISE_ENV: release,package
+    steps:
+      - uses: hugoh/gh-workflows/setup@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
+        with:
+          fetch-depth: "0"
+      - name: Check out the release tag
+        env:
+          TAG: ${{ needs.tag.outputs.tag }}
+        run: git checkout --detach "$TAG"
+      - uses: ./.github/actions/rust-setup
+        with:
+          shared-key: anodizer-${{ matrix.name }}
+      - name: Build this OS's targets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: anodizer release --split --clean
+      - name: Check the binary reports the tag's version
+        env:
+          TAG: ${{ needs.tag.outputs.tag }}
+          CHECK: ${{ matrix.check }}
+        run: |
+          bin=$(find "target/$CHECK" -type f -name upd -perm -u=x | head -n1)
+          [ -n "$bin" ] || { echo "::error::no upd binary for $CHECK under target/"; exit 1; }
+          got=$("$bin" --version)
+          got=${got#upd }
+          [ "$got" = "${TAG#v}" ] || { echo "::error::upd --version is '${got}', expected '${TAG#v}'"; exit 1; }
+      # Hidden files are dropped by default and would only surface at merge time.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist-${{ matrix.name }}
+          path: dist/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    needs: [tag, build]
+    if: needs.tag.outputs.tag != ''
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      MISE_ENV: release,package
+    concurrency:
+      group: release-publish
+      cancel-in-progress: false
+    steps:
+      - uses: hugoh/gh-workflows/setup@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
+        with:
+          fetch-depth: "0"
+      - name: Check out the release tag
+        env:
+          TAG: ${{ needs.tag.outputs.tag }}
+        run: git checkout --detach "$TAG"
+      - uses: ./.github/actions/rust-setup
+        with:
+          shared-key: lint
+          save-if: "false"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dist/
+          pattern: dist-*
+          merge-multiple: true
+      # Artifact transfer drops the execute bit, and the merge runs the binary.
+      - name: Restore execute bit
+        run: find dist -type f -name upd -exec chmod +x {} +
+      - name: Publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+          TAG: ${{ needs.tag.outputs.tag }}
+        # The preflight's GitHub push probe reads permissions.push from
+        # GET /repos/{owner}/{repo}, which reports false for GITHUB_TOKEN even
+        # with contents: write, so it blocks a release the token can create.
+        run: |
+          args=()
+          # A pre-release (a tag with a suffix) goes to the GitHub release only: not to the apt
+          # and rpm repositories, so installing upd there keeps giving the stable version, and
+          # not to anything added later, such as a Homebrew tap.
+          case "$TAG" in *-*) args+=(--publishers github-release) ;; esac
+          anodizer release --merge --skip=preflight --resume-release "${args[@]}"

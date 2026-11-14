@@ -1,9 +1,29 @@
 {
-  // DO NOT EDIT — managed by hugoh/go-tools via copier.
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "github>hugoh/go-tools:go-renovaterc",
-    "github>hugoh/go-tools//presets/binary",
-    "github>hugoh/go-tools//presets/copier-owned-files"
+  "extends": ["github>hugoh/renovate-config"],
+  "packageRules": [
+    {
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "rust dependencies",
+      "semanticCommitType": "fix",
+      "semanticCommitScope": "deps"
+    },
+    {
+      "matchDatasources": ["github-runners"],
+      "groupName": "runner images"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Runner images pinned in workflow matrices, which the github-actions manager does not read",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "os: (?<depName>ubuntu)-(?<currentValue>\\d+\\.\\d+)(?:-arm)?[,}]"
+      ],
+      "datasourceTemplate": "github-runners",
+      "versioningTemplate": "docker"
+    }
   ]
 }
