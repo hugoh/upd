@@ -99,13 +99,13 @@ pub enum LogLevel {
 
 impl LogLevel {
     #[must_use]
-    pub fn as_str(self) -> &'static str {
+    pub fn as_level(self) -> tracing::Level {
         match self {
-            Self::Error => "error",
-            Self::Warn => "warn",
-            Self::Info => "info",
-            Self::Debug => "debug",
-            Self::Trace => "trace",
+            Self::Error => tracing::Level::ERROR,
+            Self::Warn => tracing::Level::WARN,
+            Self::Info => tracing::Level::INFO,
+            Self::Debug => tracing::Level::DEBUG,
+            Self::Trace => tracing::Level::TRACE,
         }
     }
 }
@@ -566,7 +566,7 @@ mod tests {
             (LogLevel::Debug, "debug"),
             (LogLevel::Trace, "trace"),
         ] {
-            assert_eq!(level.as_str(), name);
+            assert_eq!(level.as_level().as_str().to_lowercase(), name);
             assert_eq!(
                 parse(&format!("logLevel = \"{name}\"\n{MINIMAL}"))
                     .unwrap()
