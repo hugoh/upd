@@ -1,13 +1,12 @@
 //! Human-readable JSON values for durations and percentages.
 
-use std::fmt::Write;
 use std::time::Duration;
 
 use serde::{Serialize, Serializer};
 
 pub const NOT_COMPUTED: &str = "Not computed";
 
-/// A duration serialized as `1h2m3s`, or "Not computed" when absent.
+/// A duration serialized as `1h 2m 3s`, or "Not computed" when absent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HumanDuration(pub Option<Duration>);
 
@@ -39,40 +38,18 @@ impl Serialize for HumanDuration {
 impl Serialize for HumanPercent {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self.0 {
-            Some(ratio) => serializer.serialize_str(&format_percent(ratio)),
+            Some(ratio) => serializer.serialize_str(&format!("{:.3} %", ratio * 100.0)),
             None => serializer.serialize_str(NOT_COMPUTED),
         }
     }
 }
 
-#[must_use]
-pub fn format_percent(ratio: f64) -> String {
-    format!("{:.3} %", ratio * 100.0)
-}
-
-/// Rounds to the second and drops zero-valued trailing units: `1h0m0s` is `1h`.
+/// Rounds to the second, then formats like `1h 5s`.
 #[must_use]
 pub fn format_duration(duration: Duration) -> String {
-    let total = (duration.as_millis() + 500) / 1000;
-    let (hours, minutes, seconds) = (total / 3600, total % 3600 / 60, total % 60);
-
-    let mut text = String::new();
-    // Writing to a String cannot fail.
-    let _ = if hours > 0 {
-        write!(text, "{hours}h{minutes}m{seconds}s")
-    } else if minutes > 0 {
-        write!(text, "{minutes}m{seconds}s")
-    } else {
-        write!(text, "{seconds}s")
-    };
-
-    if text.ends_with("m0s") {
-        text.truncate(text.len() - 2);
-    }
-    if text.ends_with("h0m") {
-        text.truncate(text.len() - 2);
-    }
-    text
+    let rounded =
+        Duration::from_secs(u64::try_from((duration.as_millis() + 500) / 1000).unwrap_or(u64::MAX));
+    humantime::format_duration(rounded).to_string()
 }
 
 #[cfg(test)]
@@ -86,11 +63,11 @@ mod tests {
         assert_eq!(format_duration(secs(0)), "0s");
         assert_eq!(format_duration(secs(10)), "10s");
         assert_eq!(format_duration(secs(60)), "1m");
-        assert_eq!(format_duration(secs(61)), "1m1s");
+        assert_eq!(format_duration(secs(61)), "1m 1s");
         assert_eq!(format_duration(secs(3600)), "1h");
-        assert_eq!(format_duration(secs(3605)), "1h0m5s");
-        assert_eq!(format_duration(secs(3660)), "1h1m");
-        assert_eq!(format_duration(secs(168 * 3600)), "168h");
+        assert_eq!(format_duration(secs(3605)), "1h 5s");
+        assert_eq!(format_duration(secs(3660)), "1h 1m");
+        assert_eq!(format_duration(secs(168 * 3600)), "7days");
     }
 
     #[test]
@@ -102,9 +79,10 @@ mod tests {
 
     #[test]
     fn percentages_have_three_decimals() {
-        assert_eq!(format_percent(1.0), "100.000 %");
-        assert_eq!(format_percent(0.99912), "99.912 %");
-        assert_eq!(format_percent(0.0), "0.000 %");
+        let text = |ratio: f64| serde_json::to_value(HumanPercent::from(ratio)).unwrap();
+        assert_eq!(text(1.0), "100.000 %");
+        assert_eq!(text(0.99912), "99.912 %");
+        assert_eq!(text(0.0), "0.000 %");
     }
 
     #[test]
@@ -117,7 +95,7 @@ mod tests {
         ]);
         assert_eq!(
             json,
-            serde_json::json!(["Not computed", "Not computed", "1m30s", "50.000 %"])
+            serde_json::json!(["Not computed", "Not computed", "1m 30s", "50.000 %"])
         );
     }
 }

@@ -347,7 +347,7 @@ mod tests {
 
         assert_eq!(
             json["downAction"],
-            json!({"iteration": 2, "sleepTime": "1m30s", "backoffCapped": true})
+            json!({"iteration": 2, "sleepTime": "1m 30s", "backoffCapped": true})
         );
     }
 
