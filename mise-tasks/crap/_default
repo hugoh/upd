@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+#MISE description="CI check: warn when a function's CRAP score regresses against crap-baseline.json, without failing (report only when absent)"
+#MISE depends=["coverage"]
+set -euo pipefail
+if [ ! -f crap-baseline.json ]; then
+  cargo crap --lcov "$COVEROUT" --top 20
+  exit 0
+fi
+cargo crap --lcov "$COVEROUT" --baseline crap-baseline.json --format markdown >>"${GITHUB_STEP_SUMMARY:-/dev/null}"
+if ! cargo crap --lcov "$COVEROUT" --baseline crap-baseline.json --fail-regression; then
+  echo "::warning::CRAP regressed against the baseline; see the job summary"
+fi

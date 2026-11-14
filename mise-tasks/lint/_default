@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Check the code and the release config without changing anything"
+#MISE depends=["lint:rust", "lint:release"]
+true

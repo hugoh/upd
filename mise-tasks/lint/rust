@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#MISE description="Check Rust formatting, clippy, advisories and unused dependencies (changes nothing)"
+#MISE sources=["src/**/*.rs", "tests/**/*.rs", "Cargo.toml", "Cargo.lock", "clippy.toml", "deny.toml"]
+set -euo pipefail
+cargo fmt --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo deny check --hide-inclusion-graph
+cargo machete
