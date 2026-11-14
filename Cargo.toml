@@ -29,7 +29,7 @@ tokio = { version = "1.54.1", features = ["io-util", "macros", "net", "process",
 tokio-util = { version = "0.7.20", features = ["rt"] }
 toml = "1.2.1"
 tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.23", default-features = false, features = ["ansi", "env-filter", "fmt", "registry", "std"] }
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["ansi", "fmt", "registry", "std"] }
 url = "2.5.8"
 xdg = "3.0.0"
 
