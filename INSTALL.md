@@ -1,5 +1,3 @@
-<!-- DO NOT EDIT — managed by hugoh/go-tools via copier. -->
-
 # Installing upd
 
 ## Debian/Ubuntu (apt)
@@ -38,3 +36,8 @@ sudo dnf install ./upd_*.rpm
 ```sh
 mise use -g github:hugoh/upd
 ```
+
+## Containers
+
+Commands run by the down action may start background processes. In a container, run `upd` under
+an init (`docker run --init`, or `tini`) so that any such processes left behind are reaped.

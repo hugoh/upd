@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+#MISE description="Cross-compile upd with cargo-zigbuild: target defaults to the router's (aarch64-unknown-linux-musl); pass another triple to override"
+set -euo pipefail
+
+target=${1:-aarch64-unknown-linux-musl}
+
+rustup target add "$target"
+# The release environment (mise.release.toml) provides cargo-zigbuild and zig.
+MISE_ENV=release mise exec -- cargo zigbuild --release --target "$target"
+
+binary="target/$target/release/upd"
+file "$binary"
+ls -lh "$binary"
+echo "built $binary"

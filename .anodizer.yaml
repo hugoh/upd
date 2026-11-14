@@ -1,0 +1,93 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/tj-smith47/anodizer/main/schema.json
+# Releases run in ci.yml: the Linux targets are cross-compiled on a Linux runner (`cross: auto` picks
+# cargo-zigbuild), the macOS one is built natively, and a --merge job publishes.
+project_name: upd
+dist: ./dist
+
+defaults:
+  cross: auto
+
+# Releases build in two jobs, one per OS family, and a third merges and publishes. The macOS
+# target needs Apple's SDK to link, so it is built on a macOS runner.
+partial:
+  by: os
+
+crates:
+  - name: upd
+    path: .
+    tag_template: "v{{ .Version }}"
+    builds:
+      - id: upd
+        binary: upd
+        flags: ["--release"]
+        targets:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - aarch64-apple-darwin
+      # Static, for systems without glibc such as OpenWrt.
+      - id: upd-musl
+        binary: upd
+        flags: ["--release"]
+        targets:
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
+    archives:
+      - id: upd
+        ids: [upd]
+        name_template: "upd_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+      - id: upd-musl
+        ids: [upd-musl]
+        name_template: "upd_{{ .Version }}_{{ .Os }}_{{ .Arch }}_musl"
+    nfpms:
+      - ids: [upd]
+        maintainer: "Hugo Haas <hugoh@hugoh.net>"
+        description: "Tool to monitor if the network connection is up"
+        homepage: "https://github.com/hugoh/upd"
+        license: "MIT"
+        formats: [deb, rpm]
+        bindir: /usr/bin
+    release:
+      prerelease: auto
+      preflight:
+        fail_on_error: false
+      github:
+        owner: hugoh
+        name: upd
+
+cloudsmiths:
+  - organization: hugoh-oss
+    repository: upd
+    formats: [deb, rpm]
+    # Cloudsmith requires a distribution for deb/rpm uploads; any-distro/any-version
+    # matches what the setup.deb.sh / setup.rpm.sh install scripts serve.
+    distributions:
+      deb: any-distro/any-version
+      rpm: any-distro/any-version
+    secret_name: CLOUDSMITH_API_KEY
+    required: true
+
+verify_release:
+  enabled: true
+
+git:
+  tag_sort: smartsemver
+
+tag:
+  tag_prefix: v
+  bump_minor_pre_major: true
+
+changelog:
+  sort: asc
+  groups:
+    - {title: "⚠️ Breaking Changes", regexp: '^.*?(\w+)(\(.+\))??!:.+$', order: 0}
+    - {title: Features, regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$', order: 1}
+    - {title: Bug Fixes, regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$', order: 2}
+    - {title: Documentation, regexp: '^.*?docs?(\([[:word:]]+\))??!?:.+$', order: 3}
+    - {title: Dependency Updates, regexp: '^.*?(feat|fix|chore)\(deps\).*:.+$', order: 900}
+    - {title: Others, order: 999}
+  filters:
+    exclude:
+      - "^chore\\(release\\): prepare for"
+      - "^chore\\(deps"
+      - "Merge pull request"
+      - "Merge branch"

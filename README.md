@@ -13,31 +13,33 @@ See [INSTALL.md](INSTALL.md) for installation instructions.
 
 ## Help
 
-`upd -h` and `upd.exe -h` will show:
+`upd -h` shows:
 
 ```text
-NAME:
-   upd - Tool to monitor if the network connection is up.
+Tool to monitor if the network connection is up
 
-USAGE:
-   upd [global options] command [command options]
+Usage: upd [OPTIONS]
 
-COMMANDS:
-   help, h  Shows a list of commands or help for one command
-
-GLOBAL OPTIONS:
-   --config value, -c value  use the specified TOML configuration file (default: ".upd.toml")
-   --debug, -d               display debugging output in the console (default: false)
-   --help, -h                show help
-   --version, -v             print the version
+Options:
+  -c, --config <FILE>  Use the specified TOML configuration file [env: UPD_CONFIG=]
+  -d, --debug          Display debugging output in the console
+  -h, --help           Print help
+  -V, --version        Print version
 ```
+
+Send `SIGHUP` to reload the configuration. If the new file is invalid, the error is logged and
+the running configuration stays in force. `SIGINT` and `SIGTERM` shut down gracefully. A running
+down-action command is killed; `stopExec` runs only when the connection comes back after the
+command has run at least once.
 
 ## Configuration
 
-Configuration by default is located in `.upd.toml` in the working directory.
+Without `--config` (or `UPD_CONFIG`), `upd` uses the first of these that exists: `./.upd.toml`,
+`upd/upd.toml` in `$XDG_CONFIG_HOME` (`~/.config` when unset), the same in each directory of
+`$XDG_CONFIG_DIRS` (`/etc/xdg` when unset), and `/etc/upd/upd.toml`.
 
 See [`upd.toml`](upd.toml) for a complete, runnable example. Values can
-reference environment variables with `${VAR}` syntax, e.g.:
+reference environment variables with `${VAR}` syntax inside string values, e.g.:
 
 ```toml
 [checks.every]
@@ -54,6 +56,12 @@ bucket never aggregates more than `maxSpan` (default 30m):
 min = 100
 maxSpan = "30m"
 ```
+
+Unknown keys in the file are rejected, so a typo fails at startup instead of being ignored. A
+setting that is not there is off: leave out `stats.port` to have no stats server, and leave out
+`downAction.every.repeat` to run the command once.
+`dns://` checks need the resolver as an IP address (`dns://1.1.1.1/example.com`, optionally with a
+port).
 
 ## Status
 
