@@ -1,6 +1,6 @@
 [package]
 name = "upd"
-version = "0.0.0"
+version = "5.0.0"
 edition = "2024"
 rust-version = "1.100"
 description = "Monitors the network connection and runs a command when it is down"
