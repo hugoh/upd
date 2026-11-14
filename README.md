@@ -97,7 +97,7 @@ Set `stats.port` (the examples use 42080) and `upd` serves statistics as JSON at
     },
     {
       "period": "24h",
-      "coverage": "12h33m23s",
+      "coverage": "12h 33m 23s",
       "availability": "100.000 %",
       "downTime": "0s",
       "totalProbes": 753,
@@ -106,7 +106,7 @@ Set `stats.port` (the examples use 42080) and `upd` serves statistics as JSON at
     },
     {
       "period": "168h",
-      "coverage": "12h33m23s",
+      "coverage": "12h 33m 23s",
       "availability": "100.000 %",
       "downTime": "0s",
       "totalProbes": 753,
@@ -121,7 +121,7 @@ Set `stats.port` (the examples use 42080) and `upd` serves statistics as JSON at
     "timeSinceLastUpdate": "11s",
     "totalChecksRun": 753
   },
-  "updUptime": "12h33m23s",
+  "updUptime": "12h 33m 23s",
   "updVersion": "5.0.0",
   "generatedAt": "2026-06-09T12:37:00.708Z"
 }
