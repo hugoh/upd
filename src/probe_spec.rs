@@ -15,21 +15,14 @@ pub enum Scheme {
     Dns,
 }
 
-impl Scheme {
-    #[must_use]
-    pub fn as_str(self) -> &'static str {
-        match self {
+impl fmt::Display for Scheme {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
             Self::Http => "http",
             Self::Https => "https",
             Self::Tcp => "tcp",
             Self::Dns => "dns",
-        }
-    }
-}
-
-impl fmt::Display for Scheme {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
+        })
     }
 }
 
@@ -81,12 +74,7 @@ impl ProbeSpec {
         let url = Url::parse(text).map_err(|err| ProbeSpecError::InvalidUri(err.to_string()))?;
 
         match url.scheme() {
-            "http" | "https" => {
-                if url.host().is_none() {
-                    return Err(ProbeSpecError::MissingHost("http"));
-                }
-                Ok(Self::Http { url })
-            }
+            "http" | "https" => Ok(Self::Http { url }),
             "tcp" => {
                 let host = host_text(&url).ok_or(ProbeSpecError::MissingHost("tcp"))?;
                 let port = url.port().ok_or(ProbeSpecError::MissingPort)?;
@@ -134,7 +122,6 @@ impl ProbeSpec {
 
 fn host_text(url: &Url) -> Option<String> {
     match url.host()? {
-        Host::Domain("") => None,
         Host::Domain(domain) => Some(domain.to_owned()),
         Host::Ipv4(ip) => Some(ip.to_string()),
         Host::Ipv6(ip) => Some(ip.to_string()),
