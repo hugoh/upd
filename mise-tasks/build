@@ -2,4 +2,6 @@
 #MISE description="Build application"
 #MISE sources=["src/**/*.rs", "Cargo.toml", "Cargo.lock"]
 #MISE outputs=["target/release/upd"]
+#MISE depends=[]
+# DO NOT EDIT — managed by hugoh/rust-tools via copier.
 cargo build --release
