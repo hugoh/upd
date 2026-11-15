@@ -58,7 +58,7 @@ jobs:
       - uses: hugoh/gh-workflows/setup@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
         with:
           fetch-depth: "1"
-      - uses: ./.github/actions/rust-setup
+      - uses: hugoh/rust-tools/.github/actions/rust-setup@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
         with:
           shared-key: anodizer-${{ matrix.name }}
       - run: anodizer check config
@@ -85,7 +85,7 @@ jobs:
       - uses: hugoh/gh-workflows/setup@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
         with:
           fetch-depth: "1"
-      - uses: ./.github/actions/rust-setup
+      - uses: hugoh/rust-tools/.github/actions/rust-setup@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
         with:
           shared-key: anodizer-merge
           save-if: "false"

@@ -31,52 +31,17 @@ concurrency:
 
 jobs:
   hk:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
+    uses: hugoh/rust-tools/.github/workflows/rust-hk.yml@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
     permissions:
       contents: read
       packages: read
       statuses: write
-    steps:
-      - uses: hugoh/gh-workflows/setup@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
-        with:
-          fetch-depth: "0"
-      - uses: ./.github/actions/rust-setup
-        with:
-          shared-key: lint
-      - uses: hugoh/gh-workflows/hk-check@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
-        env:
-          PINACT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test:
-    timeout-minutes: 30
-    runs-on: ubuntu-latest
+    uses: hugoh/rust-tools/.github/workflows/rust-test.yml@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
     permissions:
       actions: read
       contents: read
-    env:
-      MISE_ENV: ci
-    steps:
-      - uses: hugoh/gh-workflows/setup@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-        with:
-          shared-key: test
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Fetch CRAP baseline
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: mise run crap:fetch
-      - name: Tests and coverage
-        run: mise run ci:test
-      - name: Record CRAP baseline
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: mise run crap:baseline
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        with:
-          name: crap-baseline
-          path: crap-baseline.json
-          if-no-files-found: error
 
   plan:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
@@ -133,11 +98,11 @@ jobs:
       - uses: hugoh/gh-workflows/setup@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
         with:
           fetch-depth: "0"
-      - uses: ./.github/actions/rust-setup
+      - uses: hugoh/rust-tools/.github/actions/rust-setup@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
         with:
           shared-key: lint
           save-if: "false"
-      - uses: ./.github/actions/apply-tag
+      - uses: hugoh/rust-tools/.github/actions/apply-tag@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
         with:
           tag: ${{ needs.plan.outputs.tag }}
       - name: Preflight
@@ -165,10 +130,10 @@ jobs:
       - uses: hugoh/gh-workflows/setup@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
         with:
           fetch-depth: "0"
-      - uses: ./.github/actions/rust-setup
+      - uses: hugoh/rust-tools/.github/actions/rust-setup@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
         with:
           cache: "false"
-      - uses: ./.github/actions/apply-tag
+      - uses: hugoh/rust-tools/.github/actions/apply-tag@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
         with:
           tag: ${{ needs.plan.outputs.tag }}
       - name: Validate release
@@ -217,7 +182,7 @@ jobs:
         env:
           TAG: ${{ needs.tag.outputs.tag }}
         run: git checkout --detach "$TAG"
-      - uses: ./.github/actions/rust-setup
+      - uses: hugoh/rust-tools/.github/actions/rust-setup@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
         with:
           shared-key: anodizer-${{ matrix.name }}
       - name: Build this OS's targets
@@ -263,7 +228,7 @@ jobs:
         env:
           TAG: ${{ needs.tag.outputs.tag }}
         run: git checkout --detach "$TAG"
-      - uses: ./.github/actions/rust-setup
+      - uses: hugoh/rust-tools/.github/actions/rust-setup@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
         with:
           shared-key: lint
           save-if: "false"
