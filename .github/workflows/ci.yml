@@ -29,6 +29,11 @@ concurrency:
   # Cancel superseded PR runs; never cancel a push-to-main run mid-release.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  # setup-rust-toolchain defaults this to deny, which would turn rustc warnings into build
+  # failures; clippy already gates warnings.
+  CARGO_BUILD_WARNINGS: warn
+
 jobs:
   hk:
     uses: hugoh/rust-tools/.github/workflows/rust-hk.yml@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
@@ -98,10 +103,10 @@ jobs:
       - uses: hugoh/gh-workflows/setup@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
         with:
           fetch-depth: "0"
-      - uses: hugoh/rust-tools/.github/actions/rust-setup@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
+      - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:
-          shared-key: lint
-          save-if: "false"
+          cache-shared-key: lint
+          cache-save-if: "false"
       - uses: hugoh/rust-tools/.github/actions/apply-tag@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
         with:
           tag: ${{ needs.plan.outputs.tag }}
@@ -130,7 +135,7 @@ jobs:
       - uses: hugoh/gh-workflows/setup@12a131c8eca966fe30bcc4ca670fa596b375702f # v1.40.19
         with:
           fetch-depth: "0"
-      - uses: hugoh/rust-tools/.github/actions/rust-setup@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
+      - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:
           cache: "false"
       - uses: hugoh/rust-tools/.github/actions/apply-tag@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
@@ -182,9 +187,10 @@ jobs:
         env:
           TAG: ${{ needs.tag.outputs.tag }}
         run: git checkout --detach "$TAG"
-      - uses: hugoh/rust-tools/.github/actions/rust-setup@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
+      - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:
-          shared-key: anodizer-${{ matrix.name }}
+          cache-shared-key: anodizer-${{ matrix.name }}
+          cache-save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Build this OS's targets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -228,10 +234,10 @@ jobs:
         env:
           TAG: ${{ needs.tag.outputs.tag }}
         run: git checkout --detach "$TAG"
-      - uses: hugoh/rust-tools/.github/actions/rust-setup@162b66a5ca33d26a170ec8527c19401c50529a6b # v0.1.1
+      - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:
-          shared-key: lint
-          save-if: "false"
+          cache-shared-key: lint
+          cache-save-if: "false"
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: dist/
