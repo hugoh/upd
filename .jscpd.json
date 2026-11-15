@@ -1,5 +1,6 @@
 {
   "//": "DO NOT EDIT — managed by hugoh/rust-tools via copier.",
   "minLines": 8,
-  "threshold": 3
+  "threshold": 3,
+  "ignore": ["**/tests/fixtures/**", "**/target/**"]
 }

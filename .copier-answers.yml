@@ -1,14 +1,6 @@
 # Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
-_commit: v0.1.1
+_commit: v0.3.1
 _src_path: https://github.com/hugoh/rust-tools.git
-deny_advisory_ignores: []
-deny_extra_licenses: []
-deny_targets:
-- x86_64-unknown-linux-gnu
-- aarch64-unknown-linux-gnu
-- x86_64-unknown-linux-musl
-- aarch64-unknown-linux-musl
-- aarch64-apple-darwin
 project_name: upd
 rust_channel: 1.100.0
 toolchain_targets:
