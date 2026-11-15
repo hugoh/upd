@@ -1,0 +1,5 @@
+# Seeded once by hugoh/rust-tools; this repo owns it from here on.
+# Read by mise-tasks/coverage: the line-coverage gate and the files left out of it.
+[env]
+COVERAGE_MIN_LINES = "90"
+COVERAGE_IGNORE_REGEX = '(^|/)main\.rs$'
