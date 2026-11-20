@@ -175,7 +175,7 @@ impl Status {
             down_action: self.down_action,
             uptime: now.saturating_duration_since(self.started).into(),
             version: version.to_owned(),
-            generated_at: humantime::format_rfc3339_millis(generated_at).to_string(),
+            generated_at: rfc3339_millis(generated_at),
         }
     }
 
@@ -217,6 +217,10 @@ impl PeriodReport {
     }
 }
 
+fn rfc3339_millis(time: SystemTime) -> String {
+    format!("{:.3}", jiff::Timestamp::try_from(time).unwrap_or_default())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -224,6 +228,12 @@ mod tests {
 
     fn secs(n: u64) -> Duration {
         Duration::from_secs(n)
+    }
+
+    #[test]
+    fn timestamps_are_rfc3339_with_milliseconds_in_utc() {
+        let time = SystemTime::UNIX_EPOCH + Duration::from_millis(1_500);
+        assert_eq!(rfc3339_millis(time), "1970-01-01T00:00:01.500Z");
     }
 
     fn render(status: &Status, periods: &[Duration], now: Instant) -> serde_json::Value {

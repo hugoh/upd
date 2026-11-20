@@ -49,7 +49,18 @@ impl Serialize for HumanPercent {
 pub fn format_duration(duration: Duration) -> String {
     let rounded =
         Duration::from_secs(u64::try_from((duration.as_millis() + 500) / 1000).unwrap_or(u64::MAX));
-    humantime::format_duration(rounded).to_string()
+    jiff::Span::try_from(rounded)
+        .and_then(|span| {
+            span.round(
+                jiff::SpanRound::new()
+                    .largest(jiff::Unit::Day)
+                    .relative(jiff::SpanRelativeTo::days_are_24_hours()),
+            )
+        })
+        .map_or_else(
+            |_| format!("{}s", rounded.as_secs()),
+            |span| format!("{span:#}"),
+        )
 }
 
 #[cfg(test)]
@@ -67,7 +78,7 @@ mod tests {
         assert_eq!(format_duration(secs(3600)), "1h");
         assert_eq!(format_duration(secs(3605)), "1h 5s");
         assert_eq!(format_duration(secs(3660)), "1h 1m");
-        assert_eq!(format_duration(secs(168 * 3600)), "7days");
+        assert_eq!(format_duration(secs(168 * 3600)), "7d");
     }
 
     #[test]
