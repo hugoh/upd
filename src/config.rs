@@ -247,7 +247,11 @@ fn duration_with<'de, D: Deserializer<'de>>(
     check: fn(Duration) -> Result<(), &'static str>,
 ) -> Result<Duration, D::Error> {
     let text = String::deserialize(deserializer)?;
-    let duration = humantime::parse_duration(&text)
+    let duration = text
+        .parse::<jiff::Span>()
+        .and_then(|span| span.to_duration(jiff::SpanRelativeTo::days_are_24_hours()))
+        .map_err(|err| err.to_string())
+        .and_then(|parsed| Duration::try_from(parsed).map_err(|err| err.to_string()))
         .map_err(|err| serde::de::Error::custom(format!("invalid duration {text:?}: {err}")))?;
     check(duration).map_err(|problem| serde::de::Error::custom(format!("{text:?} {problem}")))?;
     Ok(duration)
@@ -610,7 +614,7 @@ mod tests {
 
     #[test]
     fn check_intervals_are_capped_at_a_day() {
-        let message = error(&MINIMAL.replace("\"120s\"", "\"400000000000y\""));
+        let message = error(&MINIMAL.replace("\"120s\"", "\"3000000d\""));
 
         assert!(message.contains("must be at most 24h"), "{message}");
         assert!(parse(&MINIMAL.replace("\"120s\"", "\"24h\"")).is_ok());
