@@ -491,7 +491,10 @@ mod tests {
         assert!(process_exists(pid));
 
         handle.stop().await;
-        tokio::time::sleep(ms(100)).await;
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+        while process_exists(pid) && tokio::time::Instant::now() < deadline {
+            tokio::time::sleep(ms(20)).await;
+        }
 
         assert!(!process_exists(pid), "the grandchild survived");
     }
