@@ -80,7 +80,7 @@ jobs:
           case "$RELEASE_VERSION" in *-*) exit 0 ;; esac
           echo "::error::A stable release must be dispatched on main (got ${GITHUB_REF}); pre-releases need a version such as 5.0.0-rc.1"
           exit 1
-      - uses: hugoh/gh-workflows/setup@8d17bc6b4d7edc0bbec893e0466eb0ba60728721 # v1.40.27
+      - uses: hugoh/gh-workflows/setup@1990006622d3176e00fbf0d3d0b40723cfe8dbeb # v1.40.28
         with:
           fetch-depth: "0"
       - name: Plan the release
@@ -113,7 +113,7 @@ jobs:
     env:
       MISE_ENV: package
     steps:
-      - uses: hugoh/gh-workflows/setup@8d17bc6b4d7edc0bbec893e0466eb0ba60728721 # v1.40.27
+      - uses: hugoh/gh-workflows/setup@1990006622d3176e00fbf0d3d0b40723cfe8dbeb # v1.40.28
         with:
           fetch-depth: "0"
       - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
@@ -145,7 +145,7 @@ jobs:
       group: release
       cancel-in-progress: false
     steps:
-      - uses: hugoh/gh-workflows/setup@8d17bc6b4d7edc0bbec893e0466eb0ba60728721 # v1.40.27
+      - uses: hugoh/gh-workflows/setup@1990006622d3176e00fbf0d3d0b40723cfe8dbeb # v1.40.28
         with:
           fetch-depth: "0"
       - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
@@ -193,7 +193,7 @@ jobs:
     env:
       MISE_ENV: release,package
     steps:
-      - uses: hugoh/gh-workflows/setup@8d17bc6b4d7edc0bbec893e0466eb0ba60728721 # v1.40.27
+      - uses: hugoh/gh-workflows/setup@1990006622d3176e00fbf0d3d0b40723cfe8dbeb # v1.40.28
         with:
           fetch-depth: "0"
       - name: Check out the release tag
@@ -240,7 +240,7 @@ jobs:
       group: release-publish
       cancel-in-progress: false
     steps:
-      - uses: hugoh/gh-workflows/setup@8d17bc6b4d7edc0bbec893e0466eb0ba60728721 # v1.40.27
+      - uses: hugoh/gh-workflows/setup@1990006622d3176e00fbf0d3d0b40723cfe8dbeb # v1.40.28
         with:
           fetch-depth: "0"
       - name: Check out the release tag
